@@ -35,11 +35,17 @@ func (g *LimboGame) Evaluate(seeds Seeds, nonce uint64, params map[string]any) (
 	floats := engine.Floats(seeds.Server, seeds.Client, nonce, 0, 1)
 	f := floats[0]
 	
-	// Calculate crash point using exact Limbo formula
-	floatPoint := (1e8 / (f * 1e8)) * houseEdge
+	// Calculate crash point using exact Limbo formula from Stake documentation
+	// const floatPoint = 1e8 / (float * 1e8) * houseEdge;
+	// This simplifies to: (1 / float) * houseEdge
+	floatPoint := (1.0 / f) * houseEdge
+	
+	// Crash point rounded down to required denominator
+	// const crashPoint = Math.floor(floatPoint * 100) / 100;
 	crashPoint := math.Floor(floatPoint*100.0) / 100.0
 	
-	// Ensure minimum multiplier of 1.00
+	// Consolidate all crash points below 1
+	// const result = Math.max(crashPoint, 1);
 	result := math.Max(crashPoint, 1.0)
 	
 	return GameResult{
