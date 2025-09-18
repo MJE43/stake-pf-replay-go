@@ -1,35 +1,41 @@
 package games
 
+import (
+	"github.com/MJE43/stake-pf-replay-go/internal/engine"
+)
+
 // DiceGame implements the Dice roll game
 type DiceGame struct{}
 
-// Name returns the game identifier
-func (g *DiceGame) Name() string {
-	return "dice"
+// Spec returns metadata about the Dice game
+func (g *DiceGame) Spec() GameSpec {
+	return GameSpec{
+		ID:          "dice",
+		Name:        "Dice",
+		MetricLabel: "roll",
+	}
 }
 
-// MetricName returns the name of the metric
-func (g *DiceGame) MetricName() string {
-	return "roll"
-}
-
-// FloatsNeeded returns the number of floats required
-func (g *DiceGame) FloatsNeeded() int {
+// FloatCount returns the number of floats required
+func (g *DiceGame) FloatCount(params map[string]any) int {
 	return 1
 }
 
-// Evaluate calculates the dice roll (00.00 to 100.00)
-func (g *DiceGame) Evaluate(floats []float64) (float64, interface{}) {
-	if len(floats) < 1 {
-		return 0.0, nil
-	}
+// Evaluate calculates the dice roll (0.00 to 100.00)
+func (g *DiceGame) Evaluate(seeds Seeds, nonce uint64, params map[string]any) (GameResult, error) {
+	// Generate the required float
+	floats := engine.Floats(seeds.Server, seeds.Client, nonce, 0, 1)
+	f := floats[0]
 	
-	float := floats[0]
+	// Use formula: (float * 10001) / 100 for 0.00-100.00 range
+	roll := (f * 10001) / 100
 	
-	// Dice has 10,001 possible outcomes (00.00 to 100.00)
-	roll := (float * 10001) / 100
-	
-	return roll, map[string]interface{}{
-		"roll": roll,
-	}
+	return GameResult{
+		Metric:      roll,
+		MetricLabel: "roll",
+		Details: map[string]any{
+			"raw_float": f,
+			"roll":      roll,
+		},
+	}, nil
 }

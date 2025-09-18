@@ -1,0 +1,175 @@
+{
+  "limbo": [
+    {
+      "description": "Limbo with default house edge",
+      "server_seed": "test_server_seed_123",
+      "client_seed": "test_client_seed",
+      "nonce": 1,
+      "params": {},
+      "expected": {
+        "metric": 1.98,
+        "metric_label": "multiplier",
+        "details": {
+          "raw_float": 0.5,
+          "house_edge": 0.99,
+          "crash_point": 1.98
+        }
+      }
+    },
+    {
+      "description": "Limbo with custom house edge",
+      "server_seed": "test_server_seed_123",
+      "client_seed": "test_client_seed",
+      "nonce": 2,
+      "params": {
+        "houseEdge": 0.95
+      },
+      "expected": {
+        "metric": 1.90,
+        "metric_label": "multiplier",
+        "details": {
+          "raw_float": 0.5,
+          "house_edge": 0.95,
+          "crash_point": 1.90
+        }
+      }
+    },
+    {
+      "description": "Limbo minimum multiplier case",
+      "server_seed": "min_mult_seed",
+      "client_seed": "client_min",
+      "nonce": 100,
+      "params": {},
+      "expected": {
+        "metric": 1.00,
+        "metric_label": "multiplier",
+        "details": {
+          "raw_float": 0.99999,
+          "house_edge": 0.99,
+          "crash_point": 1.00
+        }
+      }
+    }
+  ],
+  "dice": [
+    {
+      "description": "Dice roll at 0.5 float",
+      "server_seed": "dice_test_seed",
+      "client_seed": "dice_client",
+      "nonce": 1,
+      "params": {},
+      "expected": {
+        "metric": 50.005,
+        "metric_label": "roll",
+        "details": {
+          "raw_float": 0.5,
+          "roll": 50.005
+        }
+      }
+    },
+    {
+      "description": "Dice roll at minimum",
+      "server_seed": "dice_min_seed",
+      "client_seed": "dice_client",
+      "nonce": 2,
+      "params": {},
+      "expected": {
+        "metric": 0.0,
+        "metric_label": "roll",
+        "details": {
+          "raw_float": 0.0,
+          "roll": 0.0
+        }
+      }
+    },
+    {
+      "description": "Dice roll near maximum",
+      "server_seed": "dice_max_seed",
+      "client_seed": "dice_client",
+      "nonce": 3,
+      "params": {},
+      "expected": {
+        "metric": 99.99,
+        "metric_label": "roll",
+        "details": {
+          "raw_float": 0.9999,
+          "roll": 99.99
+        }
+      }
+    }
+  ],
+  "roulette": [
+    {
+      "description": "Roulette pocket 0 (green)",
+      "server_seed": "roulette_zero_seed",
+      "client_seed": "roulette_client",
+      "nonce": 1,
+      "params": {},
+      "expected": {
+        "metric": 0.0,
+        "metric_label": "pocket",
+        "details": {
+          "raw_float": 0.01,
+          "pocket": 0,
+          "color": "green",
+          "even": false,
+          "low": false
+        }
+      }
+    },
+    {
+      "description": "Roulette pocket 17 (black)",
+      "server_seed": "roulette_17_seed",
+      "client_seed": "roulette_client",
+      "nonce": 2,
+      "params": {},
+      "expected": {
+        "metric": 17.0,
+        "metric_label": "pocket",
+        "details": {
+          "raw_float": 0.459,
+          "pocket": 17,
+          "color": "black",
+          "even": false,
+          "low": true
+        }
+      }
+    },
+    {
+      "description": "Roulette pocket 32 (red)",
+      "server_seed": "roulette_32_seed",
+      "client_seed": "roulette_client",
+      "nonce": 3,
+      "params": {},
+      "expected": {
+        "metric": 32.0,
+        "metric_label": "pocket",
+        "details": {
+          "raw_float": 0.865,
+          "pocket": 32,
+          "color": "red",
+          "even": true,
+          "low": false
+        }
+      }
+    },
+    {
+      "description": "Roulette pocket 36 (red, maximum)",
+      "server_seed": "roulette_max_seed",
+      "client_seed": "roulette_client",
+      "nonce": 4,
+      "params": {},
+      "expected": {
+        "metric": 36.0,
+        "metric_label": "pocket",
+        "details": {
+          "raw_float": 0.9999,
+          "pocket": 36,
+          "color": "red",
+          "even": true,
+          "low": false
+        }
+      }
+    }
+  ]
+}

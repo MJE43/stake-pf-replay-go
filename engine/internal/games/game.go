@@ -1,25 +1,35 @@
 package games
 
+// Seeds represents the cryptographic seeds used for game evaluation
+type Seeds struct {
+	Server string `json:"server"`
+	Client string `json:"client"`
+}
+
 // Game represents a provably fair game that can be evaluated
 type Game interface {
-	// Evaluate processes the floats and returns a metric and optional details
-	Evaluate(floats []float64) (metric float64, details interface{})
+	// Evaluate processes a single nonce with the given seeds and parameters
+	Evaluate(seeds Seeds, nonce uint64, params map[string]any) (GameResult, error)
 	
-	// FloatsNeeded returns how many floats this game requires per evaluation
-	FloatsNeeded() int
+	// FloatCount returns how many floats this game requires per evaluation
+	FloatCount(params map[string]any) int
 	
-	// MetricName returns the name of the metric this game produces
-	MetricName() string
-	
-	// Name returns the game's identifier
-	Name() string
+	// Spec returns metadata about this game
+	Spec() GameSpec
 }
 
 // GameResult represents the outcome of a single game evaluation
 type GameResult struct {
-	Nonce   uint64      `json:"nonce"`
-	Metric  float64     `json:"metric"`
-	Details interface{} `json:"details,omitempty"`
+	Metric      float64 `json:"metric"`
+	MetricLabel string  `json:"metric_label"`
+	Details     any     `json:"details,omitempty"`
+}
+
+// GameSpec provides metadata about a game
+type GameSpec struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	MetricLabel string `json:"metric_label"`
 }
 
 // GameRegistry holds all available games
@@ -27,22 +37,23 @@ var GameRegistry = make(map[string]Game)
 
 // RegisterGame adds a game to the registry
 func RegisterGame(game Game) {
-	GameRegistry[game.Name()] = game
+	spec := game.Spec()
+	GameRegistry[spec.ID] = game
 }
 
-// GetGame retrieves a game by name
-func GetGame(name string) (Game, bool) {
-	game, exists := GameRegistry[name]
+// GetGame retrieves a game by ID
+func GetGame(id string) (Game, bool) {
+	game, exists := GameRegistry[id]
 	return game, exists
 }
 
-// ListGames returns all registered game names
-func ListGames() []string {
-	names := make([]string, 0, len(GameRegistry))
-	for name := range GameRegistry {
-		names = append(names, name)
+// ListGames returns all registered game specs
+func ListGames() []GameSpec {
+	specs := make([]GameSpec, 0, len(GameRegistry))
+	for _, game := range GameRegistry {
+		specs = append(specs, game.Spec())
 	}
-	return names
+	return specs
 }
 
 // init registers all games

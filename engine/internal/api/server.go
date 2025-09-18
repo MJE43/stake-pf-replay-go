@@ -25,33 +25,30 @@ func NewServer(db store.DB) *Server {
 	}
 }
 
-// Routes sets up the HTTP routes
+// Routes sets up the HTTP routes with proper middleware
 func (s *Server) Routes() http.Handler {
 	r := chi.NewRouter()
 	
-	// Middleware
-	r.Use(middleware.Logger)
+	// Core middleware
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(s.SecurityLoggingMiddleware)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(s.CORSMiddleware)
+	
+	// Health check endpoint (built-in heartbeat)
 	r.Use(middleware.Heartbeat("/health"))
 	
-	// CORS for development
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-			
-			if r.Method == "OPTIONS" {
-				w.WriteHeader(http.StatusOK)
-				return
-			}
-			
-			next.ServeHTTP(w, r)
-		})
+	// API routes
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Post("/scan", s.handleScan)
+		r.Post("/verify", s.handleVerify)
+		r.Get("/games", s.handleListGames)
+		r.Post("/seed/hash", s.handleSeedHash)
 	})
 	
-	// Routes
+	// Legacy routes (without /api/v1 prefix for backward compatibility)
 	r.Post("/scan", s.handleScan)
 	r.Post("/verify", s.handleVerify)
 	r.Get("/games", s.handleListGames)
@@ -60,14 +57,29 @@ func (s *Server) Routes() http.Handler {
 	return r
 }
 
-// writeJSON writes a JSON response
+// writeJSON writes a JSON response with proper headers
 func (s *Server) writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Engine-Version", EngineVersion)
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+	
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		// If encoding fails, try to write a simple error response
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
 }
 
-// writeError writes an error response
-func (s *Server) writeError(w http.ResponseWriter, status int, message string) {
-	s.writeJSON(w, status, map[string]string{"error": message})
+// writeError writes a structured error response
+func (s *Server) writeError(w http.ResponseWriter, status int, errType, message string, context map[string]interface{}) {
+	errorResponse := EngineError{
+		Type:    errType,
+		Message: message,
+		Context: context,
+	}
+	s.writeJSON(w, status, errorResponse)
+}
+
+// writeSimpleError writes a simple error response (for backward compatibility)
+func (s *Server) writeSimpleError(w http.ResponseWriter, status int, message string) {
+	s.writeError(w, status, ErrTypeInternal, message, nil)
 }

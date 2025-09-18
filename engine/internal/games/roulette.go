@@ -1,35 +1,36 @@
 package games
 
-import "math"
+import (
+	"math"
+	
+	"github.com/MJE43/stake-pf-replay-go/internal/engine"
+)
 
 // RouletteGame implements European Roulette (0-36)
 type RouletteGame struct{}
 
-// Name returns the game identifier
-func (g *RouletteGame) Name() string {
-	return "roulette"
+// Spec returns metadata about the Roulette game
+func (g *RouletteGame) Spec() GameSpec {
+	return GameSpec{
+		ID:          "roulette",
+		Name:        "Roulette",
+		MetricLabel: "pocket",
+	}
 }
 
-// MetricName returns the name of the metric
-func (g *RouletteGame) MetricName() string {
-	return "pocket"
-}
-
-// FloatsNeeded returns the number of floats required
-func (g *RouletteGame) FloatsNeeded() int {
+// FloatCount returns the number of floats required
+func (g *RouletteGame) FloatCount(params map[string]any) int {
 	return 1
 }
 
 // Evaluate determines which pocket the ball lands in (0-36)
-func (g *RouletteGame) Evaluate(floats []float64) (float64, interface{}) {
-	if len(floats) < 1 {
-		return 0.0, nil
-	}
+func (g *RouletteGame) Evaluate(seeds Seeds, nonce uint64, params map[string]any) (GameResult, error) {
+	// Generate the required float
+	floats := engine.Floats(seeds.Server, seeds.Client, nonce, 0, 1)
+	f := floats[0]
 	
-	float := floats[0]
-	
-	// European roulette has 37 pockets (0-36)
-	pocket := math.Floor(float * 37)
+	// Use formula: floor(float * 37) for European roulette (0-36)
+	pocket := math.Floor(f * 37)
 	
 	// Determine color and properties
 	var color string
@@ -59,10 +60,15 @@ func (g *RouletteGame) Evaluate(floats []float64) (float64, interface{}) {
 		isLow = pocket >= 1 && pocket <= 18
 	}
 	
-	return pocket, map[string]interface{}{
-		"pocket": int(pocket),
-		"color":  color,
-		"even":   isEven,
-		"low":    isLow,
-	}
+	return GameResult{
+		Metric:      pocket, // Keep as float64 for uniformity
+		MetricLabel: "pocket",
+		Details: map[string]any{
+			"raw_float": f,
+			"pocket":    int(pocket), // Integer in details
+			"color":     color,
+			"even":      isEven,
+			"low":       isLow,
+		},
+	}, nil
 }
