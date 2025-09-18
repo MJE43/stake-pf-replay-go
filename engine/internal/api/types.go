@@ -5,23 +5,62 @@ import (
 	"github.com/MJE43/stake-pf-replay-go/internal/scan"
 )
 
-// EngineError represents a structured error response
+// EngineError represents a structured error response with context
 type EngineError struct {
-	Type    string                 `json:"type"`
-	Message string                 `json:"message"`
-	Context map[string]interface{} `json:"context,omitempty"`
+	Type      string                 `json:"type"`
+	Message   string                 `json:"message"`
+	Context   map[string]interface{} `json:"context,omitempty"`
+	RequestID string                 `json:"request_id,omitempty"`
+	Timestamp string                 `json:"timestamp,omitempty"`
 }
 
-// Error types
+// Error implements the error interface
+func (e EngineError) Error() string {
+	return e.Message
+}
+
+// Error types with proper categorization
 const (
+	// Input validation errors
 	ErrTypeInvalidSeed   = "invalid_seed"
 	ErrTypeInvalidNonce  = "invalid_nonce"
 	ErrTypeInvalidParams = "invalid_params"
-	ErrTypeGameNotFound  = "game_not_found"
-	ErrTypeTimeout       = "timeout"
 	ErrTypeValidation    = "validation_error"
-	ErrTypeInternal      = "internal_error"
+	
+	// Game-related errors
+	ErrTypeGameNotFound     = "game_not_found"
+	ErrTypeGameEvaluation   = "game_evaluation_error"
+	
+	// System errors
+	ErrTypeTimeout          = "timeout"
+	ErrTypeInternal         = "internal_error"
+	ErrTypeRateLimit        = "rate_limit_exceeded"
+	ErrTypeServiceUnavailable = "service_unavailable"
 )
+
+// ErrorCategory represents error categories for monitoring
+type ErrorCategory string
+
+const (
+	CategoryValidation ErrorCategory = "validation"
+	CategoryGame       ErrorCategory = "game"
+	CategorySystem     ErrorCategory = "system"
+	CategoryTimeout    ErrorCategory = "timeout"
+)
+
+// GetErrorCategory returns the category for an error type
+func GetErrorCategory(errType string) ErrorCategory {
+	switch errType {
+	case ErrTypeInvalidSeed, ErrTypeInvalidNonce, ErrTypeInvalidParams, ErrTypeValidation:
+		return CategoryValidation
+	case ErrTypeGameNotFound, ErrTypeGameEvaluation:
+		return CategoryGame
+	case ErrTypeTimeout:
+		return CategoryTimeout
+	default:
+		return CategorySystem
+	}
+}
 
 // VersionInfo contains engine version information
 type VersionInfo struct {

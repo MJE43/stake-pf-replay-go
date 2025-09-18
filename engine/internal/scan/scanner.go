@@ -3,6 +3,7 @@ package scan
 import (
 	"context"
 	"runtime"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -52,6 +53,7 @@ type Summary struct {
 	MinMetric      float64 `json:"min_metric"`
 	MaxMetric      float64 `json:"max_metric"`
 	MeanMetric     float64 `json:"mean_metric"`
+	MedianMetric   float64 `json:"median_metric"`
 	TimedOut       bool    `json:"timed_out,omitempty"`
 }
 
@@ -436,6 +438,20 @@ func (rc *ResultCollector) calculateSummary(metrics []float64, totalEvaluated ui
 	summary.MinMetric = min
 	summary.MaxMetric = max
 	summary.MeanMetric = sum / float64(len(metrics))
+	
+	// Calculate median efficiently
+	sorted := make([]float64, len(metrics))
+	copy(sorted, metrics)
+	sort.Float64s(sorted)
+	
+	n := len(sorted)
+	if n%2 == 0 {
+		// Even number of elements: average of middle two
+		summary.MedianMetric = (sorted[n/2-1] + sorted[n/2]) / 2
+	} else {
+		// Odd number of elements: middle element
+		summary.MedianMetric = sorted[n/2]
+	}
 	
 	return summary
 }

@@ -3,7 +3,6 @@ package api
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"log"
 	"net/http"
 	"time"
 
@@ -14,23 +13,36 @@ import (
 func (s *Server) SecurityLoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+		requestID := middleware.GetReqID(r.Context())
 		
 		// Create a response writer wrapper to capture status code
 		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 		
+		// Log request start (without sensitive data)
+		s.logger.Printf(
+			"request_start method=%s path=%s request_id=%s remote_addr=%s user_agent=%q engine_version=%s",
+			r.Method,
+			r.URL.Path,
+			requestID,
+			r.RemoteAddr,
+			r.UserAgent(),
+			EngineVersion,
+		)
+		
 		// Process request
 		next.ServeHTTP(ww, r)
 		
-		// Log request details (without sensitive data)
+		// Log request completion (without sensitive data)
 		duration := time.Since(start)
-		log.Printf(
-			"method=%s path=%s status=%d duration=%v remote_addr=%s user_agent=%s",
+		s.logger.Printf(
+			"request_completed method=%s path=%s status=%d duration=%v request_id=%s bytes_written=%d engine_version=%s",
 			r.Method,
 			r.URL.Path,
 			ww.Status(),
 			duration,
-			r.RemoteAddr,
-			r.UserAgent(),
+			requestID,
+			ww.BytesWritten(),
+			EngineVersion,
 		)
 	})
 }

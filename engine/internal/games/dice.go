@@ -1,6 +1,8 @@
 package games
 
 import (
+	"math"
+
 	"github.com/MJE43/stake-pf-replay-go/internal/engine"
 )
 
@@ -27,8 +29,10 @@ func (g *DiceGame) Evaluate(seeds Seeds, nonce uint64, params map[string]any) (G
 	floats := engine.Floats(seeds.Server, seeds.Client, nonce, 0, 1)
 	f := floats[0]
 	
-	// Use formula: (float * 10001) / 100 for 0.00-100.00 range
-	roll := (f * 10001) / 100
+	// Use discrete formula: floor(float * 10001) / 100 for 0.00-100.00 range
+	// This creates exactly 10,001 discrete outcomes (0.00, 0.01, 0.02, ..., 100.00)
+	// matching Stake's implementation. For target matching, use tolerance=0 for exact matches.
+	roll := math.Floor(f*10001) / 100
 	
 	return GameResult{
 		Metric:      roll,

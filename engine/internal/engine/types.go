@@ -21,9 +21,4 @@ type GameSpec struct {
     // Optional: JSON schema for params if you want UI auto-gen later
 }
 
-type Game interface {
-    Spec() GameSpec
-    // Count of floats needed for deterministic evaluation given params
-    FloatCount(params map[string]any) int
-    Evaluate(seeds Seeds, nonce uint64, params map[string]any) (GameResult, error)
-}
+// Game interface moved to games package to avoid duplication
