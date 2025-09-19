@@ -1,6 +1,7 @@
 package games
 
 import (
+	"fmt"
 	"math"
 	
 	"github.com/MJE43/stake-pf-replay-go/internal/engine"
@@ -25,14 +26,23 @@ func (g *LimboGame) FloatCount(params map[string]any) int {
 
 // Evaluate calculates the crash multiplier for Limbo
 func (g *LimboGame) Evaluate(seeds Seeds, nonce uint64, params map[string]any) (GameResult, error) {
+	// Generate the required float
+	floats := engine.Floats(seeds.Server, seeds.Client, nonce, 0, 1)
+	return g.EvaluateWithFloats(floats, params)
+}
+
+// EvaluateWithFloats calculates the crash multiplier using pre-computed floats
+func (g *LimboGame) EvaluateWithFloats(floats []float64, params map[string]any) (GameResult, error) {
+	if len(floats) < 1 {
+		return GameResult{}, fmt.Errorf("limbo requires at least 1 float, got %d", len(floats))
+	}
+	
 	// Get house edge from params, default to 0.99 (1% house edge)
 	houseEdge := 0.99
 	if he, ok := params["houseEdge"].(float64); ok && he > 0 && he <= 1 {
 		houseEdge = he
 	}
 	
-	// Generate the required float
-	floats := engine.Floats(seeds.Server, seeds.Client, nonce, 0, 1)
 	f := floats[0]
 	
 	// Calculate crash point using exact Limbo formula from Stake documentation

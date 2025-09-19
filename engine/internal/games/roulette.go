@@ -1,6 +1,7 @@
 package games
 
 import (
+	"fmt"
 	"math"
 	
 	"github.com/MJE43/stake-pf-replay-go/internal/engine"
@@ -27,6 +28,15 @@ func (g *RouletteGame) FloatCount(params map[string]any) int {
 func (g *RouletteGame) Evaluate(seeds Seeds, nonce uint64, params map[string]any) (GameResult, error) {
 	// Generate the required float
 	floats := engine.Floats(seeds.Server, seeds.Client, nonce, 0, 1)
+	return g.EvaluateWithFloats(floats, params)
+}
+
+// EvaluateWithFloats determines which pocket the ball lands in using pre-computed floats
+func (g *RouletteGame) EvaluateWithFloats(floats []float64, params map[string]any) (GameResult, error) {
+	if len(floats) < 1 {
+		return GameResult{}, fmt.Errorf("roulette requires at least 1 float, got %d", len(floats))
+	}
+	
 	f := floats[0]
 	
 	// Use formula: floor(float * 37) for European roulette (0-36)

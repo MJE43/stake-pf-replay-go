@@ -63,6 +63,17 @@ func (g *PumpGame) FloatCount(params map[string]any) int {
 
 // Evaluate calculates the multiplier for Pump game
 func (g *PumpGame) Evaluate(seeds Seeds, nonce uint64, params map[string]any) (GameResult, error) {
+	// Generate 25 floats for the position shuffle
+	floats := engine.Floats(seeds.Server, seeds.Client, nonce, 0, 25)
+	return g.EvaluateWithFloats(floats, params)
+}
+
+// EvaluateWithFloats calculates the multiplier using pre-computed floats
+func (g *PumpGame) EvaluateWithFloats(floats []float64, params map[string]any) (GameResult, error) {
+	if len(floats) < 25 {
+		return GameResult{}, fmt.Errorf("pump requires at least 25 floats, got %d", len(floats))
+	}
+	
 	// Get difficulty from params, default to "expert"
 	difficulty := "expert"
 	if d, ok := params["difficulty"].(string); ok {
@@ -81,9 +92,6 @@ func (g *PumpGame) Evaluate(seeds Seeds, nonce uint64, params map[string]any) (G
 	if !exists {
 		return GameResult{}, fmt.Errorf("no multiplier table for difficulty: %s", difficulty)
 	}
-	
-	// Generate 25 floats for the position shuffle
-	floats := engine.Floats(seeds.Server, seeds.Client, nonce, 0, 25)
 	
 	// Create pool of positions 1-25
 	pool := make([]int, pumpPositions)

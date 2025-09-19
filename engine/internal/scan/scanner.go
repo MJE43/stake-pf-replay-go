@@ -267,8 +267,8 @@ func (sw *ScanWorker) processJob(ctx context.Context, job ScanJob, floatsNeeded 
 		// Generate floats for this nonce using allocation-free version
 		engine.FloatsInto(floats, sw.seeds.Server, sw.seeds.Client, nonce, 0, floatsNeeded)
 		
-		// Evaluate game
-		result, err := sw.game.Evaluate(sw.seeds, nonce, sw.params)
+		// Evaluate game using pre-computed floats (performance optimization)
+		result, err := sw.game.EvaluateWithFloats(floats, sw.params)
 		if err != nil {
 			continue // Skip invalid evaluations
 		}
