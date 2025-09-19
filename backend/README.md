@@ -14,7 +14,7 @@ A high-performance deterministic game outcome replay tool for Stake Originals ga
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd stake-pf-replay-go/engine
+cd stake-pf-replay-go/backend
 
 # Install Go dependencies
 go mod download
@@ -278,7 +278,7 @@ make migrate
 ### Project Structure
 
 ```
-engine/
+backend/
 ├── .air.toml                   # Air hot-reload configuration
 ├── API.md                      # Detailed API documentation
 ├── Makefile                    # Build automation
