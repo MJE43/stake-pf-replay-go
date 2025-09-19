@@ -31,11 +31,11 @@ export namespace bindings {
 	export class ScanRequest {
 	    Game: string;
 	    Seeds: Seeds;
-	    NonceStart: number;
-	    NonceEnd: number;
+	    NonceStart: any;
+	    NonceEnd: any;
 	    Params: Record<string, any>;
-	    TargetOp: string;
-	    TargetVal: number;
+	    TargetOp: any;
+	    TargetVal: any;
 	    Tolerance: number;
 	    Limit: number;
 	    TimeoutMs: number;

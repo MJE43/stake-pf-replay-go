@@ -1,6 +1,6 @@
 module github.com/MJE43/stake-pf-replay-go
 
-go 1.25.1
+go 1.24.6
 
 require (
 	github.com/go-chi/chi/v5 v5.2.3

@@ -1,6 +1,6 @@
 module github.com/MJE43/stake-pf-replay-go-desktop
 
-go 1.25.1
+go 1.24.6
 
 replace github.com/MJE43/stake-pf-replay-go => ./backend
 

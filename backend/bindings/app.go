@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
+	"strconv"
 
 	"github.com/MJE43/stake-pf-replay-go/internal/games"
 	"github.com/MJE43/stake-pf-replay-go/internal/scan"
@@ -16,11 +18,11 @@ type TargetOp string
 type ScanRequest struct {
 	Game       string
 	Seeds      Seeds
-	NonceStart uint64
-	NonceEnd   uint64
+	NonceStart interface{} // Accept both string and uint64
+	NonceEnd   interface{} // Accept both string and uint64
 	Params     map[string]any
-	TargetOp   TargetOp
-	TargetVal  float64
+	TargetOp   interface{} // Accept both string and TargetOp
+	TargetVal  interface{} // Accept both string and float64
 	Tolerance  float64
 	Limit      int
 	TimeoutMs  int
@@ -48,15 +50,75 @@ func (a *App) HashServerSeed(server string) (string, error) {
 }
 
 func (a *App) StartScan(req ScanRequest) (ScanResult, error) {
+	// Convert NonceStart to uint64 if it's a string
+	var nonceStart uint64
+	switch v := req.NonceStart.(type) {
+	case uint64:
+		nonceStart = v
+	case float64:
+		nonceStart = uint64(v)
+	case string:
+		var err error
+		nonceStart, err = strconv.ParseUint(v, 10, 64)
+		if err != nil {
+			return ScanResult{}, fmt.Errorf("invalid nonce start: %v", v)
+		}
+	default:
+		return ScanResult{}, fmt.Errorf("nonce start must be a number or string, got %T", v)
+	}
+
+	// Convert NonceEnd to uint64 if it's a string
+	var nonceEnd uint64
+	switch v := req.NonceEnd.(type) {
+	case uint64:
+		nonceEnd = v
+	case float64:
+		nonceEnd = uint64(v)
+	case string:
+		var err error
+		nonceEnd, err = strconv.ParseUint(v, 10, 64)
+		if err != nil {
+			return ScanResult{}, fmt.Errorf("invalid nonce end: %v", v)
+		}
+	default:
+		return ScanResult{}, fmt.Errorf("nonce end must be a number or string, got %T", v)
+	}
+
+	// Convert TargetOp to string if needed
+	var targetOp string
+	switch v := req.TargetOp.(type) {
+	case string:
+		targetOp = v
+	case TargetOp:
+		targetOp = string(v)
+	default:
+		return ScanResult{}, fmt.Errorf("target op must be a string, got %T", v)
+	}
+
+	// Convert TargetVal to float64 if it's a string
+	var targetVal float64
+	switch v := req.TargetVal.(type) {
+	case float64:
+		targetVal = v
+	case string:
+		var err error
+		targetVal, err = strconv.ParseFloat(v, 64)
+		if err != nil {
+			return ScanResult{}, fmt.Errorf("invalid target value: %v", v)
+		}
+	default:
+		return ScanResult{}, fmt.Errorf("target value must be a number or string, got %T", v)
+	}
+
 	s := scan.NewScanner()
 	res, err := s.Scan(context.Background(), scan.ScanRequest{
 		Game:       req.Game,
 		Seeds:      games.Seeds{Server: req.Seeds.Server, Client: req.Seeds.Client},
-		NonceStart: req.NonceStart,
-		NonceEnd:   req.NonceEnd,
+		NonceStart: nonceStart,
+		NonceEnd:   nonceEnd,
 		Params:     req.Params,
-		TargetOp:   scan.TargetOp(req.TargetOp),
-		TargetVal:  req.TargetVal,
+		TargetOp:   scan.TargetOp(targetOp),
+		TargetVal:  targetVal,
 		Tolerance:  req.Tolerance,
 		Limit:      req.Limit,
 		TimeoutMs:  req.TimeoutMs,
@@ -71,10 +133,10 @@ func (a *App) StartScan(req ScanRequest) (ScanResult, error) {
 		Game:           req.Game,
 		ServerSeed:     req.Seeds.Server,
 		ClientSeed:     req.Seeds.Client,
-		NonceStart:     req.NonceStart,
-		NonceEnd:       req.NonceEnd,
-		TargetOp:       string(req.TargetOp),
-		TargetVal:      req.TargetVal,
+		NonceStart:     nonceStart,
+		NonceEnd:       nonceEnd,
+		TargetOp:       targetOp,
+		TargetVal:      targetVal,
 		HitCount:       len(res.Hits),
 		TotalEvaluated: res.Summary.TotalEvaluated,
 		EngineVersion:  res.EngineVersion,
@@ -98,6 +160,13 @@ func (a *App) StartScan(req ScanRequest) (ScanResult, error) {
 		hits[i] = Hit{Nonce: h.Nonce, Metric: h.Metric}
 	}
 
+	// Create echo request with converted values
+	echoReq := req
+	echoReq.NonceStart = nonceStart
+	echoReq.NonceEnd = nonceEnd
+	echoReq.TargetOp = targetOp
+	echoReq.TargetVal = targetVal
+
 	return ScanResult{
 		RunID: run.ID,
 		Hits:  hits,
@@ -109,7 +178,7 @@ func (a *App) StartScan(req ScanRequest) (ScanResult, error) {
 			TotalEvaluated: res.Summary.TotalEvaluated,
 		},
 		EngineVersion:  res.EngineVersion,
-		Echo:           req,
+		Echo:           echoReq,
 		TimedOut:       res.Summary.TimedOut,
 		ServerSeedHash: serverHash,
 	}, nil

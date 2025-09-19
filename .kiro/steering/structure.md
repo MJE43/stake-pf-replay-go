@@ -1,75 +1,49 @@
-# Project Structure & Organization
+---
+inclusion: always
+---
+
+# Project Structure & Code Organization
 
 ## Repository Layout
 
 ```
-/
-├── .kiro/                    # Kiro IDE configuration
-├── cmd/                      # Go application entry points
-│   └── pf-service/          # Main service binary
-├── internal/                 # Private Go packages
-│   ├── engine/              # Core RNG and float generation
-│   ├── games/               # Game-specific implementations
-│   ├── scan/                # Worker pool and scanning logic
-│   ├── api/                 # HTTP handlers and routing
-│   └── store/               # Database access layer
-├── migrations/              # Database schema migrations
-├── testdata/                # Golden test vectors
-├── web/                     # Next.js frontend (future)
-│   ├── app/                 # Next.js App Router pages
-│   ├── components/          # React components
-│   └── lib/                 # Shared utilities
-├── go.mod                   # Go module definition
-├── PRD.md                   # Product requirements
-├── techstack.md             # Technical specifications
-└── stakeDocs.md             # Stake's provable fairness docs
+engine/
+├── .air.toml                   # Air hot-reload configuration
+├── API.md                      # Detailed API documentation
+├── Makefile                    # Build automation
+├── README.md                   # Setup and usage instructions
+├── go.mod & go.sum            # Go dependencies
+├── data.db*                   # SQLite database files
+├── bin/
+│   └── pf-service.exe         # Production build
+├── cmd/
+│   └── pf-service/            # Main service entry point
+│       └── main.go
+├── internal/                  # Private Go packages
+│   ├── api/                   # HTTP handlers & routing
+│   ├── engine/                # Core RNG & cryptographic functions
+│   ├── games/                 # Game-specific implementations
+│   ├── scan/                  # High-performance scanning engine
+│   └── store/                 # Database layer
+├── migrations/                # Database schema migrations
+└── tmp/                       # Air build artifacts (auto-generated)
 ```
 
-## Go Package Organization
+## Package Architecture
 
-### Core Principles
-- **internal/**: All business logic is private to this module
-- **cmd/**: Only contains main.go files and minimal setup
-- **Separation of Concerns**: Each package has a single responsibility
+**Core Structure**: All business logic lives in `internal/` packages:
+- `internal/engine/` - HMAC-SHA256 and float generation (cryptographic core)
+- `internal/games/` - Game implementations (one file per game: limbo.go, dice.go, pump.go, roulette.go)
+- `internal/scan/` - Worker pools and high-performance scanning
+- `internal/api/` - HTTP handlers and routing
+- `internal/store/` - Database access layer
 
-### Package Responsibilities
+**Entry Points**: `cmd/pf-service/` contains only main.go and minimal setup
 
-**engine/**: Core cryptographic operations
-- HMAC-SHA256 implementation
-- Byte-to-float conversion (4 bytes per float)
-- Cursor management for multi-round games
+## Mandatory Patterns
 
-**games/**: Game-specific logic
-- Each game in its own file (limbo.go, dice.go, etc.)
-- Implements common interface: `Evaluate(floats) (metric, details)`
-- Payout tables loaded from JSON files
-
-**scan/**: High-performance scanning
-- Worker pool management
-- Target rule evaluation (>=, ==, etc.)
-- Result aggregation and summaries
-
-**api/**: HTTP interface
-- REST endpoints (/scan, /verify, /games)
-- Request validation and response formatting
-- Error handling and timeouts
-
-**store/**: Data persistence
-- Database schema and migrations
-- Run and hit storage
-- SQLite/PostgreSQL abstraction
-
-## File Naming Conventions
-
-- **Go files**: lowercase with underscores (e.g., `game_engine.go`)
-- **Test files**: `*_test.go` suffix
-- **Golden test data**: `testdata/game_name_vectors.json`
-- **Migration files**: `YYYYMMDD_description.sql`
-
-## Code Organization Rules
-
-### Game Implementation Pattern
-Each game must implement:
+### Game Implementation
+Every game MUST implement this exact interface:
 ```go
 type Game interface {
     Evaluate(floats []float64) (metric float64, details interface{})
@@ -78,25 +52,100 @@ type Game interface {
 }
 ```
 
-### Error Handling
-- Use wrapped errors with context
-- Validate inputs at API boundaries
-- Fail fast on configuration errors
+### File Placement Rules
+- New games: `internal/games/{game_name}.go`
+- Migrations: `migrations/YYYYMMDD_description.sql`
+- Tests: `*_test.go` alongside source files
+- Build artifacts: `bin/` for production, `tmp/` for development
 
-### Testing Strategy
-- **Golden vectors**: Fixed seed inputs → expected outputs
-- **Property tests**: Verify deterministic behavior
-- **Benchmark tests**: Performance regression detection
+### Import Order (Strictly Enforced)
+```go
+import (
+    // 1. Standard library
+    "context"
+    "fmt"
+    
+    // 2. Third-party packages
+    "github.com/go-chi/chi/v5"
+    
+    // 3. Internal packages (relative imports)
+    "internal/engine"
+    "internal/games"
+)
+```
 
-## Configuration Management
+## Code Style Requirements
 
-- **Environment variables**: Database connections, ports
-- **JSON files**: Payout tables, game configurations
-- **Build flags**: Development vs production builds
+### Naming Conventions
+- Go files: `snake_case.go` (e.g., `game_engine.go`)
+- Functions: `PascalCase` for exported, `camelCase` for private
+- Constants: `SCREAMING_SNAKE_CASE`
+- Interfaces: Single responsibility, often ending in `-er`
 
-## Import Organization
+### Error Handling Pattern
+```go
+// Always wrap errors with context
+if err != nil {
+    return fmt.Errorf("scanning nonce %d: %w", nonce, err)
+}
 
-Standard Go import order:
-1. Standard library
-2. Third-party packages
-3. Internal packages (relative imports)
+// Validate at boundaries
+func (h *Handler) ScanEndpoint(w http.ResponseWriter, r *http.Request) {
+    // Validate ALL inputs before processing
+    if req.StartNonce < 0 {
+        http.Error(w, "invalid start nonce", http.StatusBadRequest)
+        return
+    }
+}
+```
+
+### Testing Requirements
+- Golden test cases embedded in test files (deterministic seed → expected outcome)
+- Benchmark tests for performance-critical paths
+- Property tests for cryptographic functions
+- Integration tests for API endpoints
+
+## Performance Patterns
+
+### Worker Pool Usage
+```go
+// Use GOMAXPROCS-sized pools for CPU-bound work
+workers := runtime.GOMAXPROCS(0)
+pool := scan.NewWorkerPool(workers)
+```
+
+### Memory Management
+- Pre-allocate slices in hot paths
+- Reuse byte buffers for HMAC operations
+- Avoid allocations in scanning loops
+
+## Development Workflow
+
+### Hot Reload with Air
+- Use `air` for development with automatic rebuilds
+- Configuration in `.air.toml` builds to `tmp/pf-service.exe`
+- Watches `cmd/` and `internal/` directories for changes
+- Excludes test files and build artifacts
+
+### Build Targets
+- **Development**: `air` → `tmp/pf-service.exe` (hot reload)
+- **Production**: `make build` → `bin/pf-service.exe` (optimized)
+- **Testing**: `make test` (runs all test suites)
+
+## Configuration Conventions
+
+- Environment variables: Database URLs, ports, feature flags
+- JSON files: Payout tables, game configurations (loaded once at startup)
+- Build tags: `//go:build dev` for development-only code
+
+## File Organization Rules
+
+### Executable Placement
+- Production builds: `bin/pf-service.exe`
+- Development builds: `tmp/pf-service.exe` (managed by Air)
+- Never commit executables to version control
+
+### Database Files
+- Development: `data.db` (SQLite, gitignored)
+- Migrations: `migrations/*.sql` (versioned)
+- Schema changes: Always create new migration files
