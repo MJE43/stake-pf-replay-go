@@ -16,16 +16,38 @@ http://localhost:8080
 
 **GET** `/health`
 
-Returns server health status.
+Returns basic server health status.
 
 **Response:**
+```json
+{
+  "status": "ok",
+  "engine_version": "dev",
+  "timestamp": "2024-12-18T10:30:00Z"
+}
 ```
-OK
-```
+
+### Readiness Check
+
+**GET** `/health/ready`
+
+Returns detailed readiness status including database connectivity.
+
+### Liveness Check
+
+**GET** `/health/live`
+
+Returns liveness status for container orchestration.
+
+### Metrics
+
+**GET** `/metrics`
+
+Returns basic performance metrics and system information.
 
 ### List Games
 
-**GET** `/games`
+**GET** `/games` or **GET** `/api/v1/games`
 
 Returns metadata about all supported games.
 
@@ -47,6 +69,11 @@ Returns metadata about all supported games.
       "id": "roulette",
       "name": "Roulette",
       "metric_label": "pocket"
+    },
+    {
+      "id": "pump",
+      "name": "Pump",
+      "metric_label": "multiplier"
     }
   ],
   "engine_version": "dev"
@@ -55,7 +82,7 @@ Returns metadata about all supported games.
 
 ### Scan for Outcomes
 
-**POST** `/scan`
+**POST** `/scan` or **POST** `/api/v1/scan`
 
 Scans a range of nonces for specific game outcomes.
 
@@ -73,13 +100,32 @@ Scans a range of nonces for specific game outcomes.
   "target_val": 10.0,
   "tolerance": 1e-9,
   "limit": 100,
-  "timeout_ms": 30000
+  "timeout_ms": 30000,
+  "params": {}
+}
+```
+
+**Pump Game Example:**
+```json
+{
+  "game": "pump",
+  "seeds": {
+    "server": "server_seed_here",
+    "client": "client_seed_here"
+  },
+  "nonce_start": 1,
+  "nonce_end": 1000,
+  "target_op": "ge",
+  "target_val": 5.0,
+  "params": {
+    "difficulty": "hard"
+  }
 }
 ```
 
 **Parameters:**
-- `game`: Game type ("limbo", "dice", "roulette")
-- `seeds`: Server and client seeds
+- `game`: Game type ("limbo", "dice", "roulette", "pump")
+- `seeds`: Server and client seeds object
 - `nonce_start`/`nonce_end`: Nonce range to scan
 - `target_op`: Comparison operation ("eq", "gt", "ge", "lt", "le", "between", "outside")
 - `target_val`: Target value to compare against
@@ -87,6 +133,7 @@ Scans a range of nonces for specific game outcomes.
 - `tolerance`: Comparison tolerance (default: 1e-9 for floats, 0 for integers)
 - `limit`: Maximum hits to return (optional)
 - `timeout_ms`: Request timeout in milliseconds (optional)
+- `params`: Game-specific parameters (optional)
 
 **Response:**
 ```json
@@ -106,13 +153,23 @@ Scans a range of nonces for specific game outcomes.
     "timed_out": false
   },
   "engine_version": "dev",
-  "echo": { /* original request */ }
+  "echo": {
+    "game": "limbo",
+    "seeds": {
+      "server": "server_seed_here",
+      "client": "client_seed_here"
+    },
+    "nonce_start": 1,
+    "nonce_end": 1000,
+    "target_op": "ge",
+    "target_val": 10.0
+  }
 }
 ```
 
 ### Verify Single Nonce
 
-**POST** `/verify`
+**POST** `/verify` or **POST** `/api/v1/verify`
 
 Verifies the outcome for a specific nonce.
 
@@ -143,13 +200,21 @@ Verifies the outcome for a specific nonce.
     }
   },
   "engine_version": "dev",
-  "echo": { /* original request */ }
+  "echo": {
+    "game": "limbo",
+    "seeds": {
+      "server": "server_seed_here",
+      "client": "client_seed_here"
+    },
+    "nonce": 42,
+    "params": {}
+  }
 }
 ```
 
 ### Hash Server Seed
 
-**POST** `/seed/hash`
+**POST** `/seed/hash` or **POST** `/api/v1/seed/hash`
 
 Returns SHA256 hash of a server seed for verification.
 
@@ -205,6 +270,12 @@ All endpoints return structured error responses:
 ### Roulette
 - **Metric**: Pocket number (0-36 for European roulette)
 - **Parameters**: None
+
+### Pump
+- **Metric**: Multiplier based on safe pumps (minimum 1.0)
+- **Parameters**: 
+  - `difficulty` (optional): Game difficulty ("easy", "medium", "hard", "expert", default: "expert")
+- **Description**: Position-based game using Fisher-Yates shuffle of 25 positions. Players get multipliers based on how many "safe pumps" they can make before hitting a POP token. Different difficulties have different numbers of POP tokens (M) and multiplier tables.
 
 ## Rate Limits
 

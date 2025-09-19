@@ -24,8 +24,10 @@ curl -X POST http://localhost:8080/scan \
   -H "Content-Type: application/json" \
   -d '{
     "game": "limbo",
-    "server_seed": "your_unhashed_server_seed",
-    "client_seed": "your_client_seed",
+    "seeds": {
+      "server": "your_unhashed_server_seed",
+      "client": "your_client_seed"
+    },
     "nonce_start": 1,
     "nonce_end": 10000,
     "target_op": "ge",
@@ -41,8 +43,10 @@ curl -X POST http://localhost:8080/verify \
   -H "Content-Type: application/json" \
   -d '{
     "game": "limbo",
-    "server_seed": "your_unhashed_server_seed",
-    "client_seed": "your_client_seed",
+    "seeds": {
+      "server": "your_unhashed_server_seed",
+      "client": "your_client_seed"
+    },
     "nonce": 12345
   }'
 ```
@@ -61,11 +65,18 @@ curl -X POST http://localhost:8080/seed/hash \
   -d '{"server_seed": "your_unhashed_server_seed"}'
 ```
 
+### Health Check
+
+```bash
+curl http://localhost:8080/health
+```
+
 ## Supported Games
 
 - **Limbo**: Crash multiplier game
 - **Dice**: Roll from 00.00 to 100.00
 - **Roulette**: European roulette (0-36)
+- **Pump**: Position-based multiplier game with difficulty levels
 
 More games coming in future releases.
 
@@ -83,6 +94,14 @@ More games coming in future releases.
 make dev-setup
 make migrate
 ```
+
+### API Endpoints
+
+The service provides both legacy endpoints and versioned API endpoints:
+
+- Legacy: `/scan`, `/verify`, `/games`, `/seed/hash`
+- Versioned: `/api/v1/scan`, `/api/v1/verify`, `/api/v1/games`, `/api/v1/seed/hash`
+- Health: `/health`, `/health/ready`, `/health/live`, `/metrics`
 
 ### Common Commands
 
