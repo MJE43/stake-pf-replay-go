@@ -1,17 +1,13 @@
-import React, { Suspense } from 'react';
+import React from 'react';
 import { createRoot } from 'react-dom/client';
+import App from './App';
 import './style.css';
 
-const App = React.lazy(() => import('./App'));
-
 const container = document.getElementById('root');
-
-const root = createRoot(container!)
+const root = createRoot(container!);
 
 root.render(
     <React.StrictMode>
-        <Suspense fallback={<div>Loading...</div>}>
-            <App />
-        </Suspense>
+        <App />
     </React.StrictMode>
 );

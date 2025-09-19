@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -38,6 +39,31 @@ type ScanResult struct {
 	Echo           ScanRequest
 	TimedOut       bool
 	ServerSeedHash string
+}
+
+// RunsQuery represents query parameters for listing runs
+type RunsQuery struct {
+	Game    string `json:"game,omitempty"`
+	Page    int    `json:"page"`
+	PerPage int    `json:"perPage"`
+}
+
+// RunsList represents paginated runs response
+type RunsList struct {
+	Runs       []store.Run `json:"runs"`
+	TotalCount int         `json:"totalCount"`
+	Page       int         `json:"page"`
+	PerPage    int         `json:"perPage"`
+	TotalPages int         `json:"totalPages"`
+}
+
+// HitsPage represents paginated hits response with delta nonce calculation
+type HitsPage struct {
+	Hits       []store.HitWithDelta `json:"hits"`
+	TotalCount int                  `json:"totalCount"`
+	Page       int                  `json:"page"`
+	PerPage    int                  `json:"perPage"`
+	TotalPages int                  `json:"totalPages"`
 }
 
 func (a *App) GetGames() ([]games.GameSpec, error) {
@@ -110,8 +136,55 @@ func (a *App) StartScan(req ScanRequest) (ScanResult, error) {
 		return ScanResult{}, fmt.Errorf("target value must be a number or string, got %T", v)
 	}
 
+	// Create a cancellable context for this scan
+	scanCtx, cancel := context.WithCancel(context.Background())
+	
+	// Create the run first to get an ID for tracking
+	serverHash, _ := a.HashServerSeed(req.Seeds.Server)
+	
+	// Convert params to JSON
+	paramsJSON := "{}"
+	if req.Params != nil {
+		if jsonBytes, err := json.Marshal(req.Params); err == nil {
+			paramsJSON = string(jsonBytes)
+		}
+	}
+
+	run := &store.Run{
+		Game:           req.Game,
+		ServerSeed:     req.Seeds.Server,
+		ServerSeedHash: serverHash,
+		ClientSeed:     req.Seeds.Client,
+		NonceStart:     nonceStart,
+		NonceEnd:       nonceEnd,
+		ParamsJSON:     paramsJSON,
+		TargetOp:       targetOp,
+		TargetVal:      targetVal,
+		Tolerance:      req.Tolerance,
+		HitLimit:       req.Limit,
+		EngineVersion:  "v1.0.0", // TODO: Get from version package
+	}
+
+	if err := a.db.SaveRun(run); err != nil {
+		cancel()
+		return ScanResult{}, err
+	}
+
+	// Track the cancellation function
+	a.runCancelsMux.Lock()
+	a.runCancels[run.ID] = cancel
+	a.runCancelsMux.Unlock()
+
+	// Ensure cleanup after scan completes
+	defer func() {
+		a.runCancelsMux.Lock()
+		delete(a.runCancels, run.ID)
+		a.runCancelsMux.Unlock()
+		cancel()
+	}()
+
 	s := scan.NewScanner()
-	res, err := s.Scan(context.Background(), scan.ScanRequest{
+	res, err := s.Scan(scanCtx, scan.ScanRequest{
 		Game:       req.Game,
 		Seeds:      games.Seeds{Server: req.Seeds.Server, Client: req.Seeds.Client},
 		NonceStart: nonceStart,
@@ -127,28 +200,30 @@ func (a *App) StartScan(req ScanRequest) (ScanResult, error) {
 		return ScanResult{}, err
 	}
 
-	serverHash, _ := a.HashServerSeed(req.Seeds.Server)
-
-	run := &store.Run{
-		Game:           req.Game,
-		ServerSeed:     req.Seeds.Server,
-		ClientSeed:     req.Seeds.Client,
-		NonceStart:     nonceStart,
-		NonceEnd:       nonceEnd,
-		TargetOp:       targetOp,
-		TargetVal:      targetVal,
-		HitCount:       len(res.Hits),
-		TotalEvaluated: res.Summary.TotalEvaluated,
-		EngineVersion:  res.EngineVersion,
+	// Update run with results
+	run.HitCount = len(res.Hits)
+	run.TotalEvaluated = res.Summary.TotalEvaluated
+	run.TimedOut = res.Summary.TimedOut
+	if len(res.Hits) > 0 {
+		min := res.Summary.MinMetric
+		max := res.Summary.MaxMetric
+		run.SummaryMin = &min
+		run.SummaryMax = &max
+		run.SummaryCount = len(res.Hits)
 	}
 
-	if err := a.db.SaveRun(run); err != nil {
+	// Update the existing run
+	if err := a.db.UpdateRun(run); err != nil {
 		return ScanResult{}, err
 	}
 
 	dbHits := make([]store.Hit, len(res.Hits))
 	for i, h := range res.Hits {
-		dbHits[i] = store.Hit{Nonce: h.Nonce, Metric: h.Metric}
+		dbHits[i] = store.Hit{
+			RunID:  run.ID,
+			Nonce:  h.Nonce,
+			Metric: h.Metric,
+		}
 	}
 
 	if err := a.db.SaveHits(run.ID, dbHits); err != nil {
@@ -182,4 +257,62 @@ func (a *App) StartScan(req ScanRequest) (ScanResult, error) {
 		TimedOut:       res.Summary.TimedOut,
 		ServerSeedHash: serverHash,
 	}, nil
+}
+// GetRun retrieves individual run metadata and summary
+func (a *App) GetRun(runID string) (*store.Run, error) {
+	return a.db.GetRun(runID)
+}
+
+// GetRunHits retrieves hits for a run with server-side pagination and delta nonce calculation
+func (a *App) GetRunHits(runID string, page, perPage int) (*HitsPage, error) {
+	hitsPage, err := a.db.GetRunHits(runID, page, perPage)
+	if err != nil {
+		return nil, err
+	}
+
+	return &HitsPage{
+		Hits:       hitsPage.Hits,
+		TotalCount: hitsPage.TotalCount,
+		Page:       hitsPage.Page,
+		PerPage:    hitsPage.PerPage,
+		TotalPages: hitsPage.TotalPages,
+	}, nil
+}
+
+// ListRuns retrieves runs with pagination and game-based filtering
+func (a *App) ListRuns(query RunsQuery) (*RunsList, error) {
+	storeQuery := store.RunsQuery{
+		Game:    query.Game,
+		Page:    query.Page,
+		PerPage: query.PerPage,
+	}
+
+	runsList, err := a.db.ListRuns(storeQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RunsList{
+		Runs:       runsList.Runs,
+		TotalCount: runsList.TotalCount,
+		Page:       runsList.Page,
+		PerPage:    runsList.PerPage,
+		TotalPages: runsList.TotalPages,
+	}, nil
+}
+
+// CancelRun stops an in-progress scan
+func (a *App) CancelRun(runID string) error {
+	a.runCancelsMux.RLock()
+	cancel, exists := a.runCancels[runID]
+	a.runCancelsMux.RUnlock()
+
+	if !exists {
+		return fmt.Errorf("run %s is not currently running or does not exist", runID)
+	}
+
+	// Cancel the context
+	cancel()
+
+	return nil
 }
