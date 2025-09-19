@@ -1,13 +1,13 @@
 root = "."
-testdata_dir = "testdata"
+# testdata_dir = "testdata"  # No longer needed
 tmp_dir = "tmp"
 
 [build]
   args_bin = []
-  bin = "tmp/pf-service"
-  cmd = "go build -o tmp/pf-service ./cmd/pf-service"
+  bin = "tmp/pf-service.exe"
+  cmd = "go build -o tmp/pf-service.exe ./cmd/pf-service"
   delay = 1000
-  exclude_dir = ["assets", "tmp", "vendor", "testdata", "bin", ".bin"]
+  exclude_dir = ["assets", "tmp", "vendor", "bin", ".bin"]
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = false
