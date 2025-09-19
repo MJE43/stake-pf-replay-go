@@ -21,6 +21,7 @@ type GameVectors struct {
 	Limbo    []GameTestVector `json:"limbo"`
 	Dice     []GameTestVector `json:"dice"`
 	Roulette []GameTestVector `json:"roulette"`
+	Pump     []GameTestVector `json:"pump"`
 }
 
 func TestLimboGame(t *testing.T) {
@@ -92,9 +93,32 @@ func TestRouletteGame(t *testing.T) {
 	}
 }
 
+func TestPumpGame(t *testing.T) {
+	game := &PumpGame{}
+	
+	// Test spec
+	spec := game.Spec()
+	if spec.ID != "pump" {
+		t.Errorf("Expected ID 'pump', got '%s'", spec.ID)
+	}
+	
+	if spec.Name != "Pump" {
+		t.Errorf("Expected name 'Pump', got '%s'", spec.Name)
+	}
+	
+	if spec.MetricLabel != "multiplier" {
+		t.Errorf("Expected metric label 'multiplier', got '%s'", spec.MetricLabel)
+	}
+	
+	// Test float count
+	if game.FloatCount(nil) != 25 {
+		t.Errorf("Expected 25 floats needed, got %d", game.FloatCount(nil))
+	}
+}
+
 func TestGameRegistry(t *testing.T) {
 	// Test that all games are registered
-	expectedGames := []string{"limbo", "dice", "roulette"}
+	expectedGames := []string{"limbo", "dice", "roulette", "pump"}
 	
 	for _, gameID := range expectedGames {
 		game, exists := GetGame(gameID)
@@ -188,6 +212,35 @@ func TestRouletteEvaluation(t *testing.T) {
 	}
 }
 
+func TestPumpEvaluation(t *testing.T) {
+	game := &PumpGame{}
+	seeds := Seeds{Server: "test_server", Client: "test_client"}
+	
+	// Test basic evaluation
+	result, err := game.Evaluate(seeds, 1, map[string]any{})
+	if err != nil {
+		t.Fatalf("Evaluation failed: %v", err)
+	}
+	
+	if result.MetricLabel != "multiplier" {
+		t.Errorf("Expected metric label 'multiplier', got '%s'", result.MetricLabel)
+	}
+	
+	if result.Metric < 1.0 {
+		t.Errorf("Pump multiplier should be at least 1.0, got %f", result.Metric)
+	}
+	
+	// Test deterministic behavior - same seeds should produce same result
+	result2, err := game.Evaluate(seeds, 1, map[string]any{})
+	if err != nil {
+		t.Fatalf("Second evaluation failed: %v", err)
+	}
+	
+	if result.Metric != result2.Metric {
+		t.Errorf("Pump should be deterministic: got %f and %f", result.Metric, result2.Metric)
+	}
+}
+
 func TestGameGoldenVectors(t *testing.T) {
 	// Load test vectors
 	vectorPath := filepath.Join("..", "..", "testdata", "game_vectors.json")
@@ -268,6 +321,27 @@ func TestGameGoldenVectors(t *testing.T) {
 			// Check that metric is an integer value
 			if result.Metric != math.Floor(result.Metric) {
 				t.Errorf("Roulette pocket should be integer, got %f", result.Metric)
+			}
+		})
+	}
+	
+	// Test Pump vectors
+	pumpGame := &PumpGame{}
+	for _, vector := range vectors.Pump {
+		t.Run("Pump: "+vector.Description, func(t *testing.T) {
+			seeds := Seeds{Server: vector.ServerSeed, Client: vector.ClientSeed}
+			result, err := pumpGame.Evaluate(seeds, vector.Nonce, vector.Params)
+			if err != nil {
+				t.Fatalf("Evaluation failed: %v", err)
+			}
+			
+			if result.MetricLabel != vector.Expected.MetricLabel {
+				t.Errorf("Expected metric label '%s', got '%s'", 
+					vector.Expected.MetricLabel, result.MetricLabel)
+			}
+			
+			if result.Metric < 1.0 {
+				t.Errorf("Pump multiplier should be at least 1.0, got %f", result.Metric)
 			}
 		})
 	}

@@ -61,4 +61,5 @@ func init() {
 	RegisterGame(&LimboGame{})
 	RegisterGame(&DiceGame{})
 	RegisterGame(&RouletteGame{})
+	RegisterGame(&PumpGame{})
 }
