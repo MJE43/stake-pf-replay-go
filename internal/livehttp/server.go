@@ -16,7 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"stake-replay-pf-go/internal/livestore"
+	"github.com/MJE43/stake-pf-replay-go-desktop/internal/livestore"
 )
 
 // Server runs a local HTTP API for Antebot ingest and UI queries.
@@ -506,7 +506,7 @@ func clampInt(v, lo, hi int) int {
 		return lo
 	}
 	if v > hi {
-		hi = hi
+		return hi
 	}
 	return v
 }

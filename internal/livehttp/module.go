@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"stake-replay-pf-go/internal/livestore"
+	"github.com/MJE43/stake-pf-replay-go-desktop/internal/livestore"
 )
 
 // LiveModule is a Wails-bound service that owns the DB and the local HTTP ingest server.

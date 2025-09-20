@@ -29,3 +29,7 @@ export function ListRuns(arg1) {
 export function StartScan(arg1) {
   return window['go']['bindings']['App']['StartScan'](arg1);
 }
+
+export function Startup(arg1) {
+  return window['go']['bindings']['App']['Startup'](arg1);
+}
