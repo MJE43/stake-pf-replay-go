@@ -6,6 +6,7 @@ import { ScanPage, RunsPage, RunDetailsPage } from './pages';
 import { theme } from './theme';
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
+import "mantine-react-table/styles.css";
 import './styles/global.css';
 
 function App() {
