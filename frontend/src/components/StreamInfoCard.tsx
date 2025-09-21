@@ -85,20 +85,19 @@ export default function StreamInfoCard(props: {
   );
 
   return (
-    <Card withBorder radius="md" shadow="sm">
-      <Stack gap="md">
-        <Group justify="space-between" align="center">
-          <Group gap="xs">
+    <Card className="enhanced-card">
+      <Stack>
+        <Group justify="space-between">
+          <Group>
             <IconHash size={16} />
             <Text fw={600}>Stream Information</Text>
           </Group>
-          <Group gap="xs">
-            <Button variant="light" onClick={onExportCsv}>
+          <Group>
+            <Button onClick={onExportCsv}>
               Export CSV
             </Button>
             <Button
               color="red"
-              variant="light"
               loading={!!isDeletingStream}
               onClick={onDeleteStream}
               leftSection={<IconTrash size={16} />}
@@ -114,11 +113,10 @@ export default function StreamInfoCard(props: {
               Server Seed Hash
             </Text>
             <Group gap="xs">
-              <Badge variant="light">{hashShort}</Badge>
+              <Badge>{hashShort}</Badge>
               {summary.serverSeedHashed && (
                 <Tooltip label="Copy full hash">
                   <ActionIcon
-                    variant="subtle"
                     onClick={() => clip.copy(summary.serverSeedHashed)}
                   >
                     {clip.copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
@@ -133,11 +131,10 @@ export default function StreamInfoCard(props: {
               Client Seed
             </Text>
             <Group gap="xs">
-              <Badge variant="light">{summary.clientSeed || '—'}</Badge>
+              <Badge>{summary.clientSeed || '—'}</Badge>
               {summary.clientSeed && (
                 <Tooltip label="Copy client seed">
                   <ActionIcon
-                    variant="subtle"
                     onClick={() => clip.copy(summary.clientSeed)}
                   >
                     {clip.copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
@@ -151,14 +148,14 @@ export default function StreamInfoCard(props: {
             <Text c="dimmed" size="sm">
               Created
             </Text>
-            <Text style={{ fontFamily: 'ui-monospace' }}>{created}</Text>
+            <Text className="mono">{created}</Text>
           </Stack>
 
           <Stack gap={2}>
             <Text c="dimmed" size="sm">
               Last Seen
             </Text>
-            <Text style={{ fontFamily: 'ui-monospace' }}>{lastSeen}</Text>
+            <Text className="mono">{lastSeen}</Text>
           </Stack>
 
           <Stack gap={2}>
@@ -190,7 +187,7 @@ export default function StreamInfoCard(props: {
           />
           <Group gap="xs">
             {!editing ? (
-              <Button variant="light" onClick={() => setEditing(true)}>
+              <Button onClick={() => setEditing(true)}>
                 Edit Notes
               </Button>
             ) : (
@@ -204,7 +201,7 @@ export default function StreamInfoCard(props: {
                 >
                   Save
                 </Button>
-                <Button variant="light" onClick={() => {
+                <Button onClick={() => {
                   setNotes(summary.notes ?? '');
                   setEditing(false);
                 }}>

@@ -134,7 +134,7 @@ export function RunsList() {
           </Group>
 
           {/* Stats Summary */}
-          {runsData && (
+          {runsData && runsData.totalCount !== undefined && (
             <Paper p="md" bg="blue.0" withBorder radius="md" className="fade-in">
               <Group justify="space-around" ta="center">
                 <Box>
@@ -172,7 +172,7 @@ export function RunsList() {
             loaderProps={{ size: 'lg', type: 'dots' }}
           />
           
-          {runsData && runsData.runs.length === 0 ? (
+          {!loading && runsData && runsData.runs && runsData.runs.length === 0 ? (
             <Paper p="xl" withBorder radius="lg" ta="center" className="card-hover">
               <IconHistory size={48} color="var(--mantine-color-gray-5)" style={{ marginBottom: 16 }} />
               <Title order={3} c="gray.6" mb="xs">No Scan History</Title>
@@ -187,7 +187,7 @@ export function RunsList() {
                 Create First Scan
               </Button>
             </Paper>
-          ) : runsData ? (
+          ) : !loading && runsData && runsData.runs ? (
             <RunsTable
               data={runsData}
               query={currentQuery}

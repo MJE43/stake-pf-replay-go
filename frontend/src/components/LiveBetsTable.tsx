@@ -5,11 +5,31 @@ import {
 } from 'mantine-react-table';
 import { Badge, Group, NumberFormatter, Text } from '@mantine/core';
 import {
-    QueryClient,
     useInfiniteQuery,
     useQueryClient,
 } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { GetBets, Tail } from '../../wailsjs/go/livehttp/LiveModule';
+import { livestore } from '../../wailsjs/go/models';
+
+// Normalize LiveBet from Wails model
+function normalizeLiveBet(bet: livestore.LiveBet): LiveBet {
+    try {
+        return {
+            id: bet.id,
+            nonce: bet.nonce,
+            date_time: bet.date_time ? new Date(bet.date_time).toISOString() : undefined,
+            amount: bet.amount,
+            payout: bet.payout,
+            difficulty: bet.difficulty as 'easy' | 'medium' | 'hard' | 'expert',
+            round_target: bet.round_target,
+            round_result: bet.round_result,
+        };
+    } catch (error) {
+        console.error('Error normalizing bet:', bet, error);
+        throw error;
+    }
+}
 
 // Types aligned to your HTTP API
 export type LiveBet = {
@@ -27,7 +47,6 @@ type BetsPage = { total: number; rows: LiveBet[] };
 
 export type LiveBetsTableV2Props = {
     streamId: string;
-    apiBase?: string;          // default http://127.0.0.1:17888
     pageSize?: number;         // default 1000
     pollMs?: number;           // default 1200
     defaultOrder?: 'asc' | 'desc';
@@ -35,7 +54,6 @@ export type LiveBetsTableV2Props = {
 
 export default function LiveBetsTableV2({
     streamId,
-    apiBase = 'http://127.0.0.1:17888',
     pageSize = 1000,
     pollMs = 1200,
     defaultOrder = 'asc',
@@ -51,24 +69,48 @@ export default function LiveBetsTableV2({
 
     const fetchPage = useCallback(
         async ({ pageParam }: { pageParam: number }) => {
-            const params = new URLSearchParams();
-            params.set('limit', String(pageSize));
-            params.set('offset', String(pageParam));
-            params.set('order', order);
-            if (minMultiplier != null) params.set('min_multiplier', String(minMultiplier));
-            const r = await fetch(
-                `${apiBase}/live/streams/${streamId}/bets?${params.toString()}`,
-            );
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            const json: BetsPage = await r.json();
-            // update lastIDRef if rows exist
-            if (json.rows.length) {
-                const maxId = json.rows[json.rows.length - 1].id;
-                if (maxId > lastIDRef.current) lastIDRef.current = maxId;
+            try {
+                console.log('Fetching bets with params:', {
+                    streamId,
+                    minMultiplier: minMultiplier ?? 0,
+                    order,
+                    pageSize,
+                    offset: pageParam
+                });
+                
+                // GetBets(streamId, minMultiplier, order, limit, offset)
+                const bets = await GetBets(
+                    streamId,
+                    minMultiplier ?? 0, // 0 means no filter
+                    order,
+                    pageSize,
+                    pageParam
+                );
+                
+                console.log('Received bets:', bets);
+                
+                // Handle case where bets might be null or undefined
+                const betsArray = Array.isArray(bets) ? bets : [];
+                const normalizedBets = betsArray.map(normalizeLiveBet);
+                
+                // update lastIDRef if rows exist
+                if (normalizedBets.length) {
+                    const maxId = normalizedBets[normalizedBets.length - 1].id;
+                    if (maxId > lastIDRef.current) lastIDRef.current = maxId;
+                }
+                
+                // For now, we'll estimate total based on the returned data
+                // If we got fewer results than requested, we're at the end
+                const total = normalizedBets.length < pageSize ? pageParam + normalizedBets.length : pageParam + normalizedBets.length + pageSize;
+                
+                console.log('Returning page:', { total, rows: normalizedBets.length });
+                return { total, rows: normalizedBets };
+            } catch (error) {
+                console.error('Failed to fetch bets:', error);
+                throw error;
             }
-            return json;
         },
-        [apiBase, streamId, pageSize, order, minMultiplier],
+        [streamId, pageSize, order, minMultiplier],
     );
 
     const {
@@ -99,32 +141,25 @@ export default function LiveBetsTableV2({
             if (!data?.pages?.length) return;
             
             try {
-                const params = new URLSearchParams();
-                params.set('since_id', String(lastIDRef.current));
-                params.set('limit', String(pageSize));
-                const r = await fetch(
-                    `${apiBase}/live/streams/${streamId}/tail?${params.toString()}`,
-                );
-                if (!r.ok) {
-                    console.warn(`Tail poll failed: HTTP ${r.status}`);
-                    return;
-                }
-                const json: { rows: LiveBet[]; lastID: number } = await r.json();
+                // Tail(streamId, sinceID, limit)
+                const tailResponse = await Tail(streamId, lastIDRef.current, pageSize);
                 setIsConnected(true);
                 
-                if (!json.rows?.length) return;
+                if (!tailResponse.rows?.length) return;
+
+                const normalizedRows = tailResponse.rows.map(normalizeLiveBet);
 
                 // append new rows into the last page; keep total unknown here
                 queryClient.setQueryData<any>(key, (old: any) => {
                     if (!old?.pages?.length) return old;
                     const pages = [...old.pages];
                     const last = pages[pages.length - 1] as BetsPage;
-                    const merged = { ...last, rows: [...last.rows, ...json.rows] };
+                    const merged = { ...last, rows: [...last.rows, ...normalizedRows] };
                     pages[pages.length - 1] = merged;
                     return { ...old, pages };
                 });
 
-                lastIDRef.current = json.lastID || lastIDRef.current;
+                lastIDRef.current = tailResponse.lastID || lastIDRef.current;
             } catch (error) {
                 console.warn('Tail poll error:', error);
                 setIsConnected(false);
@@ -132,7 +167,7 @@ export default function LiveBetsTableV2({
         }, pollMs);
 
         return () => clearInterval(id);
-    }, [apiBase, streamId, pollMs, pageSize, data?.pages?.length, queryClient, key]);
+    }, [streamId, pollMs, pageSize, data?.pages?.length, queryClient, key]);
 
     // -------- flatten + derived "distance" --------
     const flatRows: LiveBet[] = useMemo(
@@ -196,7 +231,7 @@ export default function LiveBetsTableV2({
                 accessorKey: 'nonce',
                 header: 'Nonce',
                 size: 90,
-                mantineTableBodyCellProps: { style: { fontFamily: 'ui-monospace' } },
+                mantineTableBodyCellProps: { className: 'mono' },
             },
             {
                 accessorKey: 'round_result',
@@ -239,7 +274,7 @@ export default function LiveBetsTableV2({
                 accessorKey: 'difficulty',
                 header: 'Diff',
                 size: 90,
-                Cell: ({ cell }) => <Badge variant="light">{cell.getValue<string>()}</Badge>,
+                Cell: ({ cell }) => <Badge>{cell.getValue<string>()}</Badge>,
             },
             {
                 accessorKey: 'date_time',
@@ -250,7 +285,7 @@ export default function LiveBetsTableV2({
                     if (!s) return null;
                     const d = new Date(s);
                     return (
-                        <Text style={{ fontFamily: 'ui-monospace' }}>
+                        <Text className="mono">
                             {d.toLocaleString()}
                         </Text>
                     );
@@ -269,6 +304,7 @@ export default function LiveBetsTableV2({
         manualSorting: true,
         mantineTableContainerProps: {
             ref: tableContainerRef,
+            className: 'table-container',
             style: { maxHeight: '640px' },
             onScroll: (e) => fetchMoreOnBottomReached(e.currentTarget),
         },
@@ -291,16 +327,11 @@ export default function LiveBetsTableV2({
         },
         renderTopToolbarCustomActions: () => (
             <Group gap="md">
-                <Group gap="xs">
+                <div className="status-indicator">
                     <Text fw={600}>Live</Text>
-                    <Badge 
-                        color={isConnected ? 'green' : 'red'} 
-                        variant="dot" 
-                        size="sm"
-                    >
-                        {isConnected ? 'Connected' : 'Disconnected'}
-                    </Badge>
-                </Group>
+                    <div className={`status-dot status-dot--${isConnected ? 'success' : 'error'}`} />
+                    <Text size="sm">{isConnected ? 'Connected' : 'Disconnected'}</Text>
+                </div>
                 <Text size="sm" c="dimmed">
                     {totalFetched} / {totalDBRowCount || '—'}
                 </Text>
@@ -348,11 +379,12 @@ function MinMultiplierControl({
                 }}
                 style={{
                     width: 100,
-                    background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    color: 'inherit',
-                    padding: '4px 8px',
-                    borderRadius: 6,
+                    background: 'var(--mantine-color-white)',
+                    border: '1px solid var(--mantine-color-gray-3)',
+                    color: 'var(--mantine-color-dark-8)',
+                    padding: 'var(--mantine-spacing-xs) var(--mantine-spacing-sm)',
+                    borderRadius: 'var(--mantine-radius-md)',
+                    fontSize: 'var(--mantine-font-size-sm)',
                 }}
             />
         </Group>

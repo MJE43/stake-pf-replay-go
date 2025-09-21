@@ -18,19 +18,32 @@ import LiveBetsTableV2 from '../components/LiveBetsTable';
 // Wails event bus (optional, improves freshness of header stats)
 // AFTER (from src/pages -> ../../wailsjs/runtime)
 import { EventsOn } from '../../wailsjs/runtime/runtime';
+import {
+    GetStream,
+    UpdateNotes,
+    DeleteStream,
+    ExportCSV,
+    IngestInfo,
+} from '../../wailsjs/go/livehttp/LiveModule';
+import { livestore } from '../../wailsjs/go/models';
 
-const API_BASE = 'http://127.0.0.1:17888';
+function normalizeStream(s: livestore.LiveStream) {
+    // Convert the number[] ID to a string for easier handling
+    const idStr = Array.isArray(s.id) ? s.id.join('-') : String(s.id);
 
-type StreamDetail = {
-    id: string;
-    server_seed_hashed: string;
-    client_seed: string;
-    created_at: string;       // ISO
-    last_seen_at: string;     // ISO
-    notes?: string;
-    total_bets?: number;      // optional aggregate
-    highest_round_result?: number; // optional aggregate
-};
+    return {
+        id: idStr,
+        server_seed_hashed: s.server_seed_hashed ?? '',
+        client_seed: s.client_seed ?? '',
+        created_at: s.created_at ? new Date(s.created_at).toISOString() : '',
+        last_seen_at: s.last_seen_at ? new Date(s.last_seen_at).toISOString() : '',
+        notes: s.notes ?? '',
+        total_bets: s.total_bets ?? 0,
+        highest_round_result: s.highest_result ?? undefined,
+    };
+}
+
+type StreamDetail = ReturnType<typeof normalizeStream>;
 
 export default function LiveStreamDetailPage(props: { streamId?: string }) {
     const params = useParams();
@@ -41,48 +54,87 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
     const [savingNotes, setSavingNotes] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [retryCount, setRetryCount] = useState(0);
+    const [apiBase, setApiBase] = useState<string>(''); // for export links
 
     // fetch stream detail
     const load = async () => {
         setError(null);
         try {
-            const r = await fetch(`${API_BASE}/live/streams/${streamId}`);
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            const j = await r.json();
-            setDetail(j as StreamDetail);
+            const stream = await GetStream(streamId);
+            setDetail(normalizeStream(stream));
+            setRetryCount(0); // Reset retry count on success
         } catch (e: any) {
+            console.error('Failed to load stream:', e);
+            if (e?.message?.includes('not found') && retryCount < 3) {
+                // Stream might not be fully created yet, retry after a short delay
+                setTimeout(() => {
+                    setRetryCount(prev => prev + 1);
+                    load();
+                }, 1000);
+                return;
+            }
             setError(e?.message || 'Failed to load stream');
         } finally {
             setLoading(false);
         }
     };
 
-useEffect(() => {
-  const off = EventsOn(`live:newrows:${streamId}`, () => {
-    load();
-  });
-  return () => {
-    off(); // correct unsubscribe
-  };
-}, [streamId]);
+    // get export base once
+    useEffect(() => {
+        (async () => {
+            try {
+                const info = await IngestInfo();
+                // extract base (http://127.0.0.1:PORT)
+                try {
+                    const url = new URL(info.url);
+                    setApiBase(`${url.protocol}//${url.host}`);
+                } catch {
+                    setApiBase('');
+                }
+            } catch {
+                setApiBase('');
+            }
+        })();
+    }, []);
 
-    const onExportCsv = () => {
-        // Use HTTP export endpoint; lets the WebView download directly
-        window.open(`${API_BASE}/live/streams/${streamId}/export.csv`, '_blank');
+    useEffect(() => {
+        setRetryCount(0); // Reset retry count when streamId changes
+        load(); // Initial load
+        const off = EventsOn(`live:newrows:${streamId}`, () => {
+            load();
+        });
+        return () => {
+            off(); // correct unsubscribe
+        };
+    }, [streamId]);
+
+    const onExportCsv = async () => {
+        try {
+            const csvData = await ExportCSV(streamId);
+            // Create a blob and download it
+            const blob = new Blob([csvData], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `stream-${streamId}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        } catch (e: any) {
+            Notifications.show({
+                title: 'Error',
+                message: e?.message || 'Failed to export CSV',
+                color: 'red',
+            });
+        }
     };
 
     const onSaveNotes = async (notes: string) => {
         setSavingNotes(true);
         try {
-            const r = await fetch(`${API_BASE}/live/streams/${streamId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ notes }),
-            });
-            if (!r.ok) {
-                const errorText = await r.text().catch(() => 'Unknown error');
-                throw new Error(`HTTP ${r.status}: ${errorText}`);
-            }
+            await UpdateNotes(streamId, notes);
             setDetail((d) => (d ? { ...d, notes } : d));
             // Show success notification
             Notifications.show({
@@ -106,13 +158,7 @@ useEffect(() => {
         if (!confirm('Delete this stream and all associated bets? This action cannot be undone.')) return;
         setDeleting(true);
         try {
-            const r = await fetch(`${API_BASE}/live/streams/${streamId}`, {
-                method: 'DELETE',
-            });
-            if (r.status !== 204) {
-                const errorText = await r.text().catch(() => 'Unknown error');
-                throw new Error(`HTTP ${r.status}: ${errorText}`);
-            }
+            await DeleteStream(streamId);
             Notifications.show({
                 title: 'Success',
                 message: 'Stream deleted successfully',
@@ -159,7 +205,10 @@ useEffect(() => {
                 </Group>
                 <Group align="center" gap="xs">
                     <Loader size="sm" />
-                    <Text c="dimmed">Loading stream…</Text>
+                    <Text c="dimmed">
+                        Loading stream…
+                        {retryCount > 0 && ` (retry ${retryCount}/3)`}
+                    </Text>
                 </Group>
             </Stack>
         );
@@ -183,31 +232,33 @@ useEffect(() => {
     }
 
     return (
-        <Stack p="lg" gap="lg">
-            <Group justify="space-between" align="center">
-                <Group gap="xs">
+        <div className="page-container">
+          <div className="page-content">
+            <div className="page-header">
+                <Group>
                     <Button
                         leftSection={<IconArrowLeft size={16} />}
-                        variant="subtle"
                         onClick={() => navigate(-1)}
                     >
                         Back
                     </Button>
                     <Title order={3}>Live Stream</Title>
-                    <Badge variant="light">Live</Badge>
+                    <Badge>Live</Badge>
                 </Group>
-                <Group gap="xs">
-                    <Anchor
-                        href={`${API_BASE}/live/streams/${detail.id}/export.csv`}
-                        target="_blank"
-                    >
-                        <Group gap={4}>
-                            <IconExternalLink size={14} />
-                            <Text>Export CSV</Text>
-                        </Group>
-                    </Anchor>
+                <Group>
+                    {apiBase && (
+                        <Anchor
+                            href={`${apiBase}/live/streams/${detail.id}/export.csv`}
+                            target="_blank"
+                        >
+                            <Group gap={4}>
+                                <IconExternalLink size={14} />
+                                <Text>Export CSV</Text>
+                            </Group>
+                        </Anchor>
+                    )}
                 </Group>
-            </Group>
+            </div>
 
             {summary && (
                 <StreamInfoCard
@@ -224,12 +275,12 @@ useEffect(() => {
             <Box>
                 <LiveBetsTableV2
                     streamId={detail.id}
-                    apiBase={API_BASE}
                     pageSize={1000}
                     pollMs={1200}
                     defaultOrder="asc"
                 />
             </Box>
-        </Stack>
+          </div>
+        </div>
     );
 }

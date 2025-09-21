@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { AppShell, Text, NavLink, Group, Title, Badge, Box, Divider, Stack } from '@mantine/core';
-import { IconScan, IconHistory, IconChartBar, IconShield, IconCpu } from '@tabler/icons-react';
+import { IconScan, IconHistory, IconChartBar, IconShield, IconCpu, IconBroadcast } from '@tabler/icons-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 interface LayoutProps {
@@ -23,6 +23,12 @@ export function Layout({ children }: LayoutProps) {
       label: 'Scan History',
       path: '/runs',
       description: 'View previous scan results',
+    },
+    {
+      icon: IconBroadcast,
+      label: 'Live Streams',
+      path: '/live',
+      description: 'Monitor live betting streams',
     },
   ];
 

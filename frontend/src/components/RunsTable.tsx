@@ -16,6 +16,10 @@ interface RunsTableProps {
 export function RunsTable({ data, query, onQueryChange }: RunsTableProps) {
   const navigate = useNavigate();
 
+  // Safety check to ensure data.runs exists and is an array
+  const safeRuns = data?.runs || [];
+  const safeTotalCount = data?.totalCount || 0;
+
   const columns = useMemo<MRT_ColumnDef<store.Run>[]>(
     () => [
       {
@@ -274,11 +278,11 @@ export function RunsTable({ data, query, onQueryChange }: RunsTableProps) {
             }}
           />
           
-          {data.totalCount > 0 && (
+          {safeTotalCount > 0 && (
             <Box>
               <Text size="xs" c="dimmed" mb={4}>Total Results</Text>
               <Badge variant="light" color="blue" size="lg">
-                {data.totalCount.toLocaleString()} runs
+                {safeTotalCount.toLocaleString()} runs
               </Badge>
             </Box>
           )}
@@ -288,7 +292,7 @@ export function RunsTable({ data, query, onQueryChange }: RunsTableProps) {
       {/* Table */}
       <MantineReactTable
         columns={columns}
-        data={data.runs}
+        data={safeRuns}
         enableRowSelection={false}
         enableColumnOrdering={false}
         enableGlobalFilter={false}
@@ -296,7 +300,7 @@ export function RunsTable({ data, query, onQueryChange }: RunsTableProps) {
         enableSorting={true}
         enablePagination={true}
         manualPagination={true}
-        rowCount={data.totalCount}
+        rowCount={safeTotalCount}
         state={{
           pagination: {
             pageIndex: (query.page || 1) - 1,
