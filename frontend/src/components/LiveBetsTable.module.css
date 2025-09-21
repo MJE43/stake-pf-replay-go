@@ -1,0 +1,65 @@
+.tableScroll {
+  max-height: 640px;
+  overflow: auto;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-md);
+  width: 100%;
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+}
+
+.metrics {
+  font-size: var(--mantine-font-size-sm);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+}
+
+.statusDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: var(--mantine-color-gray-4);
+  box-shadow: 0 0 0 1px var(--mantine-color-white);
+}
+
+.statusDotSuccess {
+  background: var(--mantine-color-green-5);
+}
+
+.statusDotError {
+  background: var(--mantine-color-red-6);
+  animation: statusPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+}
+
+.numberField {
+  width: 120px;
+}
+
+.emptyState {
+  padding: var(--mantine-spacing-xl);
+  text-align: center;
+}

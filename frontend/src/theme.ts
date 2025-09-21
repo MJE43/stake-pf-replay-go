@@ -1,68 +1,88 @@
-import { Card, Container, createTheme, Paper, rem, Select } from "@mantine/core";
-import type { MantineThemeOverride } from "@mantine/core";
+import { AppShell, Card, Container, Paper, createTheme, rem } from '@mantine/core';
 
-const CONTAINER_SIZES: Record<string, string> = {
-  xxs: rem("200px"),
-  xs: rem("300px"),
-  sm: rem("400px"),
-  md: rem("500px"),
-  lg: rem("600px"),
-  xl: rem("1400px"),
-  xxl: rem("1600px"),
+const CONTAINER_SIZES: Record<'xxs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl', string> = {
+  xxs: rem(200),
+  xs: rem(320),
+  sm: rem(480),
+  md: rem(720),
+  lg: rem(960),
+  xl: rem(1280),
+  xxl: rem(1440),
 };
 
-export const theme: MantineThemeOverride = createTheme({
-  /** Put your mantine theme override here */
+export const theme = createTheme({
+  defaultRadius: 'md',
+  fontFamily: 'Inter, var(--mantine-font-family)',
+  fontFamilyMonospace: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace',
   fontSizes: {
-    xs: rem("12px"),
-    sm: rem("14px"),
-    md: rem("16px"),
-    lg: rem("18px"),
-    xl: rem("20px"),
-    "2xl": rem("24px"),
-    "3xl": rem("30px"),
-    "4xl": rem("36px"),
-    "5xl": rem("48px"),
+    xs: rem(12),
+    sm: rem(14),
+    md: rem(16),
+    lg: rem(18),
+    xl: rem(20),
+    '2xl': rem(24),
+    '3xl': rem(30),
+    '4xl': rem(36),
+    '5xl': rem(48),
   },
-
-  primaryColor: "grape",
+  headings: {
+    fontFamily: 'Inter, var(--mantine-font-family)',
+    fontWeight: '600',
+  },
+  colors: {
+    brand: [
+      '#f6f5ff',
+      '#e9e6ff',
+      '#d1ccff',
+      '#b2a6ff',
+      '#9074ff',
+      '#7350ff',
+      '#6232f5',
+      '#5328d8',
+      '#4523b0',
+      '#371c89',
+    ],
+  },
+  primaryColor: 'brand',
   components: {
-    /** Put your mantine component override here */
     Container: Container.extend({
-      vars: (_, { size, fluid }) => ({
-        root: {
-          "--container-size": fluid
-            ? "100%"
-            : size !== undefined && size in CONTAINER_SIZES
-              ? CONTAINER_SIZES[size]
-              : rem(size),
-        },
-      }),
+      vars: (theme, props) => {
+        const { fluid, size } = props;
+        let resolved = CONTAINER_SIZES.lg;
+        if (fluid) {
+          resolved = '100%';
+        } else if (typeof size === 'number') {
+          resolved = rem(size);
+        } else if (size && size in CONTAINER_SIZES) {
+          resolved = CONTAINER_SIZES[size as keyof typeof CONTAINER_SIZES];
+        }
+        return {
+          root: {
+            '--container-size': resolved,
+          },
+        };
+      },
+    }),
+    AppShell: AppShell.extend({
+      defaultProps: {
+        padding: 'lg',
+      },
     }),
     Paper: Paper.extend({
       defaultProps: {
-        p: "md",
-        shadow: "xl",
-        radius: "md",
+        p: 'lg',
+        shadow: 'sm',
+        radius: 'md',
         withBorder: true,
       },
     }),
-
     Card: Card.extend({
       defaultProps: {
-        p: "xl",
-        shadow: "xl",
-        radius: "var(--mantine-radius-default)",
+        p: 'lg',
+        shadow: 'sm',
+        radius: 'md',
         withBorder: true,
       },
     }),
-    Select: Select.extend({
-      defaultProps: {
-        checkIconPosition: "right",
-      },
-    }),
-  },
-  other: {
-    style: "mantine",
   },
 });

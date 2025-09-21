@@ -1,0 +1,41 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-lg);
+  padding-bottom: var(--mantine-spacing-xl);
+}
+
+.backButton {
+  align-self: flex-start;
+}
+
+.statusCard {
+  padding: var(--mantine-spacing-lg);
+  background: var(--mantine-color-body);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-md);
+  flex-wrap: wrap;
+}
+
+.streamMeta {
+  min-width: 0;
+}
+
+.exportAnchor {
+  text-decoration: none;
+}
+
+.tableCard {
+  background: var(--mantine-color-body);
+}

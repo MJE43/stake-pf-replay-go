@@ -1,286 +1,319 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-    Anchor,
-    Badge,
-    Box,
-    Button,
-    Group,
-    Loader,
-    Stack,
-    Text,
-    Title,
+  Anchor,
+  Badge,
+  Button,
+  Group,
+  Loader,
+  Paper,
+  Stack,
+  Text,
+  Title,
 } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { IconArrowLeft, IconExternalLink } from '@tabler/icons-react';
 import StreamInfoCard, { StreamSummary } from '../components/StreamInfoCard';
 import LiveBetsTableV2 from '../components/LiveBetsTable';
-// Wails event bus (optional, improves freshness of header stats)
-// AFTER (from src/pages -> ../../wailsjs/runtime)
 import { EventsOn } from '../../wailsjs/runtime/runtime';
 import {
-    GetStream,
-    UpdateNotes,
-    DeleteStream,
-    ExportCSV,
-    IngestInfo,
+  GetStream,
+  UpdateNotes,
+  DeleteStream,
+  ExportCSV,
+  IngestInfo,
 } from '../../wailsjs/go/livehttp/LiveModule';
 import { livestore } from '../../wailsjs/go/models';
+import classes from './LiveStreamDetail.module.css';
 
 function normalizeStream(s: livestore.LiveStream) {
-    // Convert the number[] ID to a string for easier handling
-    const idStr = Array.isArray(s.id) ? s.id.join('-') : String(s.id);
+  const idStr = Array.isArray(s.id) ? s.id.join('-') : String(s.id);
 
-    return {
-        id: idStr,
-        server_seed_hashed: s.server_seed_hashed ?? '',
-        client_seed: s.client_seed ?? '',
-        created_at: s.created_at ? new Date(s.created_at).toISOString() : '',
-        last_seen_at: s.last_seen_at ? new Date(s.last_seen_at).toISOString() : '',
-        notes: s.notes ?? '',
-        total_bets: s.total_bets ?? 0,
-        highest_round_result: s.highest_result ?? undefined,
-    };
+  return {
+    id: idStr,
+    server_seed_hashed: s.server_seed_hashed ?? '',
+    client_seed: s.client_seed ?? '',
+    created_at: s.created_at ? new Date(s.created_at).toISOString() : '',
+    last_seen_at: s.last_seen_at ? new Date(s.last_seen_at).toISOString() : '',
+    notes: s.notes ?? '',
+    total_bets: s.total_bets ?? 0,
+    highest_round_result: s.highest_result ?? undefined,
+  };
 }
 
 type StreamDetail = ReturnType<typeof normalizeStream>;
 
 export default function LiveStreamDetailPage(props: { streamId?: string }) {
-    const params = useParams();
-    const navigate = useNavigate();
-    const streamId = props.streamId ?? params.id!;
-    const [detail, setDetail] = useState<StreamDetail | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [savingNotes, setSavingNotes] = useState(false);
-    const [deleting, setDeleting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [retryCount, setRetryCount] = useState(0);
-    const [apiBase, setApiBase] = useState<string>(''); // for export links
+  const params = useParams();
+  const navigate = useNavigate();
+  const streamId = props.streamId ?? params.id!;
+  const [detail, setDetail] = useState<StreamDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [apiBase, setApiBase] = useState<string>('');
 
-    // fetch stream detail
-    const load = async () => {
-        setError(null);
+  const load = useCallback(async (attempt = 0) => {
+    let scheduledRetry = false;
+    setRetryCount(attempt);
+    setLoading(true);
+    setError(null);
+
+    try {
+      const stream = await GetStream(streamId);
+      setDetail(normalizeStream(stream));
+      setRetryCount(0);
+    } catch (e: any) {
+      const message = e?.message || 'Failed to load stream';
+      if (message.includes('not found') && attempt < 3) {
+        scheduledRetry = true;
+        setTimeout(() => load(attempt + 1), 1000);
+      } else {
+        setError(message);
+      }
+    } finally {
+      if (!scheduledRetry) {
+        setLoading(false);
+      }
+    }
+  }, [streamId]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const info = await IngestInfo();
         try {
-            const stream = await GetStream(streamId);
-            setDetail(normalizeStream(stream));
-            setRetryCount(0); // Reset retry count on success
-        } catch (e: any) {
-            console.error('Failed to load stream:', e);
-            if (e?.message?.includes('not found') && retryCount < 3) {
-                // Stream might not be fully created yet, retry after a short delay
-                setTimeout(() => {
-                    setRetryCount(prev => prev + 1);
-                    load();
-                }, 1000);
-                return;
-            }
-            setError(e?.message || 'Failed to load stream');
-        } finally {
-            setLoading(false);
+          const url = new URL(info.url);
+          setApiBase(`${url.protocol}//${url.host}`);
+        } catch {
+          setApiBase('');
         }
+      } catch {
+        setApiBase('');
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    setDetail(null);
+    setRetryCount(0);
+    load();
+    const off = EventsOn(`live:newrows:${streamId}`, () => {
+      load();
+    });
+    return () => {
+      off();
     };
+  }, [streamId, load]);
 
-    // get export base once
-    useEffect(() => {
-        (async () => {
-            try {
-                const info = await IngestInfo();
-                // extract base (http://127.0.0.1:PORT)
-                try {
-                    const url = new URL(info.url);
-                    setApiBase(`${url.protocol}//${url.host}`);
-                } catch {
-                    setApiBase('');
-                }
-            } catch {
-                setApiBase('');
-            }
-        })();
-    }, []);
-
-    useEffect(() => {
-        setRetryCount(0); // Reset retry count when streamId changes
-        load(); // Initial load
-        const off = EventsOn(`live:newrows:${streamId}`, () => {
-            load();
+  const onExportCsv = useCallback(async () => {
+    try {
+      const exported = await ExportCSV(streamId);
+      if (exported.includes('\n') || exported.includes(',')) {
+        const blob = new Blob([exported], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `stream-${streamId}.csv`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        window.URL.revokeObjectURL(url);
+        Notifications.show({
+          title: 'Export complete',
+          message: 'CSV downloaded',
+          color: 'green',
         });
-        return () => {
-            off(); // correct unsubscribe
-        };
-    }, [streamId]);
-
-    const onExportCsv = async () => {
-        try {
-            const csvData = await ExportCSV(streamId);
-            // Create a blob and download it
-            const blob = new Blob([csvData], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `stream-${streamId}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-        } catch (e: any) {
-            Notifications.show({
-                title: 'Error',
-                message: e?.message || 'Failed to export CSV',
-                color: 'red',
-            });
-        }
-    };
-
-    const onSaveNotes = async (notes: string) => {
-        setSavingNotes(true);
-        try {
-            await UpdateNotes(streamId, notes);
-            setDetail((d) => (d ? { ...d, notes } : d));
-            // Show success notification
-            Notifications.show({
-                title: 'Success',
-                message: 'Notes saved successfully',
-                color: 'green',
-            });
-        } catch (e: any) {
-            setError(e?.message || 'Failed to save notes');
-            Notifications.show({
-                title: 'Error',
-                message: e?.message || 'Failed to save notes',
-                color: 'red',
-            });
-        } finally {
-            setSavingNotes(false);
-        }
-    };
-
-    const onDeleteStream = async () => {
-        if (!confirm('Delete this stream and all associated bets? This action cannot be undone.')) return;
-        setDeleting(true);
-        try {
-            await DeleteStream(streamId);
-            Notifications.show({
-                title: 'Success',
-                message: 'Stream deleted successfully',
-                color: 'green',
-            });
-            navigate('/live');
-        } catch (e: any) {
-            setError(e?.message || 'Failed to delete stream');
-            Notifications.show({
-                title: 'Error',
-                message: e?.message || 'Failed to delete stream',
-                color: 'red',
-            });
-        } finally {
-            setDeleting(false);
-        }
-    };
-
-    const summary: StreamSummary | null = useMemo(() => {
-        if (!detail) return null;
-        return {
-            id: detail.id,
-            serverSeedHashed: detail.server_seed_hashed,
-            clientSeed: detail.client_seed,
-            createdAt: detail.created_at,
-            lastSeenAt: detail.last_seen_at,
-            notes: detail.notes ?? '',
-            totalBets: detail.total_bets ?? undefined,
-            highestMultiplier: detail.highest_round_result ?? undefined,
-        };
-    }, [detail]);
-
-    if (loading) {
-        return (
-            <Stack p="lg" gap="md">
-                <Group>
-                    <Button
-                        leftSection={<IconArrowLeft size={16} />}
-                        variant="subtle"
-                        onClick={() => navigate(-1)}
-                    >
-                        Back
-                    </Button>
-                </Group>
-                <Group align="center" gap="xs">
-                    <Loader size="sm" />
-                    <Text c="dimmed">
-                        Loading stream…
-                        {retryCount > 0 && ` (retry ${retryCount}/3)`}
-                    </Text>
-                </Group>
-            </Stack>
-        );
+      } else {
+        Notifications.show({
+          title: 'Export complete',
+          message: `CSV written to ${exported}`,
+          color: 'green',
+        });
+      }
+    } catch (e: any) {
+      Notifications.show({
+        title: 'Error',
+        message: e?.message || 'Failed to export CSV',
+        color: 'red',
+      });
     }
+  }, [streamId]);
 
-    if (error || !detail) {
-        return (
-            <Stack p="lg" gap="md">
-                <Group>
-                    <Button
-                        leftSection={<IconArrowLeft size={16} />}
-                        variant="subtle"
-                        onClick={() => navigate(-1)}
-                    >
-                        Back
-                    </Button>
-                </Group>
-                <Text c="red">{error ?? 'Stream not found'}</Text>
-            </Stack>
-        );
+  const onSaveNotes = useCallback(async (notes: string) => {
+    setSavingNotes(true);
+    try {
+      await UpdateNotes(streamId, notes);
+      setDetail((current) => (current ? { ...current, notes } : current));
+      Notifications.show({
+        title: 'Saved',
+        message: 'Notes updated',
+        color: 'green',
+      });
+    } catch (e: any) {
+      setError(e?.message || 'Failed to save notes');
+      Notifications.show({
+        title: 'Error',
+        message: e?.message || 'Failed to save notes',
+        color: 'red',
+      });
+    } finally {
+      setSavingNotes(false);
     }
+  }, [streamId]);
 
+  const onDeleteStream = useCallback(async () => {
+    if (!confirm('Delete this stream and all associated bets? This action cannot be undone.')) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await DeleteStream(streamId);
+      Notifications.show({
+        title: 'Deleted',
+        message: 'Stream removed successfully',
+        color: 'green',
+      });
+      navigate('/live');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to delete stream');
+      Notifications.show({
+        title: 'Error',
+        message: e?.message || 'Failed to delete stream',
+        color: 'red',
+      });
+    } finally {
+      setDeleting(false);
+    }
+  }, [streamId, navigate]);
+
+  const summary: StreamSummary | null = useMemo(() => {
+    if (!detail) return null;
+    return {
+      id: detail.id,
+      serverSeedHashed: detail.server_seed_hashed,
+      clientSeed: detail.client_seed,
+      createdAt: detail.created_at,
+      lastSeenAt: detail.last_seen_at,
+      notes: detail.notes ?? '',
+      totalBets: detail.total_bets ?? undefined,
+      highestMultiplier: detail.highest_round_result ?? undefined,
+    } satisfies StreamSummary;
+  }, [detail]);
+
+  const retryLabel = retryCount > 0 ? ` (retry ${retryCount}/3)` : '';
+
+  if (loading && !detail) {
     return (
-        <div className="page-container">
-          <div className="page-content">
-            <div className="page-header">
-                <Group>
-                    <Button
-                        leftSection={<IconArrowLeft size={16} />}
-                        onClick={() => navigate(-1)}
-                    >
-                        Back
-                    </Button>
-                    <Title order={3}>Live Stream</Title>
-                    <Badge>Live</Badge>
-                </Group>
-                <Group>
-                    {apiBase && (
-                        <Anchor
-                            href={`${apiBase}/live/streams/${detail.id}/export.csv`}
-                            target="_blank"
-                        >
-                            <Group gap={4}>
-                                <IconExternalLink size={14} />
-                                <Text>Export CSV</Text>
-                            </Group>
-                        </Anchor>
-                    )}
-                </Group>
-            </div>
-
-            {summary && (
-                <StreamInfoCard
-                    summary={summary}
-                    onSaveNotes={onSaveNotes}
-                    onExportCsv={onExportCsv}
-                    onDeleteStream={onDeleteStream}
-                    isSavingNotes={savingNotes}
-                    isDeletingStream={deleting}
-                />
-            )}
-
-            {/* Live virtualized table with infinite scroll + tail polling */}
-            <Box>
-                <LiveBetsTableV2
-                    streamId={detail.id}
-                    pageSize={1000}
-                    pollMs={1200}
-                    defaultOrder="asc"
-                />
-            </Box>
-          </div>
-        </div>
+      <Stack className={classes.root} gap="md">
+        <Button
+          className={classes.backButton}
+          variant="subtle"
+          size="sm"
+          leftSection={<IconArrowLeft size={16} />}
+          onClick={() => navigate(-1)}
+        >
+          Back
+        </Button>
+        <Paper withBorder radius="md" className={classes.statusCard}>
+          <Group gap="sm">
+            <Loader size="sm" />
+            <Text c="dimmed">
+              Loading stream…
+              {retryLabel}
+            </Text>
+          </Group>
+        </Paper>
+      </Stack>
     );
+  }
+
+  if (error || !detail) {
+    return (
+      <Stack className={classes.root} gap="md">
+        <Button
+          className={classes.backButton}
+          variant="subtle"
+          size="sm"
+          leftSection={<IconArrowLeft size={16} />}
+          onClick={() => navigate(-1)}
+        >
+          Back
+        </Button>
+        <Paper withBorder radius="md" className={classes.statusCard}>
+          <Text c="red">{error ?? 'Stream not found'}</Text>
+        </Paper>
+      </Stack>
+    );
+  }
+
+  return (
+    <Stack className={classes.root} gap="lg">
+      <Button
+        className={classes.backButton}
+        variant="subtle"
+        size="sm"
+        leftSection={<IconArrowLeft size={16} />}
+        onClick={() => navigate(-1)}
+      >
+        Back
+      </Button>
+
+      <Paper withBorder radius="md" shadow="xs" p="md" className={classes.header}>
+        <Group justify="space-between" align="flex-start" className={classes.headerRow}>
+          <Stack gap={4} className={classes.streamMeta}>
+            <Group gap="xs">
+              <Title order={3}>Live Stream</Title>
+              <Badge color="green" variant="light">
+                Live
+              </Badge>
+            </Group>
+            <Text size="sm" c="dimmed">
+              Stream ID:{' '}
+              <Text component="span" ff="var(--mantine-font-family-monospace)" fw={500}>
+                {detail.id}
+              </Text>
+            </Text>
+          </Stack>
+          <Group gap="sm">
+            {apiBase && (
+              <Anchor
+                className={classes.exportAnchor}
+                href={`${apiBase}/live/streams/${detail.id}/export.csv`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Group gap={4}>
+                  <IconExternalLink size={14} />
+                  <Text size="sm">Open CSV endpoint</Text>
+                </Group>
+              </Anchor>
+            )}
+          </Group>
+        </Group>
+      </Paper>
+
+      {summary && (
+        <StreamInfoCard
+          summary={summary}
+          onSaveNotes={onSaveNotes}
+          onExportCsv={onExportCsv}
+          onDeleteStream={onDeleteStream}
+          isSavingNotes={savingNotes}
+          isDeletingStream={deleting}
+        />
+      )}
+
+      <Paper withBorder radius="md" shadow="xs" p="md" className={classes.tableCard}>
+        <LiveBetsTableV2
+          streamId={detail.id}
+          pageSize={1000}
+          pollMs={1200}
+          defaultOrder="asc"
+        />
+      </Paper>
+    </Stack>
+  );
 }
