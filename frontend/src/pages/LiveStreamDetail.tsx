@@ -268,21 +268,6 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
     );
   }
 
-  const createdDisplay = useMemo(
-    () => (detail.created_at ? new Date(detail.created_at).toLocaleString() : '—'),
-    [detail.created_at],
-  );
-  const lastSeenDisplay = useMemo(
-    () => (detail.last_seen_at ? new Date(detail.last_seen_at).toLocaleString() : '—'),
-    [detail.last_seen_at],
-  );
-  const isLive = useMemo(() => {
-    if (!detail.last_seen_at) return false;
-    const lastSeen = new Date(detail.last_seen_at).getTime();
-    if (!Number.isFinite(lastSeen)) return false;
-    return Date.now() - lastSeen < 60_000;
-  }, [detail.last_seen_at]);
-
   return (
     <Stack className={classes.root} gap="xl">
       <Button
