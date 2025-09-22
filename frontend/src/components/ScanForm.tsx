@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
@@ -20,11 +20,11 @@ import {
   Badge,
   Box,
   Title,
-  Container,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconEye, IconEyeOff, IconHash, IconAlertCircle, IconKey, IconDice, IconTarget, IconSettings } from '@tabler/icons-react';
 import { scanFormSchema, validateGameParams, type ScanFormData } from '../lib/validation';
+import { callWithRetry, waitForWailsBinding } from '../lib/wails';
 import { GetGames, HashServerSeed, StartScan } from '../../wailsjs/go/bindings/App';
 import { games, bindings } from '../../wailsjs/go/models';
 
@@ -36,11 +36,14 @@ interface GameInfo {
 
 export function ScanForm() {
   const navigate = useNavigate();
-  const [games, setGames] = useState<GameInfo[]>([]);
+  const [availableGames, setAvailableGames] = useState<GameInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [hashPreview, setHashPreview] = useState<string>('');
   const [showHashPreview, setShowHashPreview] = useState(false);
   const [hashLoading, setHashLoading] = useState(false);
+  const gameLoadAttempts = useRef(0);
+  const gameRetryTimer = useRef<number | null>(null);
+  const gameErrorShown = useRef(false);
 
   const {
     register,
@@ -75,24 +78,45 @@ export function ScanForm() {
   useEffect(() => {
     const loadGames = async () => {
       try {
-        const gameSpecs = await GetGames();
+        gameLoadAttempts.current += 1;
+        await waitForWailsBinding(['go', 'bindings', 'App', 'GetGames'], { timeoutMs: 10_000 });
+        const gameSpecs = await callWithRetry(() => GetGames(), 5, 250);
+        if (!Array.isArray(gameSpecs)) {
+          throw new Error('Unexpected GetGames response');
+        }
         const gameInfos: GameInfo[] = gameSpecs.map((spec: games.GameSpec) => ({
           id: spec.id,
           name: spec.name,
           metric_label: spec.metric_label,
         }));
-        setGames(gameInfos);
+        setAvailableGames(gameInfos);
+        gameErrorShown.current = false;
+        if (gameRetryTimer.current !== null) {
+          window.clearTimeout(gameRetryTimer.current);
+          gameRetryTimer.current = null;
+        }
       } catch (error) {
         console.error('Failed to load games:', error);
-        notifications.show({
-          title: 'Error',
-          message: 'Failed to load available games',
-          color: 'red',
-        });
+        if (!gameErrorShown.current) {
+          notifications.show({
+            title: 'Error',
+            message: 'Failed to load available games – retrying…',
+            color: 'orange',
+          });
+          gameErrorShown.current = true;
+        }
+        if (gameLoadAttempts.current < 6) {
+          gameRetryTimer.current = window.setTimeout(loadGames, 1200);
+        }
       }
     };
 
     loadGames();
+    return () => {
+      if (gameRetryTimer.current !== null) {
+        window.clearTimeout(gameRetryTimer.current);
+      }
+    };
   }, []);
 
   // Clear game-specific validation errors and set defaults when game changes
@@ -209,7 +233,7 @@ export function ScanForm() {
 
   // Render game-specific parameter inputs
   const renderGameParams = () => {
-    const selectedGame = games.find(g => g.id === watchedGame);
+    const selectedGame = availableGames.find((g) => g.id === watchedGame);
     if (!selectedGame) return null;
 
     switch (watchedGame) {
@@ -385,7 +409,7 @@ export function ScanForm() {
   };
 
   return (
-    <Container size="lg" p={0}>
+    <Box>
       <form onSubmit={handleSubmit(onSubmit)}>
         <Stack gap="xl">
           {/* Header */}
@@ -563,7 +587,7 @@ export function ScanForm() {
                     placeholder="Choose a game..."
                     size="md"
                     required
-                    data={games.map(game => ({
+                    data={availableGames.map((game) => ({
                       value: game.id,
                       label: `${game.name} (${game.metric_label})`,
                     }))}
@@ -595,7 +619,7 @@ export function ScanForm() {
                 <Paper p="lg" bg="orange.0" withBorder radius="md">
                   <Group mb="md" gap="xs">
                     <Text size="md" fw={600} c="orange.8">
-                      {games.find(g => g.id === watchedGame)?.name} Parameters
+                      {availableGames.find((g) => g.id === watchedGame)?.name} Parameters
                     </Text>
                     <Badge variant="filled" color="orange" size="xs">Game Specific</Badge>
                   </Group>
@@ -783,7 +807,7 @@ export function ScanForm() {
               <Grid>
                 <Grid.Col span={6}>
                   <Text size="xs" c="dimmed">Game:</Text>
-                  <Text size="sm" fw={500}>{games.find(g => g.id === watchedGame)?.name}</Text>
+                  <Text size="sm" fw={500}>{availableGames.find((g) => g.id === watchedGame)?.name}</Text>
                 </Grid.Col>
                 <Grid.Col span={6}>
                   <Text size="xs" c="dimmed">Nonce Range:</Text>
@@ -821,6 +845,6 @@ export function ScanForm() {
           </Group>
         </Stack>
       </form>
-    </Container>
+    </Box>
   );
 }
