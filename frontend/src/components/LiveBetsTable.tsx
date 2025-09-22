@@ -6,7 +6,9 @@ import {
   useMantineReactTable,
 } from 'mantine-react-table';
 import {
+  ActionIcon,
   Badge,
+  Divider,
   Group,
   Loader,
   NumberFormatter,
@@ -23,22 +25,32 @@ import {
 } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState, type UIEvent } from 'react';
 import clsx from 'clsx';
-import { IconRadar } from '@tabler/icons-react';
+import { IconRadar, IconRefresh } from '@tabler/icons-react';
 import { GetBets, Tail } from '../../wailsjs/go/livehttp/LiveModule';
 import { livestore } from '../../wailsjs/go/models';
 import classes from './LiveBetsTable.module.css';
 
-// Normalize LiveBet from Wails model
-function normalizeLiveBet(bet: livestore.LiveBet): LiveBet {
+type RawLiveBet = livestore.LiveBet | Record<string, unknown>;
+
+// Normalize LiveBet from either the Wails model or HTTP responses
+function normalizeLiveBet(raw: RawLiveBet): LiveBet {
+  const bet = raw as Record<string, unknown>;
+  const amount = Number(bet.amount ?? 0);
+  const payout = Number(bet.payout ?? 0);
+  const roundResult = Number(bet.round_result ?? bet.roundResult ?? 0);
+  const roundTarget = bet.round_target ?? bet.roundTarget;
+  const difficulty = (bet.difficulty as LiveBet['difficulty']) ?? 'easy';
+  const isoDate = bet.date_time ?? bet.dateTime;
+
   return {
-    id: Number(bet.id),
-    nonce: Number(bet.nonce),
-    date_time: bet.date_time ? new Date(bet.date_time).toISOString() : undefined,
-    amount: Number(bet.amount ?? 0),
-    payout: Number(bet.payout ?? 0),
-    difficulty: (bet.difficulty as LiveBet['difficulty']) ?? 'easy',
-    round_target: bet.round_target != null ? Number(bet.round_target) : undefined,
-    round_result: Number(bet.round_result ?? 0),
+    id: Number(bet.id ?? 0),
+    nonce: Number(bet.nonce ?? 0),
+    date_time: typeof isoDate === 'string' && isoDate ? new Date(isoDate).toISOString() : undefined,
+    amount: Number.isFinite(amount) ? amount : 0,
+    payout: Number.isFinite(payout) ? payout : 0,
+    difficulty,
+    round_target: roundTarget != null ? Number(roundTarget) : undefined,
+    round_result: Number.isFinite(roundResult) ? roundResult : 0,
   };
 }
 
@@ -60,6 +72,11 @@ type WailsGetBetsShape = livestore.LiveBet[] | {
   rows?: livestore.LiveBet[];
   total?: number;
 } | [livestore.LiveBet[], number];
+
+type HttpBetsResponse = {
+  rows?: RawLiveBet[];
+  total?: number | null;
+};
 
 function unpackGetBets(result: WailsGetBetsShape): { rows: livestore.LiveBet[]; total: number | null } {
   if (!result) {
@@ -97,6 +114,7 @@ function mergeRows(existing: LiveBet[], incoming: LiveBet[], order: 'asc' | 'des
 
 export type LiveBetsTableV2Props = {
   streamId: string;
+  apiBase?: string;
   pageSize?: number; // default 1000
   pollMs?: number; // default 1200
   defaultOrder?: 'asc' | 'desc';
@@ -104,6 +122,7 @@ export type LiveBetsTableV2Props = {
 
 export default function LiveBetsTableV2({
   streamId,
+  apiBase,
   pageSize = 1000,
   pollMs = 1200,
   defaultOrder = 'asc',
@@ -116,30 +135,72 @@ export default function LiveBetsTableV2({
   const isInitialisedRef = useRef(false);
 
   const queryKey = useMemo(
-    () => ['live-bets', streamId, { min: minMultiplier ?? 0, order, pageSize }] as const,
-    [streamId, minMultiplier, order, pageSize],
+    () =>
+      [
+        'live-bets',
+        streamId,
+        { min: minMultiplier ?? 0, order, pageSize, source: apiBase ?? 'wails' },
+      ] as const,
+    [streamId, minMultiplier, order, pageSize, apiBase],
   );
 
   const fetchPage = useCallback(
     async (pageParam: number) => {
-      const response = (await GetBets(
-        streamId,
-        minMultiplier ?? 0,
-        order,
-        pageSize,
-        pageParam,
-      )) as WailsGetBetsShape;
+      let rows: RawLiveBet[] = [];
+      let total: number | null = null;
 
-      const { rows, total } = unpackGetBets(response);
+      const callWails = async () => {
+        const response = (await GetBets(
+          streamId,
+          minMultiplier ?? 0,
+          order,
+          pageSize,
+          pageParam,
+        )) as WailsGetBetsShape;
+        const unpacked = unpackGetBets(response);
+        rows = unpacked.rows;
+        total = unpacked.total;
+      };
+
+      if (apiBase) {
+        try {
+          const params = new URLSearchParams({
+            limit: String(pageSize),
+            offset: String(pageParam),
+            order: order === 'desc' ? 'nonce_desc' : 'nonce_asc',
+          });
+          if (minMultiplier && minMultiplier > 0) {
+            params.set('min_multiplier', String(minMultiplier));
+          }
+
+          const response = await fetch(`${apiBase}/live/streams/${streamId}/bets?${params.toString()}`);
+          if (!response.ok) {
+            throw new Error(`Request failed with status ${response.status}`);
+          }
+          const payload = (await response.json()) as HttpBetsResponse;
+          rows = (payload.rows ?? []) as RawLiveBet[];
+          total = typeof payload.total === 'number' ? payload.total : null;
+        } catch (err) {
+          console.warn('HTTP bets fetch failed, falling back to Wails bridge.', err);
+          await callWails();
+        }
+      } else {
+        await callWails();
+      }
+
       const normalized = rows.map(normalizeLiveBet);
 
       if (normalized.length) {
-        lastIDRef.current = normalized[normalized.length - 1].id;
+        const maxId = normalized.reduce(
+          (max, bet) => (Number.isFinite(bet.id) && bet.id > max ? bet.id : max),
+          lastIDRef.current,
+        );
+        lastIDRef.current = maxId;
       }
 
       return { rows: normalized, total } satisfies BetsPage;
     },
-    [streamId, minMultiplier, order, pageSize],
+    [streamId, minMultiplier, order, pageSize, apiBase],
   );
 
   const {
@@ -175,15 +236,25 @@ export default function LiveBetsTableV2({
   useEffect(() => {
     lastIDRef.current = 0;
     isInitialisedRef.current = false;
-  }, [streamId, order, minMultiplier, pageSize]);
+  }, [streamId, order, minMultiplier, pageSize, apiBase]);
 
   // Track latest id for tail polling once we have data
   useEffect(() => {
-    if (flatRows.length) {
-      lastIDRef.current = flatRows[flatRows.length - 1]?.id ?? lastIDRef.current;
+    if (!flatRows.length) return;
+    const maxId = flatRows.reduce(
+      (max, bet) => (Number.isFinite(bet.id) && bet.id > max ? bet.id : max),
+      lastIDRef.current,
+    );
+    lastIDRef.current = maxId;
+    isInitialisedRef.current = true;
+  }, [flatRows]);
+
+  useEffect(() => {
+    if (isError) return;
+    if (!isPending && !isFetching && !isFetchingNextPage) {
       isInitialisedRef.current = true;
     }
-  }, [flatRows]);
+  }, [isPending, isFetching, isFetchingNextPage, isError]);
 
   // Tail polling for fresh bets
   useEffect(() => {
@@ -246,6 +317,53 @@ export default function LiveBetsTableV2({
 
   const totalFetched = flatRows.length;
   const totalReported = data?.pages?.[0]?.total ?? null;
+
+  const metrics = useMemo(() => {
+    if (!rowsWithDistance.length) {
+      return {
+        count: 0,
+        wagered: 0,
+        payout: 0,
+        net: 0,
+        avgMultiplier: null as number | null,
+        maxMultiplier: null as number | null,
+      };
+    }
+
+    let totalWagered = 0;
+    let totalPayout = 0;
+    let multiplierSum = 0;
+    let peakMultiplier = 0;
+
+    rowsWithDistance.forEach((row) => {
+      const wager = Number.isFinite(row.amount) ? row.amount : 0;
+      const pay = Number.isFinite(row.payout) ? row.payout : 0;
+      const mult = Number.isFinite(row.round_result) ? row.round_result : 0;
+
+      totalWagered += wager;
+      totalPayout += pay;
+      multiplierSum += mult;
+      peakMultiplier = Math.max(peakMultiplier, mult);
+    });
+
+    const count = rowsWithDistance.length;
+    return {
+      count,
+      wagered: totalWagered,
+      payout: totalPayout,
+      net: totalPayout - totalWagered,
+      avgMultiplier: count ? multiplierSum / count : null,
+      maxMultiplier: count ? peakMultiplier : null,
+    };
+  }, [rowsWithDistance]);
+
+  const netColor = metrics.net > 0 ? 'teal.6' : metrics.net < 0 ? 'red.6' : 'gray.6';
+
+  const handleManualRefresh = useCallback(() => {
+    lastIDRef.current = 0;
+    isInitialisedRef.current = false;
+    queryClient.invalidateQueries({ queryKey });
+  }, [queryClient, queryKey]);
 
   const fetchMoreOnBottomReached = useCallback(
     (container?: HTMLDivElement | null) => {
@@ -376,20 +494,73 @@ export default function LiveBetsTableV2({
       : undefined,
     renderTopToolbarCustomActions: () => (
       <div className={classes.toolbar}>
-        <Group gap="sm" className={classes.metrics} wrap="wrap">
+        <Group gap="xl" className={classes.metrics} wrap="wrap">
           <div className={classes.status}>
             <span
               className={clsx(classes.statusDot, isConnected ? classes.statusDotSuccess : classes.statusDotError)}
             />
-            <Text size="sm" fw={600}>
-              {isConnected ? 'Live feed' : 'Reconnecting…'}
+            <div className={classes.statusText}>
+              <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                Feed
+              </Text>
+              <Text size="sm" fw={600}>
+                {isConnected ? 'Live' : 'Reconnecting…'}
+              </Text>
+            </div>
+          </div>
+          <Divider orientation="vertical" className={classes.toolbarDivider} />
+          <div className={classes.metricBlock}>
+            <Text className={classes.metricLabel}>Loaded</Text>
+            <Text className={classes.metricValue}>
+              {metrics.count.toLocaleString()}
+              {totalReported != null && ` / ${totalReported.toLocaleString()}`}
             </Text>
           </div>
-          <Text size="sm" c="dimmed">
-            Loaded {totalFetched.toLocaleString()}
-            {totalReported != null && ` / ${totalReported.toLocaleString()}`}
-          </Text>
-          {(isFetching || isFetchingNextPage) && <Loader size="xs" />}
+          <div className={classes.metricBlock}>
+            <Text className={classes.metricLabel}>Wagered</Text>
+            <Text className={classes.metricValue}>
+              <NumberFormatter
+                value={metrics.wagered}
+                thousandSeparator
+                decimalScale={2}
+                fixedDecimalScale
+              />
+            </Text>
+          </div>
+          <div className={classes.metricBlock}>
+            <Text className={classes.metricLabel}>Net</Text>
+            <Text className={classes.metricValue} c={netColor}>
+              <NumberFormatter
+                value={metrics.net}
+                thousandSeparator
+                decimalScale={2}
+                fixedDecimalScale
+                prefix={metrics.net > 0 ? '+' : undefined}
+              />
+            </Text>
+          </div>
+          {metrics.avgMultiplier != null && (
+            <div className={classes.metricBlock}>
+              <Text className={classes.metricLabel}>Avg ×</Text>
+              <Text className={classes.metricValue}>
+                <NumberFormatter
+                  value={metrics.avgMultiplier}
+                  thousandSeparator
+                  decimalScale={2}
+                  fixedDecimalScale
+                />
+              </Text>
+            </div>
+          )}
+          {metrics.maxMultiplier != null && (
+            <div className={classes.metricBlock}>
+              <Text className={classes.metricLabel}>Peak ×</Text>
+              <Text className={classes.metricValue}>
+                <NumberFormatter value={metrics.maxMultiplier} thousandSeparator />
+              </Text>
+            </div>
+          )}
+          {(isFetching || isFetchingNextPage) && <Loader size="sm" />}
         </Group>
         <Group gap="sm" className={classes.filters} wrap="wrap">
           <Tooltip label="Server-side sorting">
@@ -398,12 +569,17 @@ export default function LiveBetsTableV2({
               value={order}
               onChange={(value: string) => setOrder(value === 'desc' ? 'desc' : 'asc')}
               data={[
-                { label: 'Nonce ↑', value: 'asc' },
-                { label: 'Nonce ↓', value: 'desc' },
+                { label: 'Oldest → Newest', value: 'asc' },
+                { label: 'Newest → Oldest', value: 'desc' },
               ]}
             />
           </Tooltip>
           <MinMultiplierControl value={minMultiplier} onChange={setMinMultiplier} />
+          <Tooltip label="Refresh data">
+            <ActionIcon variant="light" color="violet" onClick={handleManualRefresh}>
+              <IconRefresh size={16} />
+            </ActionIcon>
+          </Tooltip>
         </Group>
       </div>
     ),
@@ -438,28 +614,28 @@ function MinMultiplierControl({
   onChange: (value: number | null) => void;
 }) {
   return (
-    <Group gap={4} wrap="nowrap">
-      <Text size="sm" c="dimmed">
+    <Group gap={6} wrap="nowrap" className={classes.minControl}>
+      <Text size="xs" c="dimmed" fw={600} tt="uppercase">
         Min ×
       </Text>
-      <div className={classes.numberField}>
-        <NumberInput
-          size="xs"
-          value={value ?? undefined}
-          placeholder="400"
-          min={1}
-          step={50}
-          hideControls
-          onChange={(val: string | number | undefined) => {
-            if (val == null || val === '') {
-              onChange(null);
-              return;
-            }
-            const numeric = Number(val);
-            onChange(Number.isFinite(numeric) ? numeric : null);
-          }}
-        />
-      </div>
+      <NumberInput
+        className={classes.numberField}
+        size="xs"
+        variant="filled"
+        value={value ?? undefined}
+        placeholder="400"
+        min={1}
+        step={50}
+        hideControls
+        onChange={(val: string | number | undefined) => {
+          if (val == null || val === '') {
+            onChange(null);
+            return;
+          }
+          const numeric = Number(val);
+          onChange(Number.isFinite(numeric) ? numeric : null);
+        }}
+      />
     </Group>
   );
 }

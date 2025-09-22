@@ -4,15 +4,17 @@ import {
   Anchor,
   Badge,
   Button,
+  CopyButton,
   Group,
   Loader,
   Paper,
   Stack,
   Text,
   Title,
+  Tooltip,
 } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
-import { IconArrowLeft, IconExternalLink } from '@tabler/icons-react';
+import { IconArrowLeft, IconCheck, IconCopy, IconExternalLink } from '@tabler/icons-react';
 import StreamInfoCard, { StreamSummary } from '../components/StreamInfoCard';
 import LiveBetsTableV2 from '../components/LiveBetsTable';
 import { EventsOn } from '../../wailsjs/runtime/runtime';
@@ -249,8 +251,23 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
     );
   }
 
+  const createdDisplay = useMemo(
+    () => (detail.created_at ? new Date(detail.created_at).toLocaleString() : '—'),
+    [detail.created_at],
+  );
+  const lastSeenDisplay = useMemo(
+    () => (detail.last_seen_at ? new Date(detail.last_seen_at).toLocaleString() : '—'),
+    [detail.last_seen_at],
+  );
+  const isLive = useMemo(() => {
+    if (!detail.last_seen_at) return false;
+    const lastSeen = new Date(detail.last_seen_at).getTime();
+    if (!Number.isFinite(lastSeen)) return false;
+    return Date.now() - lastSeen < 60_000;
+  }, [detail.last_seen_at]);
+
   return (
-    <Stack className={classes.root} gap="lg">
+    <Stack className={classes.root} gap="xl">
       <Button
         className={classes.backButton}
         variant="subtle"
@@ -261,38 +278,79 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
         Back
       </Button>
 
-      <Paper withBorder radius="md" shadow="xs" p="md" className={classes.header}>
-        <Group justify="space-between" align="flex-start" className={classes.headerRow}>
-          <Stack gap={4} className={classes.streamMeta}>
-            <Group gap="xs">
-              <Title order={3}>Live Stream</Title>
-              <Badge color="green" variant="light">
-                Live
-              </Badge>
-            </Group>
-            <Text size="sm" c="dimmed">
-              Stream ID:{' '}
-              <Text component="span" ff="var(--mantine-font-family-monospace)" fw={500}>
-                {detail.id}
-              </Text>
-            </Text>
-          </Stack>
-          <Group gap="sm">
+      <Paper radius="lg" shadow="sm" p="lg" className={classes.hero}>
+        <Stack gap="lg">
+          <Group justify="space-between" align="flex-start" className={classes.heroHead} wrap="wrap">
+            <Stack gap={6} className={classes.heroInfo}>
+              <Group gap="xs" wrap="wrap">
+                <Title order={2} c="white">
+                  Live Stream
+                </Title>
+                <Badge color={isLive ? 'green' : 'gray'} variant="light">
+                  {isLive ? 'Live' : 'Archived'}
+                </Badge>
+              </Group>
+              <Group gap="xl" wrap="wrap" className={classes.heroMetaRow}>
+                <div className={classes.heroField}>
+                  <Text className={classes.heroLabel}>Stream ID</Text>
+                  <Group gap={8} wrap="wrap">
+                    <Text className={classes.heroId} ff="var(--mantine-font-family-monospace)">
+                      {detail.id}
+                    </Text>
+                    <CopyButton value={detail.id} timeout={1500}>
+                      {({ copied, copy }) => (
+                        <Tooltip label={copied ? 'Copied' : 'Copy'} position="bottom">
+                          <Button
+                            size="xs"
+                            variant="white"
+                            color="dark"
+                            onClick={copy}
+                            leftSection={copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                          >
+                            {copied ? 'Copied' : 'Copy'}
+                          </Button>
+                        </Tooltip>
+                      )}
+                    </CopyButton>
+                  </Group>
+                </div>
+                <div className={classes.heroField}>
+                  <Text className={classes.heroLabel}>Created</Text>
+                  <Text className={classes.heroValue}>{createdDisplay}</Text>
+                </div>
+                <div className={classes.heroField}>
+                  <Text className={classes.heroLabel}>Last seen</Text>
+                  <Text className={classes.heroValue}>{lastSeenDisplay}</Text>
+                </div>
+              </Group>
+            </Stack>
             {apiBase && (
               <Anchor
-                className={classes.exportAnchor}
+                className={classes.heroLink}
                 href={`${apiBase}/live/streams/${detail.id}/export.csv`}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <Group gap={4}>
-                  <IconExternalLink size={14} />
+                <Group gap={6}>
+                  <IconExternalLink size={16} />
                   <Text size="sm">Open CSV endpoint</Text>
                 </Group>
               </Anchor>
             )}
           </Group>
-        </Group>
+          <Group gap="sm" wrap="wrap">
+            {detail.total_bets != null && (
+              <Badge variant="white" color="dark">
+                {detail.total_bets.toLocaleString()} bets captured
+              </Badge>
+            )}
+            {detail.highest_round_result != null && (
+              <Badge variant="white" color="dark">
+                Highest ×{detail.highest_round_result.toLocaleString()}
+              </Badge>
+            )}
+          </Group>
+        </Stack>
       </Paper>
 
       {summary && (
@@ -309,6 +367,7 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
       <Paper withBorder radius="md" shadow="xs" p="md" className={classes.tableCard}>
         <LiveBetsTableV2
           streamId={detail.id}
+          apiBase={apiBase || undefined}
           pageSize={1000}
           pollMs={1200}
           defaultOrder="asc"
