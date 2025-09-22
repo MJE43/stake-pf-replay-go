@@ -205,6 +205,23 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
     } satisfies StreamSummary;
   }, [detail]);
 
+  const createdDisplay = useMemo(() => {
+    if (!detail?.created_at) return '—';
+    return new Date(detail.created_at).toLocaleString();
+  }, [detail?.created_at]);
+
+  const lastSeenDisplay = useMemo(() => {
+    if (!detail?.last_seen_at) return '—';
+    return new Date(detail.last_seen_at).toLocaleString();
+  }, [detail?.last_seen_at]);
+
+  const isLive = useMemo(() => {
+    if (!detail?.last_seen_at) return false;
+    const lastSeen = new Date(detail.last_seen_at).getTime();
+    if (!Number.isFinite(lastSeen)) return false;
+    return Date.now() - lastSeen < 60_000;
+  }, [detail?.last_seen_at]);
+
   const retryLabel = retryCount > 0 ? ` (retry ${retryCount}/3)` : '';
 
   if (loading && !detail) {
