@@ -1,16 +1,4 @@
-import {
-  ActionIcon,
-  Badge,
-  Button,
-  Card,
-  CopyButton,
-  Group,
-  Stack,
-  Text,
-  Textarea,
-  Tooltip,
-} from '@mantine/core';
-import { useHotkeys } from '@mantine/hooks';
+import { useEffect, useMemo, useState } from 'react';
 import {
   IconCheck,
   IconCopy,
@@ -19,19 +7,76 @@ import {
   IconKey,
   IconTrash,
 } from '@tabler/icons-react';
-import { useEffect, useMemo, useState } from 'react';
-import classes from './StreamInfoCard.module.css';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useHotkeys } from '@/hooks/useHotkeys';
+import { toast } from '@/components/ui/use-toast';
+import { cn } from '@/lib/utils';
 
 export type StreamSummary = {
   id: string;
   serverSeedHashed: string;
   clientSeed: string;
-  createdAt: string;     // ISO
-  lastSeenAt: string;    // ISO
+  createdAt: string; // ISO
+  lastSeenAt: string; // ISO
   notes: string;
   totalBets?: number;
   highestMultiplier?: number;
 };
+
+type CopyButtonProps = {
+  value: string;
+  label: string;
+};
+
+function CopyButton({ value, label }: CopyButtonProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      toast.success(`${label} copied`);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to copy value');
+    }
+  };
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            aria-label={`Copy ${label}`}
+            variant={copied ? 'default' : 'outline'}
+            size="icon"
+            className={cn(
+              'h-9 w-9 border border-indigo-100 text-indigo-600 hover:bg-indigo-50',
+              copied && 'bg-emerald-500 text-white hover:bg-emerald-500/90',
+            )}
+            onClick={handleCopy}
+          >
+            {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{copied ? 'Copied' : `Copy ${label}`}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 export default function StreamInfoCard(props: {
   summary: StreamSummary;
@@ -54,20 +99,25 @@ export default function StreamInfoCard(props: {
   const [notes, setNotes] = useState(summary.notes ?? '');
   const notesDirty = notes !== (summary.notes ?? '');
 
-  // Keyboard shortcuts
   useHotkeys([
-    ['mod+S', () => {
-      if (editing && notesDirty) {
-        onSaveNotes(notes);
-        setEditing(false);
-      }
-    }],
-    ['Escape', () => {
-      if (editing) {
-        setNotes(summary.notes ?? '');
-        setEditing(false);
-      }
-    }],
+    {
+      combo: 'mod+s',
+      handler: () => {
+        if (editing && notesDirty) {
+          onSaveNotes(notes);
+          setEditing(false);
+        }
+      },
+    },
+    {
+      combo: 'escape',
+      handler: () => {
+        if (editing) {
+          setNotes(summary.notes ?? '');
+          setEditing(false);
+        }
+      },
+    },
   ]);
 
   useEffect(() => {
@@ -89,164 +139,137 @@ export default function StreamInfoCard(props: {
       { label: 'Last seen', value: lastSeen },
       {
         label: 'Total bets',
-        value:
-          summary.totalBets != null ? summary.totalBets.toLocaleString() : '—',
+        value: summary.totalBets != null ? summary.totalBets.toLocaleString() : '--',
       },
       {
         label: 'Highest ×',
         value:
-          summary.highestMultiplier != null
-            ? summary.highestMultiplier.toLocaleString()
-            : '—',
+          summary.highestMultiplier != null ? summary.highestMultiplier.toLocaleString() : '--',
       },
     ],
     [created, lastSeen, summary.totalBets, summary.highestMultiplier],
   );
 
   return (
-    <Card withBorder radius="lg" shadow="sm" p="lg" className={classes.card}>
-      <Stack gap="lg">
-        <Group justify="space-between" align="flex-start" className={classes.header} wrap="wrap">
-          <Group gap="sm" className={classes.heading}>
-            <IconHash size={18} />
-            <Stack gap={0}>
-              <Text fw={600}>Stream Information</Text>
-              <Text size="sm" c="dimmed">
-                Overview, exports, and notes
-              </Text>
-            </Stack>
-          </Group>
-          <Group gap="sm" className={classes.actions} wrap="wrap">
-            <Button
-              variant="light"
-              color="violet"
-              onClick={onExportCsv}
-              leftSection={<IconDownload size={16} />}
-            >
+    <Card className="w-full border border-slate-200 bg-white shadow-sm">
+      <CardHeader className="flex flex-col gap-3 pb-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600">
+              <IconHash size={18} />
+            </span>
+            <div className="flex flex-col">
+              <CardTitle className="text-lg">Stream Information</CardTitle>
+              <CardDescription>Overview, exports, and notes</CardDescription>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" className="gap-2" onClick={onExportCsv}>
+              <IconDownload size={16} />
               Export CSV
             </Button>
             <Button
-              color="red"
-              variant="light"
-              loading={!!isDeletingStream}
+              variant="destructive"
+              className="gap-2"
+              disabled={isDeletingStream}
               onClick={onDeleteStream}
-              leftSection={<IconTrash size={16} />}
             >
-              Delete Stream
+              <IconTrash size={16} />
+              {isDeletingStream ? 'Deleting...' : 'Delete Stream'}
             </Button>
-          </Group>
-        </Group>
-
-        <div className={classes.seeds}>
-          <div className={classes.seedCard}>
-            <Text className={classes.seedLabel}>Server Seed Hash</Text>
-            <Group justify="space-between" align="center" gap="sm">
-              <Text className={classes.seedValue} lineClamp={2}>
-                {summary.serverSeedHashed || '—'}
-              </Text>
-              {summary.serverSeedHashed && (
-                <CopyButton value={summary.serverSeedHashed} timeout={1500}>
-                  {({ copied, copy }) => (
-                    <Tooltip label={copied ? 'Copied' : 'Copy hash'}>
-                      <ActionIcon
-                        size="sm"
-                        variant={copied ? 'filled' : 'light'}
-                        color={copied ? 'teal' : 'indigo'}
-                        onClick={copy}
-                      >
-                        {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
-                      </ActionIcon>
-                    </Tooltip>
-                  )}
-                </CopyButton>
-              )}
-            </Group>
-          </div>
-          <div className={classes.seedCard}>
-            <Text className={classes.seedLabel}>Client Seed</Text>
-            <Group justify="space-between" align="center" gap="sm">
-              <Text className={classes.seedValue} lineClamp={2}>
-                {summary.clientSeed || '—'}
-              </Text>
-              {summary.clientSeed && (
-                <CopyButton value={summary.clientSeed} timeout={1500}>
-                  {({ copied, copy }) => (
-                    <Tooltip label={copied ? 'Copied' : 'Copy client seed'}>
-                      <ActionIcon
-                        size="sm"
-                        variant={copied ? 'filled' : 'light'}
-                        color={copied ? 'teal' : 'indigo'}
-                        onClick={copy}
-                      >
-                        {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
-                      </ActionIcon>
-                    </Tooltip>
-                  )}
-                </CopyButton>
-              )}
-            </Group>
           </div>
         </div>
 
-        <div className={classes.statsGrid}>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+            <Label className="mb-1 flex items-center gap-2 text-xs uppercase tracking-wide text-slate-500">
+              <IconKey size={14} /> Server Seed Hash
+            </Label>
+            <div className="flex items-start justify-between gap-3">
+              <span className="line-clamp-2 break-all text-sm font-medium text-slate-700">
+                {summary.serverSeedHashed || '--'}
+              </span>
+              {summary.serverSeedHashed && <CopyButton value={summary.serverSeedHashed} label="Server seed" />}
+            </div>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+            <Label className="mb-1 flex items-center gap-2 text-xs uppercase tracking-wide text-slate-500">
+              <IconKey size={14} /> Client Seed
+            </Label>
+            <div className="flex items-start justify-between gap-3">
+              <span className="line-clamp-2 break-all text-sm font-medium text-slate-700">
+                {summary.clientSeed || '--'}
+              </span>
+              {summary.clientSeed && <CopyButton value={summary.clientSeed} label="Client seed" />}
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="grid gap-6">
+        <div className="grid gap-4 rounded-lg border border-slate-200 bg-slate-50/40 p-4 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
-            <div className={classes.stat} key={stat.label}>
-              <Text className={classes.statLabel}>{stat.label}</Text>
-              <Text className={classes.statValue}>{stat.value}</Text>
+            <div key={stat.label} className="flex flex-col gap-1">
+              <span className="text-xs uppercase tracking-wide text-slate-500">{stat.label}</span>
+              <span className="font-mono text-sm text-slate-800">{stat.value}</span>
             </div>
           ))}
         </div>
 
-        <div className={classes.notesSection}>
-          <Group gap="xs" className={classes.notesLabel}>
-            <IconKey size={16} />
-            <Text fw={600}>Notes</Text>
-            {notesDirty && editing && (
-              <Badge size="xs" color="yellow" variant="light">
-                Unsaved changes
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold">Notes</span>
+              <span className="text-xs text-slate-500">Document findings, reminders, or next actions.</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-600">
+                {notesDirty ? 'Unsaved changes' : editing ? 'Editing' : 'Read-only'}
               </Badge>
-            )}
-          </Group>
+            </div>
+          </div>
           <Textarea
-            className={classes.notesInput}
-            minRows={3}
-            autosize
             value={notes}
-            onChange={(e) => setNotes(e.currentTarget.value)}
-            readOnly={!editing}
-            variant="filled"
+            onChange={(event) => {
+              if (!editing) setEditing(true);
+              setNotes(event.target.value);
+            }}
+            rows={6}
+            className="resize-y font-mono text-sm"
+            placeholder="Add observations about this stream..."
           />
-          <Group gap="sm" className={classes.notesActions} wrap="wrap">
-            {!editing ? (
-              <Button onClick={() => setEditing(true)} variant="light" color="indigo">
-                Edit Notes
-              </Button>
-            ) : (
-              <>
-                <Button
-                  onClick={() => {
-                    onSaveNotes(notes);
-                    setEditing(false);
-                  }}
-                  loading={!!isSavingNotes}
-                  disabled={!notesDirty}
-                >
-                  Save
-                </Button>
-                <Button
-                  variant="subtle"
-                  onClick={() => {
-                    setNotes(summary.notes ?? '');
-                    setEditing(false);
-                  }}
-                >
-                  Cancel
-                </Button>
-              </>
-            )}
-          </Group>
         </div>
-      </Stack>
+      </CardContent>
+
+      <CardFooter className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/60 py-4">
+        <div className="text-xs text-slate-500">
+          <p className="font-medium">Stream ID</p>
+          <p className="font-mono">{summary.id}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setNotes(summary.notes ?? '');
+              setEditing(false);
+            }}
+            disabled={!notesDirty}
+          >
+            Reset
+          </Button>
+          <Button
+            onClick={() => {
+              onSaveNotes(notes);
+              setEditing(false);
+            }}
+            disabled={!notesDirty}
+            className="gap-2"
+          >
+            {isSavingNotes ? 'Saving...' : 'Save Notes'}
+          </Button>
+        </div>
+      </CardFooter>
     </Card>
   );
 }

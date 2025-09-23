@@ -1,26 +1,19 @@
-import { Group, Text, Title } from '@mantine/core';
 import { IconScan } from '@tabler/icons-react';
-import { ScanForm } from '../components';
+import { ScanForm } from '@/components';
 
 export function ScanPage() {
   return (
-    <div className="page-container">
-      <div className="page-content">
-        <div className="page-header">
-          <div>
-            <Group gap="xs" mb="xs">
-              <IconScan size={24} color="var(--mantine-color-indigo-6)" />
-              <Title order={2} c="dark.6">
-                New Scan
-              </Title>
-            </Group>
-            <Text c="dimmed" size="sm">
-              Configure your provable fairness scan parameters to analyze game outcomes
-            </Text>
-          </div>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4">
+      <div className="flex items-start gap-3 text-indigo-600">
+        <IconScan size={24} />
+        <div className="flex flex-col">
+          <h1 className="text-xl font-semibold text-slate-900">New Scan</h1>
+          <p className="text-sm text-slate-500">
+            Configure your provable fairness scan parameters to analyze game outcomes.
+          </p>
         </div>
-        <ScanForm />
       </div>
+      <ScanForm />
     </div>
   );
 }

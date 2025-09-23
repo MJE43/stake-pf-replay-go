@@ -1,13 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Paper, Title, Group, Alert, Text, Box, Badge, Skeleton, Stack, Transition } from '@mantine/core';
-import {
-  MantineReactTable,
-  useMantineReactTable,
-  type MRT_ColumnDef,
-} from "mantine-react-table";
-import { GetRunHits } from "../../wailsjs/go/bindings/App";
-import { store } from "../../wailsjs/go/models";
-import { IconTable, IconAlertCircle } from "@tabler/icons-react";
+import { useState, useEffect } from 'react';
+import { IconAlertCircle, IconTable } from '@tabler/icons-react';
+import { GetRunHits } from '@wails/go/bindings/App';
+import { store } from '@wails/go/models';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface HitsTableProps {
   runId: string;
@@ -18,134 +15,104 @@ export function HitsTable({ runId }: HitsTableProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch hits data
   const fetchHits = async () => {
     try {
       setLoading(true);
       setError(null);
-
       const hitsPage = await GetRunHits(runId, 1, 50);
-      setData(hitsPage.hits || []);
+      setData(hitsPage.hits ?? []);
     } catch (err) {
-      console.error("Failed to fetch hits:", err);
-      setError(err instanceof Error ? err.message : "Failed to load hits");
+      console.error('Failed to fetch hits:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load hits');
       setData([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch data when component mounts
   useEffect(() => {
     fetchHits();
   }, [runId]);
 
-  // Define columns using the exact MRT v2 pattern
-  const columns = useMemo<MRT_ColumnDef<store.HitWithDelta>[]>(
-    () => [
-      {
-        accessorKey: "nonce",
-        header: "Nonce",
-      },
-      {
-        accessorKey: "metric",
-        header: "Metric",
-      },
-      {
-        accessorKey: "delta_nonce",
-        header: "Delta",
-      },
-    ],
-    []
-  );
-
-  // Initialize table using the exact MRT v2 pattern
-  const table = useMantineReactTable({
-    columns,
-    data, // must be memoized or stable
-  });
-
   if (error) {
     return (
-      <Paper p="xl" withBorder radius="lg" className="glass-effect">
-        <Alert
-          icon={<IconAlertCircle size="1.2rem" />}
-          title="Unable to Load Hits"
-          color="red"
-          radius="md"
-          className="card-hover"
-        >
-          <Text size="sm">{error}</Text>
-        </Alert>
-      </Paper>
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-600 shadow-sm">
+        <div className="flex items-start gap-3">
+          <IconAlertCircle size={20} />
+          <div>
+            <h3 className="text-base font-semibold">Unable to load hits</h3>
+            <p className="mt-1 text-sm">{error}</p>
+            <Button variant="destructive" size="sm" className="mt-4" onClick={fetchHits}>
+              Retry
+            </Button>
+          </div>
+        </div>
+      </div>
     );
   }
 
   if (loading) {
     return (
-      <Paper p="xl" withBorder radius="lg" className="glass-effect card-hover">
-        <Group justify="space-between" align="center" mb="xl">
-          <Group gap="md">
-            <Box p="sm" bg="blue.1" style={{ borderRadius: "12px" }}>
-              <IconTable size="1.4rem" color="var(--mantine-color-blue-6)" />
-            </Box>
-            <Box>
-              <Title order={3} className="text-gradient" mb={4}>
-                Hit Results
-              </Title>
-              <Text size="sm" c="dimmed">
-                Loading hits...
-              </Text>
-            </Box>
-          </Group>
-        </Group>
-        <Stack gap="md">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Group key={i} justify="space-between">
-              <Skeleton height={20} width="30%" />
-              <Skeleton height={20} width="25%" />
-              <Skeleton height={20} width="25%" />
-            </Group>
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center gap-3 text-indigo-600">
+          <IconTable size={20} />
+          <div className="flex flex-col">
+            <h3 className="text-base font-semibold text-slate-900">Hit Results</h3>
+            <p className="text-sm text-slate-500">Loading hits...</p>
+          </div>
+        </div>
+        <div className="mt-6 space-y-3">
+          {Array.from({ length: 5 }).map((_, idx) => (
+            <div key={idx} className="flex items-center justify-between gap-4">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-24" />
+            </div>
           ))}
-        </Stack>
-      </Paper>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Paper p="xl" withBorder radius="lg" className="glass-effect card-hover">
-      {/* Header Section */}
-      <Group justify="space-between" align="center" mb="xl">
-        <Group gap="md">
-          <Box p="sm" bg="blue.1" style={{ borderRadius: "12px" }}>
-            <IconTable size="1.4rem" color="var(--mantine-color-blue-6)" />
-          </Box>
-          <Box>
-            <Title order={3} className="text-gradient" mb={4}>
-              Hit Results
-            </Title>
-            <Text size="sm" c="dimmed">
-              Detailed breakdown of all matching nonces
-            </Text>
-          </Box>
-        </Group>
-
+    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3 text-indigo-600">
+          <IconTable size={20} />
+          <div className="flex flex-col">
+            <h3 className="text-base font-semibold text-slate-900">Hit Results</h3>
+            <p className="text-sm text-slate-500">Detailed breakdown of all matching nonces.</p>
+          </div>
+        </div>
         {data.length > 0 && (
-          <Badge
-            variant="gradient"
-            gradient={{ from: "blue", to: "cyan" }}
-            size="lg"
-            radius="md"
-          >
+          <Badge className="bg-indigo-500/10 text-indigo-600">
             {data.length.toLocaleString()} hits
           </Badge>
         )}
-      </Group>
+      </div>
 
-      {/* Table Section */}
-      <Box>
-        <MantineReactTable table={table} />
-      </Box>
-    </Paper>
+      <div className="mt-6 overflow-hidden rounded-lg border border-slate-200">
+        <table className="min-w-full text-sm">
+          <thead className="bg-slate-100/80 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-3 py-2 text-left">Nonce</th>
+              <th className="px-3 py-2 text-left">Metric</th>
+              <th className="px-3 py-2 text-left">Delta</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((hit) => (
+              <tr key={`${hit.nonce}-${hit.delta_nonce ?? 'na'}`} className="odd:bg-white even:bg-slate-50/60">
+                <td className="px-3 py-2 font-mono text-xs text-slate-700">{hit.nonce.toLocaleString()}</td>
+                <td className="px-3 py-2 font-mono text-xs text-slate-700">{hit.metric.toFixed(6)}</td>
+                <td className="px-3 py-2 font-mono text-xs text-slate-700">
+                  {hit.delta_nonce != null ? hit.delta_nonce.toLocaleString() : '-'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

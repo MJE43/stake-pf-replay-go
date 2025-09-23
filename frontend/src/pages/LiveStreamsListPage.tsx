@@ -1,37 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ActionIcon,
-  Alert,
-  Badge,
-  Group,
-  Loader,
-  Paper,
-  SimpleGrid,
-  Stack,
-  Switch,
-  Text,
-  TextInput,
-  Title,
-  Tooltip,
-} from '@mantine/core';
-import { useDebouncedValue } from '@mantine/hooks';
-import {
   IconAlertCircle,
   IconArrowRight,
   IconDownload,
+  IconLoader2,
   IconRefresh,
   IconSearch,
   IconTrash,
 } from '@tabler/icons-react';
-import { EventsOn } from '../../wailsjs/runtime/runtime';
-import {
-  ListStreams,
-  DeleteStream,
-  IngestInfo,
-} from '../../wailsjs/go/livehttp/LiveModule';
-import { livestore } from '../../wailsjs/go/models';
-import { callWithRetry, waitForWailsBinding } from '../lib/wails';
+import { EventsOn } from '@wails/runtime/runtime';
+import { ListStreams, DeleteStream, IngestInfo } from '@wails/go/livehttp/LiveModule';
+import { livestore } from '@wails/go/models';
+import { callWithRetry, waitForWailsBinding } from '@/lib/wails';
+import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useDebounce } from '@/hooks/useDebounce';
 
 function normalizeStream(s: livestore.LiveStream) {
   const idStr = Array.isArray(s.id) ? s.id.join('-') : String(s.id);
@@ -48,15 +36,17 @@ function normalizeStream(s: livestore.LiveStream) {
   };
 }
 
+type Stream = ReturnType<typeof normalizeStream>;
+
 export default function LiveStreamsListPage() {
   const navigate = useNavigate();
-  const [streams, setStreams] = useState<ReturnType<typeof normalizeStream>[]>([]);
+  const [streams, setStreams] = useState<Stream[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [debouncedSearch] = useDebouncedValue(search, 200);
+  const debouncedSearch = useDebounce(search, 250);
   const [autoFollow, setAutoFollow] = useState(false);
-  const [apiBase, setApiBase] = useState<string>('');
+  const [apiBase, setApiBase] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -92,8 +82,8 @@ export default function LiveStreamsListPage() {
   useEffect(() => {
     setLoading(true);
     load();
-    const id = setInterval(load, 4000);
-    return () => clearInterval(id);
+    const id = window.setInterval(load, 4000);
+    return () => window.clearInterval(id);
   }, []);
 
   useEffect(() => {
@@ -128,12 +118,12 @@ export default function LiveStreamsListPage() {
     const latest = filtered[0];
     if (latest?.id && latest.id !== lastAutoFollowed.current && latest.totalBets > 0) {
       lastAutoFollowed.current = latest.id;
-      setTimeout(() => navigate(`/live/${latest.id}`), 120);
+      window.setTimeout(() => navigate(`/live/${latest.id}`), 120);
     }
   }, [autoFollow, filtered, navigate, loading, error]);
 
   const onDelete = async (id: string) => {
-    if (!confirm('Delete this stream and all associated bets?')) return;
+    if (!window.confirm('Delete this stream and all associated bets?')) return;
     try {
       await waitForWailsBinding(['go', 'livehttp', 'LiveModule', 'DeleteStream'], { timeoutMs: 10_000 });
       await callWithRetry(() => DeleteStream(id), 3, 250);
@@ -146,166 +136,164 @@ export default function LiveStreamsListPage() {
   const openStream = (id: string) => navigate(`/live/${id}`);
 
   return (
-    <div className="page-container">
-      <div className="page-content">
-        <div className="page-header">
-          <div>
-            <Group gap="xs" mb="xs">
-              <Badge variant="light" color="indigo">
-                {streams.length}
-              </Badge>
-              <Title order={2} c="dark.6">
-                Live Streams
-              </Title>
-            </Group>
-            <Text c="dimmed" size="sm">
-              Monitor active Stake Originals sessions and jump into their live bet feeds.
-            </Text>
-          </div>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-2 text-indigo-600">
+          <Badge className="bg-indigo-500/10 text-indigo-600">{streams.length}</Badge>
+          <h1 className="text-xl font-semibold text-slate-900">Live Streams</h1>
         </div>
-
-        <Paper withBorder radius="md" shadow="sm" className="card-hover">
-          <Group justify="space-between" align="center" gap="md">
-            <TextInput
-              placeholder="Search by server hash or client seed"
-              leftSection={<IconSearch size={16} />}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-              style={{ flex: 1, minWidth: 260 }}
-            />
-            <Group gap="sm" align="center">
-              <Switch
-                checked={autoFollow}
-                onChange={(e) => setAutoFollow(e.currentTarget.checked)}
-                label="Auto-follow latest"
-              />
-              <Tooltip label="Refresh now">
-                <ActionIcon variant="light" color="indigo" onClick={load}>
-                  <IconRefresh size={18} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-          </Group>
-        </Paper>
-
-        {error && (
-          <Alert icon={<IconAlertCircle size={16} />} color="red" title="Live streams unavailable">
-            {error}
-          </Alert>
-        )}
-
-        {loading ? (
-          <Group align="center" gap="xs">
-            <Loader size="sm" />
-            <Text c="dimmed">Loading streams…</Text>
-          </Group>
-        ) : filtered.length === 0 ? (
-          <Paper radius="md" ta="center" className="card-hover">
-            <Stack gap="sm" align="center">
-              <Text size="lg" fw={600} c="dark.6">
-                No streams yet
-              </Text>
-              <Text c="dimmed" size="sm">
-                Point Antebot to the ingest URL and start betting to populate this list.
-              </Text>
-            </Stack>
-          </Paper>
-        ) : (
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg">
-            {filtered.map((s) => (
-              <StreamCard key={s.id} s={s} apiBase={apiBase} onDelete={onDelete} onOpen={openStream} />
-            ))}
-          </SimpleGrid>
-        )}
+        <p className="text-sm text-slate-500">
+          Monitor active Stake Originals sessions and jump into their live bet feeds.
+        </p>
       </div>
+
+      <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div className="relative flex-1">
+          <IconSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search by server hash or client seed"
+            className="pl-9"
+          />
+        </div>
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <Switch checked={autoFollow} onCheckedChange={setAutoFollow} />
+            Auto-follow latest
+          </label>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={load}>
+                  <IconRefresh size={16} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Refresh now</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </div>
+
+      {error && (
+        <Alert variant="destructive" icon={<IconAlertCircle size={18} />} title="Live streams unavailable">
+          {error}
+        </Alert>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+          <IconLoader2 className="h-5 w-5 animate-spin text-indigo-600" />
+          <span className="text-sm text-slate-600">Loading streams...</span>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white p-12 text-center shadow-sm">
+          <span className="text-lg font-semibold text-slate-800">No streams yet</span>
+          <span className="text-sm text-slate-500">
+            Point Antebot to the ingest URL and start betting to populate this list.
+          </span>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((stream) => (
+            <StreamCard
+              key={stream.id}
+              stream={stream}
+              apiBase={apiBase}
+              onDelete={onDelete}
+              onOpen={openStream}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 function StreamCard({
-  s,
+  stream,
   apiBase,
   onDelete,
   onOpen,
 }: {
-  s: ReturnType<typeof normalizeStream>;
+  stream: Stream;
   apiBase: string;
   onDelete: (id: string) => Promise<void> | void;
   onOpen: (id: string) => void;
 }) {
+  const lastSeen = stream.lastSeenAt ? new Date(stream.lastSeenAt).toLocaleString() : '--';
+  const exportHref = apiBase ? `${apiBase}/live/streams/${stream.id}/export.csv` : undefined;
+
   return (
-    <Paper withBorder radius="md" shadow="sm" className="card-hover">
-      <Stack gap="md">
-        <Group justify="space-between" align="flex-start">
-          <div>
-            <Text fw={600} size="sm" c="gray.6">
-              Client Seed
-            </Text>
-            <Text fw={600}>{s.clientSeed || '—'}</Text>
-          </div>
-          <Group gap="xs">
-            <Tooltip label="Export CSV">
-              <ActionIcon
-                variant="subtle"
-                color="indigo"
-                component="a"
-                href={apiBase ? `${apiBase}/live/streams/${s.id}/export.csv` : undefined}
-                target={apiBase ? '_blank' : undefined}
-                rel="noopener noreferrer"
-                disabled={!apiBase}
-              >
-                <IconDownload size={16} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Delete stream">
-              <ActionIcon variant="subtle" color="red" onClick={() => onDelete(s.id)}>
-                <IconTrash size={16} />
-              </ActionIcon>
-            </Tooltip>
-          </Group>
-        </Group>
-
-        <div>
-          <Text size="xs" c="dimmed" fw={600} tt="uppercase">
-            Server seed hash
-          </Text>
-          <Text size="sm" fw={500}>
-            {s.serverSeedHashed ? `${s.serverSeedHashed.slice(0, 16)}…` : '—'}
-          </Text>
+    <div className="flex h-full flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Client Seed</span>
+          <p className="text-sm font-medium text-slate-800 break-all">{stream.clientSeed || '--'}</p>
         </div>
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => exportHref && window.open(exportHref, '_blank', 'noopener,noreferrer')}
+                  disabled={!exportHref}
+                >
+                  <IconDownload size={16} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Export CSV</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={() => onDelete(stream.id)}>
+                  <IconTrash size={16} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Delete stream</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </div>
 
-        <Group gap="sm">
-          <Badge variant="light" color="indigo">
-            {s.totalBets.toLocaleString()} bets
+      <div className="space-y-1">
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Server Seed Hash</span>
+        <p className="font-mono text-xs text-slate-700">
+          {stream.serverSeedHashed ? `${stream.serverSeedHashed.slice(0, 16)}...` : '--'}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Badge className="bg-indigo-500/10 text-indigo-600">
+          {stream.totalBets.toLocaleString()} bets
+        </Badge>
+        {stream.highestRoundResult && (
+          <Badge className="bg-violet-500/10 text-violet-600">
+            Max x{stream.highestRoundResult.toLocaleString()}
           </Badge>
-          {s.highestRoundResult && (
-            <Badge variant="light" color="violet">
-              Max ×{s.highestRoundResult.toLocaleString()}
-            </Badge>
-          )}
-        </Group>
+        )}
+      </div>
 
-        <Group justify="space-between" align="center">
-          <Stack gap={0}>
-            <Text size="xs" c="dimmed">
-              Last seen
-            </Text>
-            <Text size="sm" fw={500}>
-              {s.lastSeenAt ? new Date(s.lastSeenAt).toLocaleString() : '—'}
-            </Text>
-          </Stack>
-          <Tooltip label="Open live view">
-            <ActionIcon
-              size="lg"
-              variant="light"
-              color="indigo"
-              onClick={() => onOpen(s.id)}
-            >
-              <IconArrowRight size={16} />
-            </ActionIcon>
+      <div className="mt-auto flex items-center justify-between">
+        <div>
+          <span className="text-xs text-slate-500">Last seen</span>
+          <p className="text-sm font-medium text-slate-700">{lastSeen}</p>
+        </div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" onClick={() => onOpen(stream.id)}>
+                <IconArrowRight size={16} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Open live view</TooltipContent>
           </Tooltip>
-        </Group>
-      </Stack>
-    </Paper>
+        </TooltipProvider>
+      </div>
+    </div>
   );
 }

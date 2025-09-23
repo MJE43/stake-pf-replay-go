@@ -1,32 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  Anchor,
-  Badge,
-  Button,
-  CopyButton,
-  Group,
-  Loader,
-  Paper,
-  Stack,
-  Text,
-  Title,
-  Tooltip,
-} from '@mantine/core';
-import { Notifications } from '@mantine/notifications';
-import { IconArrowLeft, IconCheck, IconCopy, IconExternalLink } from '@tabler/icons-react';
-import StreamInfoCard, { StreamSummary } from '../components/StreamInfoCard';
-import LiveBetsTableV2 from '../components/LiveBetsTable';
-import { EventsOn } from '../../wailsjs/runtime/runtime';
-import {
-  GetStream,
-  UpdateNotes,
-  DeleteStream,
-  ExportCSV,
-  IngestInfo,
-} from '../../wailsjs/go/livehttp/LiveModule';
-import { livestore } from '../../wailsjs/go/models';
-import classes from './LiveStreamDetail.module.css';
+import { IconArrowLeft, IconExternalLink } from '@tabler/icons-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import StreamInfoCard, { StreamSummary } from '@/components/StreamInfoCard';
+import LiveBetsTable from '@/components/LiveBetsTable';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from '@/components/ui/use-toast';
+import { EventsOn } from '@wails/runtime/runtime';
+import { GetStream, UpdateNotes, DeleteStream, ExportCSV, IngestInfo } from '@wails/go/livehttp/LiveModule';
+import { livestore } from '@wails/go/models';
 
 function normalizeStream(s: livestore.LiveStream) {
   const idStr = Array.isArray(s.id) ? s.id.join('-') : String(s.id);
@@ -54,26 +37,24 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
   const [savingNotes, setSavingNotes] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
   const [apiBase, setApiBase] = useState<string>('');
 
   const load = useCallback(async (attempt = 0) => {
     let scheduledRetry = false;
-    setRetryCount(attempt);
     setLoading(true);
     setError(null);
 
     try {
       const stream = await GetStream(streamId);
       setDetail(normalizeStream(stream));
-      setRetryCount(0);
-    } catch (e: any) {
-      const message = e?.message || 'Failed to load stream';
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Failed to load stream';
       if (message.includes('not found') && attempt < 3) {
         scheduledRetry = true;
         setTimeout(() => load(attempt + 1), 1000);
       } else {
         setError(message);
+        toast.error(message);
       }
     } finally {
       if (!scheduledRetry) {
@@ -100,7 +81,6 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
 
   useEffect(() => {
     setDetail(null);
-    setRetryCount(0);
     load();
     const off = EventsOn(`live:newrows:${streamId}`, () => {
       load();
@@ -123,24 +103,13 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
         anchor.click();
         document.body.removeChild(anchor);
         window.URL.revokeObjectURL(url);
-        Notifications.show({
-          title: 'Export complete',
-          message: 'CSV downloaded',
-          color: 'green',
-        });
+        toast.success('CSV downloaded');
       } else {
-        Notifications.show({
-          title: 'Export complete',
-          message: `CSV written to ${exported}`,
-          color: 'green',
-        });
+        toast.success(`CSV written to ${exported}`);
       }
-    } catch (e: any) {
-      Notifications.show({
-        title: 'Error',
-        message: e?.message || 'Failed to export CSV',
-        color: 'red',
-      });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Failed to export CSV';
+      toast.error(message);
     }
   }, [streamId]);
 
@@ -149,43 +118,29 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
     try {
       await UpdateNotes(streamId, notes);
       setDetail((current) => (current ? { ...current, notes } : current));
-      Notifications.show({
-        title: 'Saved',
-        message: 'Notes updated',
-        color: 'green',
-      });
-    } catch (e: any) {
-      setError(e?.message || 'Failed to save notes');
-      Notifications.show({
-        title: 'Error',
-        message: e?.message || 'Failed to save notes',
-        color: 'red',
-      });
+      toast.success('Notes updated');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Failed to save notes';
+      setError(message);
+      toast.error(message);
     } finally {
       setSavingNotes(false);
     }
   }, [streamId]);
 
   const onDeleteStream = useCallback(async () => {
-    if (!confirm('Delete this stream and all associated bets? This action cannot be undone.')) {
+    if (!window.confirm('Delete this stream and all associated bets? This action cannot be undone.')) {
       return;
     }
     setDeleting(true);
     try {
       await DeleteStream(streamId);
-      Notifications.show({
-        title: 'Deleted',
-        message: 'Stream removed successfully',
-        color: 'green',
-      });
+      toast.success('Stream removed successfully');
       navigate('/live');
-    } catch (e: any) {
-      setError(e?.message || 'Failed to delete stream');
-      Notifications.show({
-        title: 'Error',
-        message: e?.message || 'Failed to delete stream',
-        color: 'red',
-      });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Failed to delete stream';
+      setError(message);
+      toast.error(message);
     } finally {
       setDeleting(false);
     }
@@ -199,182 +154,69 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
       clientSeed: detail.client_seed,
       createdAt: detail.created_at,
       lastSeenAt: detail.last_seen_at,
-      notes: detail.notes ?? '',
+      notes: detail.notes,
       totalBets: detail.total_bets ?? undefined,
       highestMultiplier: detail.highest_round_result ?? undefined,
     } satisfies StreamSummary;
   }, [detail]);
 
-  const createdDisplay = useMemo(() => {
-    if (!detail?.created_at) return '—';
-    return new Date(detail.created_at).toLocaleString();
-  }, [detail?.created_at]);
-
-  const lastSeenDisplay = useMemo(() => {
-    if (!detail?.last_seen_at) return '—';
-    return new Date(detail.last_seen_at).toLocaleString();
-  }, [detail?.last_seen_at]);
-
-  const isLive = useMemo(() => {
-    if (!detail?.last_seen_at) return false;
-    const lastSeen = new Date(detail.last_seen_at).getTime();
-    if (!Number.isFinite(lastSeen)) return false;
-    return Date.now() - lastSeen < 60_000;
-  }, [detail?.last_seen_at]);
-
-  const retryLabel = retryCount > 0 ? ` (retry ${retryCount}/3)` : '';
-
-  if (loading && !detail) {
-    return (
-      <Stack className={classes.root} gap="md">
-        <Button
-          className={classes.backButton}
-          variant="subtle"
-          size="sm"
-          leftSection={<IconArrowLeft size={16} />}
-          onClick={() => navigate(-1)}
-        >
-          Back
-        </Button>
-        <Paper withBorder radius="md" className={classes.statusCard}>
-          <Group gap="sm">
-            <Loader size="sm" />
-            <Text c="dimmed">
-              Loading stream…
-              {retryLabel}
-            </Text>
-          </Group>
-        </Paper>
-      </Stack>
-    );
-  }
-
-  if (error || !detail) {
-    return (
-      <Stack className={classes.root} gap="md">
-        <Button
-          className={classes.backButton}
-          variant="subtle"
-          size="sm"
-          leftSection={<IconArrowLeft size={16} />}
-          onClick={() => navigate(-1)}
-        >
-          Back
-        </Button>
-        <Paper withBorder radius="md" className={classes.statusCard}>
-          <Text c="red">{error ?? 'Stream not found'}</Text>
-        </Paper>
-      </Stack>
-    );
-  }
-
   return (
-    <Stack className={classes.root} gap="xl">
-      <Button
-        className={classes.backButton}
-        variant="subtle"
-        size="sm"
-        leftSection={<IconArrowLeft size={16} />}
-        onClick={() => navigate(-1)}
-      >
-        Back
-      </Button>
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            className="gap-2 text-sm text-slate-600 hover:text-slate-900"
+            onClick={() => navigate('/live')}
+          >
+            <IconArrowLeft size={16} />
+            Back to streams
+          </Button>
+          {detail && (
+            <Badge className="gap-2 bg-indigo-500/10 text-indigo-600">
+              Live Stream
+              <IconExternalLink size={14} />
+            </Badge>
+          )}
+        </div>
+      </div>
 
-      <Paper radius="lg" shadow="sm" p="lg" className={classes.hero}>
-        <Stack gap="lg">
-          <Group justify="space-between" align="flex-start" className={classes.heroHead} wrap="wrap">
-            <Stack gap={6} className={classes.heroInfo}>
-              <Group gap="xs" wrap="wrap">
-                <Title order={2} c="white">
-                  Live Stream
-                </Title>
-                <Badge color={isLive ? 'green' : 'gray'} variant="light">
-                  {isLive ? 'Live' : 'Archived'}
-                </Badge>
-              </Group>
-              <Group gap="xl" wrap="wrap" className={classes.heroMetaRow}>
-                <div className={classes.heroField}>
-                  <Text className={classes.heroLabel}>Stream ID</Text>
-                  <Group gap={8} wrap="wrap">
-                    <Text className={classes.heroId} ff="var(--mantine-font-family-monospace)">
-                      {detail.id}
-                    </Text>
-                    <CopyButton value={detail.id} timeout={1500}>
-                      {({ copied, copy }) => (
-                        <Tooltip label={copied ? 'Copied' : 'Copy'} position="bottom">
-                          <Button
-                            size="xs"
-                            variant="white"
-                            color="dark"
-                            onClick={copy}
-                            leftSection={copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-                          >
-                            {copied ? 'Copied' : 'Copy'}
-                          </Button>
-                        </Tooltip>
-                      )}
-                    </CopyButton>
-                  </Group>
-                </div>
-                <div className={classes.heroField}>
-                  <Text className={classes.heroLabel}>Created</Text>
-                  <Text className={classes.heroValue}>{createdDisplay}</Text>
-                </div>
-                <div className={classes.heroField}>
-                  <Text className={classes.heroLabel}>Last seen</Text>
-                  <Text className={classes.heroValue}>{lastSeenDisplay}</Text>
-                </div>
-              </Group>
-            </Stack>
-            {apiBase && (
-              <Anchor
-                className={classes.heroLink}
-                href={`${apiBase}/live/streams/${detail.id}/export.csv`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Group gap={6}>
-                  <IconExternalLink size={16} />
-                  <Text size="sm">Open CSV endpoint</Text>
-                </Group>
-              </Anchor>
-            )}
-          </Group>
-          <Group gap="sm" wrap="wrap">
-            {detail.total_bets != null && (
-              <Badge variant="white" color="dark">
-                {detail.total_bets.toLocaleString()} bets captured
-              </Badge>
-            )}
-            {detail.highest_round_result != null && (
-              <Badge variant="white" color="dark">
-                Highest ×{detail.highest_round_result.toLocaleString()}
-              </Badge>
-            )}
-          </Group>
-        </Stack>
-      </Paper>
+      {loading && !detail ? (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_1fr]">
+          <Skeleton className="h-[400px] rounded-xl" />
+          <Skeleton className="h-[400px] rounded-xl" />
+        </div>
+      ) : error && !detail ? (
+        <div className="flex flex-col items-start gap-4 rounded-lg border border-red-200 bg-red-50 p-6 text-red-600">
+          <h2 className="text-lg font-semibold">Something went wrong</h2>
+          <p className="text-sm">{error}</p>
+          <Button onClick={() => load()} variant="destructive">
+            Try again
+          </Button>
+        </div>
+      ) : summary ? (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_1fr]">
+          <StreamInfoCard
+            summary={summary}
+            onSaveNotes={onSaveNotes}
+            onExportCsv={onExportCsv}
+            onDeleteStream={onDeleteStream}
+            isSavingNotes={savingNotes}
+            isDeletingStream={deleting}
+          />
 
-      {summary && (
-        <StreamInfoCard
-          summary={summary}
-          onSaveNotes={onSaveNotes}
-          onExportCsv={onExportCsv}
-          onDeleteStream={onDeleteStream}
-          isSavingNotes={savingNotes}
-          isDeletingStream={deleting}
-        />
-      )}
+          <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-lg font-semibold text-slate-900">Live bets</h2>
+              <p className="text-sm text-slate-500">
+                Newest bets appear at the top. Scroll to load older history.
+              </p>
+            </div>
 
-      <Paper withBorder radius="md" shadow="xs" p="md" className={classes.tableCard}>
-        <LiveBetsTableV2
-          streamId={detail.id}
-          apiBase={apiBase || undefined}
-          pageSize={1000}
-          pollMs={1200}
-          defaultOrder="asc"
-        />
-      </Paper>
-    </Stack>
+            <LiveBetsTable streamId={streamId} minMultiplier={0} apiBase={apiBase} />
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
