@@ -14,8 +14,7 @@ import {
 } from '@tabler/icons-react';
 import { scanFormSchema, validateGameParams } from '@/lib/validation';
 import { callWithRetry, waitForWailsBinding } from '@/lib/wails';
-import { GetGames, HashServerSeed, StartScan } from '@wails/go/bindings/App';
-import { games, bindings } from '@wails/go/models';
+import type { games } from '@wails/go/models';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -45,6 +44,24 @@ const DEFAULT_VALUES: ScanFormFormValues = {
   tolerance: 0,
   limit: 1000,
   timeoutMs: 300000,
+};
+
+// Lazy-load Wails bindings to keep the initial bundle smaller.
+let appBindingsPromise: Promise<typeof import('@wails/go/bindings/App')> | null = null;
+let modelBindingsPromise: Promise<typeof import('@wails/go/models')> | null = null;
+
+const getAppBindings = () => {
+  if (!appBindingsPromise) {
+    appBindingsPromise = import('@wails/go/bindings/App');
+  }
+  return appBindingsPromise;
+};
+
+const getModelBindings = () => {
+  if (!modelBindingsPromise) {
+    modelBindingsPromise = import('@wails/go/models');
+  }
+  return modelBindingsPromise;
 };
 
 export function ScanForm() {
@@ -81,6 +98,7 @@ export function ScanForm() {
       try {
         gameLoadAttempts.current += 1;
         await waitForWailsBinding(['go', 'bindings', 'App', 'GetGames'], { timeoutMs: 10_000 });
+        const { GetGames } = await getAppBindings();
         const gameSpecs = await callWithRetry(() => GetGames(), 5, 250);
         if (!Array.isArray(gameSpecs)) {
           throw new Error('Unexpected GetGames response');
@@ -143,6 +161,7 @@ export function ScanForm() {
 
     setHashLoading(true);
     try {
+      const { HashServerSeed } = await getAppBindings();
       const hash = await HashServerSeed(watchedServerSeed);
       setHashPreview(hash);
       setShowHashPreview(true);
@@ -177,6 +196,7 @@ export function ScanForm() {
         TimeoutMs: data.timeoutMs,
       };
 
+      const [{ StartScan }, { bindings }] = await Promise.all([getAppBindings(), getModelBindings()]);
       const result = await StartScan(bindings.ScanRequest.createFrom(scanRequest));
       toast.success(`Scan started. Run ID: ${result.RunID}`);
       navigate(`/runs/${result.RunID}`);
