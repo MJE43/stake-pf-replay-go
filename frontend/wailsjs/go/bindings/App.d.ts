@@ -11,6 +11,8 @@ export function GetGames():Promise<Array<games.GameSpec>>;
 
 export function GetRun(arg1:string):Promise<store.Run>;
 
+export function GetSeedRuns(arg1:string):Promise<bindings.SeedRunGroup>;
+
 export function GetRunHits(arg1:string,arg2:number,arg3:number):Promise<bindings.HitsPage>;
 
 export function HashServerSeed(arg1:string):Promise<string>;

@@ -15,6 +15,7 @@ type DB interface {
 	GetHits(runID string, limit, offset int) ([]Hit, error)
 	ListRuns(query RunsQuery) (*RunsList, error)
 	GetRunHits(runID string, page, perPage int) (*HitsPage, error)
+	ListRunsBySeed(serverSeedHash string, serverSeed string, clientSeed string) ([]Run, error)
 }
 
 // RunsQuery represents query parameters for listing runs

@@ -110,6 +110,109 @@ func TestListRuns(t *testing.T) {
 	}
 }
 
+func TestListRunsBySeed(t *testing.T) {
+	db, err := NewSQLiteDB(":memory:")
+	if err != nil {
+		t.Fatalf("Failed to create test database: %v", err)
+	}
+	defer db.Close()
+
+	if err := db.Migrate(); err != nil {
+		t.Fatalf("Failed to migrate: %v", err)
+	}
+
+	serverA := "super-secret-server"
+	serverAHash := computeServerHash(serverA)
+	clientA := "client-a"
+
+	runs := []*Run{
+		{
+			ID:             "seed-a-limbo",
+			Game:           "limbo",
+			ServerSeed:     serverA,
+			ServerSeedHash: serverAHash,
+			ClientSeed:     clientA,
+			NonceStart:     1,
+			NonceEnd:       100,
+			TargetOp:       "ge",
+			TargetVal:      1.2,
+			EngineVersion:  "1.0.0",
+		},
+		{
+			ID:             "seed-a-dice",
+			Game:           "dice",
+			ServerSeed:     serverA,
+			ServerSeedHash: serverAHash,
+			ClientSeed:     clientA,
+			NonceStart:     5,
+			NonceEnd:       200,
+			TargetOp:       "ge",
+			TargetVal:      50,
+			EngineVersion:  "1.0.0",
+		},
+		{
+			ID:         "seed-a-legacy",
+			Game:       "roulette",
+			ServerSeed: serverA,
+			// no hash stored to mimic legacy rows
+			ClientSeed:    clientA,
+			NonceStart:    10,
+			NonceEnd:      20,
+			TargetOp:      "ge",
+			TargetVal:     2,
+			EngineVersion: "1.0.0",
+		},
+		{
+			ID:             "other-client",
+			Game:           "limbo",
+			ServerSeed:     serverA,
+			ServerSeedHash: serverAHash,
+			ClientSeed:     "client-b",
+			NonceStart:     1,
+			NonceEnd:       50,
+			TargetOp:       "ge",
+			TargetVal:      1.1,
+			EngineVersion:  "1.0.0",
+		},
+		{
+			ID:             "other-server",
+			Game:           "limbo",
+			ServerSeed:     "different-server",
+			ServerSeedHash: computeServerHash("different-server"),
+			ClientSeed:     clientA,
+			NonceStart:     1,
+			NonceEnd:       10,
+			TargetOp:       "ge",
+			TargetVal:      1.0,
+			EngineVersion:  "1.0.0",
+		},
+	}
+
+	for _, run := range runs {
+		if err := db.SaveRun(run); err != nil {
+			t.Fatalf("Failed to save run %s: %v", run.ID, err)
+		}
+	}
+
+	results, err := db.ListRunsBySeed(serverAHash, serverA, clientA)
+	if err != nil {
+		t.Fatalf("ListRunsBySeed failed: %v", err)
+	}
+
+	if len(results) != 3 {
+		t.Fatalf("Expected 3 runs sharing seed, got %d", len(results))
+	}
+
+	for _, run := range results {
+		if run.ClientSeed != clientA {
+			t.Errorf("unexpected client seed %s in results", run.ClientSeed)
+		}
+		if run.ServerSeed != serverA {
+			t.Errorf("unexpected server seed %s in results", run.ServerSeed)
+		}
+	}
+}
+
 func TestGetRunHits(t *testing.T) {
 	// Create in-memory database for testing
 	db, err := NewSQLiteDB(":memory:")

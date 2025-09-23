@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   IconAlertCircle,
@@ -8,13 +8,14 @@ import {
   IconLoader2,
   IconX,
 } from '@tabler/icons-react';
-import { GetRun } from '@wails/go/bindings/App';
-import { store } from '@wails/go/models';
-import { RunSummary, HitsTable } from '@/components';
+import { GetRun, GetSeedRuns } from '@wails/go/bindings/App';
+import { bindings, store } from '@wails/go/models';
+import { RunSummary, HitsTable, SeedRunWorkspace } from '@/components';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { waitForWailsBinding } from '@/lib/wails';
 
 export function RunDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +23,32 @@ export function RunDetailsPage() {
   const [run, setRun] = useState<store.Run | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [seedGroup, setSeedGroup] = useState<bindings.SeedRunGroup | null>(null);
+  const [groupLoading, setGroupLoading] = useState(false);
+  const [groupError, setGroupError] = useState<string | null>(null);
+
+  const refreshGroup = useCallback(
+    async (runId?: string) => {
+      const targetId = runId ?? id;
+      if (!targetId) {
+        return;
+      }
+
+      try {
+        setGroupLoading(true);
+        await waitForWailsBinding(['go', 'bindings', 'App', 'GetSeedRuns'], { timeoutMs: 10_000 });
+        const groupData = await GetSeedRuns(targetId);
+        setSeedGroup(groupData);
+        setGroupError(null);
+      } catch (err) {
+        console.error('Failed to load related runs', err);
+        setGroupError(err instanceof Error ? err.message : 'Failed to load related runs');
+      } finally {
+        setGroupLoading(false);
+      }
+    },
+    [id],
+  );
 
   useEffect(() => {
     if (!id) {
@@ -36,6 +63,7 @@ export function RunDetailsPage() {
         setError(null);
         const runData = await GetRun(id);
         setRun(runData);
+        await refreshGroup(id);
       } catch (err) {
         console.error('Failed to fetch run:', err);
         setError(err instanceof Error ? err.message : 'Failed to load run details');
@@ -45,7 +73,7 @@ export function RunDetailsPage() {
     };
 
     fetchRun();
-  }, [id]);
+  }, [id, refreshGroup]);
 
   const statusBadge = useMemo(() => {
     if (!run) return null;
@@ -125,6 +153,31 @@ export function RunDetailsPage() {
         </Button>
         {statusBadge}
       </div>
+
+      {groupError && (
+        <Alert variant="destructive" icon={<IconAlertCircle size={18} />} title="Related runs unavailable">
+          {groupError}
+        </Alert>
+      )}
+
+      {seedGroup && run && (
+        <SeedRunWorkspace
+          currentRun={run}
+          group={seedGroup}
+          groupLoading={groupLoading}
+          refreshGroup={refreshGroup}
+          onRunSelected={(runId) => {
+            if (runId !== run.id) {
+              navigate(`/runs/${runId}`);
+            }
+          }}
+          onRunCreated={(runId) => {
+            if (runId !== run.id) {
+              navigate(`/runs/${runId}`);
+            }
+          }}
+        />
+      )}
 
       <RunSummary run={run} />
 
