@@ -4,6 +4,7 @@ import { EventsOn } from '@wails/runtime/runtime';
 import { GetBets } from '@wails/go/livehttp/LiveModule';
 import type { LiveBet, LiveBetPage } from '@/types/live';
 import { mergeRows, normalizeLiveBet, unpackGetBets, type RawLiveBet } from '@/lib/live-normalizers';
+import { callWithRetry, waitForWailsBinding } from '@/lib/wails';
 
 export interface UseBetsStreamOptions {
   streamId: string;
@@ -59,6 +60,7 @@ export function useBetsStream({
   const pendingRef = useRef<LiveBet[]>([]);
   const [isStreaming, setIsStreaming] = useState(true);
   const [bufferVersion, setBufferVersion] = useState(0);
+  const betsBindingRef = useRef<Promise<void> | null>(null);
 
   const queryKey = useMemo(
     () => ['live-bets', streamId, { minMultiplier, pageSize, order, source: apiBase ?? 'wails' }] as const,
@@ -94,7 +96,17 @@ export function useBetsStream({
           console.warn('HTTP live bets request failed, falling back to Wails bridge.', err);
         }
       }
-      const wailsResult = await GetBets(streamId, minMultiplier, order, pageSize, offset);
+      if (!betsBindingRef.current) {
+        betsBindingRef.current = waitForWailsBinding(['go', 'livehttp', 'LiveModule', 'GetBets'], {
+          timeoutMs: 10_000,
+        });
+      }
+      await betsBindingRef.current;
+      const wailsResult = await callWithRetry(
+        () => GetBets(streamId, minMultiplier, order, pageSize, offset),
+        4,
+        250,
+      );
       return unpackGetBets(wailsResult);
     },
     refetchInterval: pollMs,

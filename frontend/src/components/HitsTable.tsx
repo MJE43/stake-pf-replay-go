@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { IconAlertCircle, IconTable } from '@tabler/icons-react';
 import { GetRunHits } from '@wails/go/bindings/App';
 import { store } from '@wails/go/models';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { callWithRetry, waitForWailsBinding } from '@/lib/wails';
 
 interface HitsTableProps {
   runId: string;
@@ -12,19 +13,53 @@ interface HitsTableProps {
 
 export function HitsTable({ runId }: HitsTableProps) {
   const [data, setData] = useState<store.HitWithDelta[]>([]);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const bindingsReady = useRef<Promise<void> | null>(null);
 
   const fetchHits = async () => {
     try {
       setLoading(true);
       setError(null);
-      const hitsPage = await GetRunHits(runId, 1, 50);
-      setData(hitsPage.hits ?? []);
+      if (!bindingsReady.current) {
+        bindingsReady.current = waitForWailsBinding(['go', 'bindings', 'App', 'GetRunHits'], {
+          timeoutMs: 10_000,
+        });
+      }
+      await bindingsReady.current;
+
+      const perPage = 500;
+      const combined: store.HitWithDelta[] = [];
+      let page = 1;
+      let expected = 0;
+      while (true) {
+        const pageData = await callWithRetry(() => GetRunHits(runId, page, perPage), 4, 250);
+        if (!pageData) break;
+        const hits = pageData.hits ?? [];
+        if (hits.length) {
+          combined.push(...hits);
+        }
+        expected = pageData.totalCount ?? expected;
+        if (pageData.totalPages && pageData.page && pageData.page >= pageData.totalPages) {
+          break;
+        }
+        if (hits.length < perPage) {
+          break;
+        }
+        if (expected && combined.length >= expected) {
+          break;
+        }
+        page += 1;
+      }
+
+      setData(combined);
+      setTotalCount(expected || combined.length);
     } catch (err) {
       console.error('Failed to fetch hits:', err);
       setError(err instanceof Error ? err.message : 'Failed to load hits');
       setData([]);
+      setTotalCount(null);
     } finally {
       setLoading(false);
     }
@@ -86,7 +121,7 @@ export function HitsTable({ runId }: HitsTableProps) {
         </div>
         {data.length > 0 && (
           <Badge className="bg-indigo-500/10 text-indigo-600">
-            {data.length.toLocaleString()} hits
+            {(totalCount ?? data.length).toLocaleString()} hits
           </Badge>
         )}
       </div>
