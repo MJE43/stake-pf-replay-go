@@ -18,6 +18,10 @@ export function GetBets(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['livehttp']['LiveModule']['GetBets'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function GetBetsPage(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['livehttp']['LiveModule']['GetBetsPage'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function GetStream(arg1) {
   return window['go']['livehttp']['LiveModule']['GetStream'](arg1);
 }

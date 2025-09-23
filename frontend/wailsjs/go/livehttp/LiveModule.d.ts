@@ -12,6 +12,8 @@ export function ExportCSV(arg1:string):Promise<string>;
 
 export function GetBets(arg1:string,arg2:number,arg3:string,arg4:number,arg5:number):Promise<Array<livestore.LiveBet>>;
 
+export function GetBetsPage(arg1:string,arg2:number,arg3:string,arg4:number,arg5:number):Promise<livehttp.BetsPage>;
+
 export function GetStream(arg1:string):Promise<livestore.LiveStream>;
 
 export function IngestInfo():Promise<livehttp.IngestInfo>;

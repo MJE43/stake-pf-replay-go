@@ -37,7 +37,15 @@ export function mergeRows(existing: LiveBet[], incoming: LiveBet[], order: 'asc'
   const seen = new Set(existing.map((bet) => bet.id));
   const fresh = incoming.filter((bet) => !seen.has(bet.id));
   if (!fresh.length) return existing;
-  return order === 'desc' ? [...fresh, ...existing] : [...existing, ...fresh];
+  const sortedFresh = [...fresh].sort((a, b) => {
+    if (order === 'desc') {
+      if (b.nonce !== a.nonce) return b.nonce - a.nonce;
+      return b.id - a.id;
+    }
+    if (a.nonce !== b.nonce) return a.nonce - b.nonce;
+    return a.id - b.id;
+  });
+  return order === 'desc' ? [...sortedFresh, ...existing] : [...existing, ...sortedFresh];
 }
 
 export function unpackGetBets(result: WailsGetBetsShape): LiveBetPage {

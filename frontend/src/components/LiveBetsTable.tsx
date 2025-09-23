@@ -3,8 +3,11 @@ import type { TableComponents, TableVirtuosoHandle } from 'react-virtuoso';
 import { TableVirtuoso } from 'react-virtuoso';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBetsStream } from '@/hooks/useBetsStream';
+import { cn } from '@/lib/utils';
 import type { LiveBet } from '@/types/live';
 
 const tableComponents: TableComponents<LiveBet> = {
@@ -59,6 +62,28 @@ function formatDate(value?: string) {
 const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTableProps) => {
   const virtuosoRef = useRef<TableVirtuosoHandle>(null);
   const [isPinnedToTop, setIsPinnedToTop] = useState(true);
+  const [minFilterRaw, setMinFilterRaw] = useState(minMultiplier ? String(minMultiplier) : '');
+  const [appliedMin, setAppliedMin] = useState(minMultiplier ?? 0);
+
+  useEffect(() => {
+    setMinFilterRaw(minMultiplier ? String(minMultiplier) : '');
+    setAppliedMin(minMultiplier ?? 0);
+  }, [minMultiplier]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      if (minFilterRaw === '') {
+        setAppliedMin(0);
+        return;
+      }
+      const parsed = Number(minFilterRaw);
+      if (!Number.isNaN(parsed) && parsed >= 0) {
+        setAppliedMin(parsed);
+      }
+    }, 400);
+
+    return () => window.clearTimeout(timeout);
+  }, [minFilterRaw]);
 
   const {
     rows,
@@ -72,7 +97,10 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
     error,
     isStreaming,
     refetch,
-  } = useBetsStream({ streamId, minMultiplier, apiBase, pageSize: 250, pollMs: 1500, order: 'desc' });
+    data,
+  } = useBetsStream({ streamId, minMultiplier: appliedMin, apiBase, pageSize: 250, pollMs: 1500, order: 'desc' });
+
+  const totalKnown = data?.pages?.[0]?.total ?? null;
 
   const handleEndReached = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -117,6 +145,39 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
     [],
   );
 
+  const filterControl = (
+    <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
+      <div className="flex items-center gap-2 text-xs text-slate-500">
+        <span
+          className={cn('h-2.5 w-2.5 rounded-full', isStreaming ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse')}
+        />
+        <span>{isStreaming ? 'Live' : 'Reconnecting…'}</span>
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600">
+          {rows.length.toLocaleString()} loaded{totalKnown != null ? ` / ${totalKnown.toLocaleString()}` : ''}
+        </span>
+        {pendingCount > 0 && isPinnedToTop && (
+          <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-indigo-600">
+            {pendingCount} buffered
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Label htmlFor="min-multiplier" className="text-xs text-slate-500">
+          Min ×
+        </Label>
+        <Input
+          id="min-multiplier"
+          value={minFilterRaw}
+          inputMode="decimal"
+          onChange={(event) => setMinFilterRaw(event.target.value.replace(/[^0-9.]/g, ''))}
+          className="h-8 w-24 text-right font-mono text-xs"
+          placeholder="0"
+        />
+      </div>
+    </div>
+  );
+
   if (isInitialLoading) {
     return (
       <div className="flex h-72 items-center justify-center rounded-lg border border-slate-200 bg-white">
@@ -139,16 +200,20 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
 
   if (!rows.length) {
     return (
-      <div className="flex h-72 flex-col items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white text-slate-500">
-        <span>No bets yet. Stay tuned!</span>
+      <div className="relative">
+        {filterControl}
+        <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white text-slate-500">
+          <span>No bets yet. Stay tuned!</span>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="relative">
+      {filterControl}
       {pendingCount > 0 && !isPinnedToTop && (
-        <div className="pointer-events-none absolute inset-x-0 top-3 z-30 flex justify-center">
+        <div className="pointer-events-none absolute inset-x-0 top-16 z-30 flex justify-center">
           <Button onClick={revealBufferedRows} className="pointer-events-auto shadow" size="sm">
             Show {pendingCount} new bet{pendingCount > 1 ? 's' : ''}
           </Button>

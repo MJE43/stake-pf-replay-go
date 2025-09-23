@@ -1,9 +1,10 @@
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EventsOn } from '@wails/runtime/runtime';
-import { GetBets } from '@wails/go/livehttp/LiveModule';
+import { Tail } from '@wails/go/livehttp/LiveModule';
 import type { LiveBet, LiveBetPage } from '@/types/live';
-import { mergeRows, normalizeLiveBet, unpackGetBets, type RawLiveBet } from '@/lib/live-normalizers';
+import { mergeRows, normalizeLiveBet, type RawLiveBet } from '@/lib/live-normalizers';
+import { loadBetsPageViaBridge } from '@/lib/live-api';
 import { callWithRetry, waitForWailsBinding } from '@/lib/wails';
 
 export interface UseBetsStreamOptions {
@@ -48,6 +49,37 @@ async function fetchHttpPage(options: {
   };
 }
 
+async function fetchTailPage(options: {
+  apiBase?: string;
+  streamId: string;
+  sinceId: number;
+  limit: number;
+}): Promise<{ rows: RawLiveBet[]; lastId: number }> {
+  const { apiBase, streamId, sinceId, limit } = options;
+  if (apiBase) {
+    try {
+      const params = new URLSearchParams({ since_id: String(sinceId), limit: String(limit) });
+      const response = await fetch(`${apiBase}/live/streams/${streamId}/tail?${params.toString()}`);
+      if (response.ok) {
+        const payload = (await response.json()) as { rows?: RawLiveBet[]; lastID?: number };
+        return {
+          rows: (payload.rows ?? []) as RawLiveBet[],
+          lastId: typeof payload.lastID === 'number' ? payload.lastID : sinceId,
+        };
+      }
+    } catch (err) {
+      console.warn('HTTP tail request failed, falling back to Wails bridge.', err);
+    }
+  }
+
+  await waitForWailsBinding(['go', 'livehttp', 'LiveModule', 'Tail'], { timeoutMs: 10_000 });
+  const result = await callWithRetry(() => Tail(streamId, sinceId, limit), 3, 200);
+  return {
+    rows: (result?.rows ?? []) as RawLiveBet[],
+    lastId: typeof result?.lastID === 'number' ? result.lastID : sinceId,
+  };
+}
+
 export function useBetsStream({
   streamId,
   minMultiplier = 0,
@@ -60,12 +92,23 @@ export function useBetsStream({
   const pendingRef = useRef<LiveBet[]>([]);
   const [isStreaming, setIsStreaming] = useState(true);
   const [bufferVersion, setBufferVersion] = useState(0);
-  const betsBindingRef = useRef<Promise<void> | null>(null);
+  const lastKnownIdRef = useRef(0);
 
   const queryKey = useMemo(
     () => ['live-bets', streamId, { minMultiplier, pageSize, order, source: apiBase ?? 'wails' }] as const,
     [streamId, minMultiplier, pageSize, order, apiBase],
   );
+
+  const updateLastKnownId = useCallback((rows: LiveBet[]) => {
+    if (!rows.length) return;
+    let maxId = lastKnownIdRef.current;
+    for (const row of rows) {
+      if (row.id > maxId) {
+        maxId = row.id;
+      }
+    }
+    lastKnownIdRef.current = maxId;
+  }, []);
 
   const query = useInfiniteQuery<LiveBetPage>({
     queryKey,
@@ -88,26 +131,25 @@ export function useBetsStream({
             pageSize,
             offset,
           });
-          return {
+          const page = {
             rows: httpResult.rows.map(normalizeLiveBet),
             total: httpResult.total,
           };
+          updateLastKnownId(page.rows);
+          return page;
         } catch (err) {
           console.warn('HTTP live bets request failed, falling back to Wails bridge.', err);
         }
       }
-      if (!betsBindingRef.current) {
-        betsBindingRef.current = waitForWailsBinding(['go', 'livehttp', 'LiveModule', 'GetBets'], {
-          timeoutMs: 10_000,
-        });
-      }
-      await betsBindingRef.current;
-      const wailsResult = await callWithRetry(
-        () => GetBets(streamId, minMultiplier, order, pageSize, offset),
-        4,
-        250,
-      );
-      return unpackGetBets(wailsResult);
+      const pageResult = await loadBetsPageViaBridge({
+        streamId,
+        minMultiplier,
+        order,
+        pageSize,
+        offset,
+      });
+      updateLastKnownId(pageResult.rows);
+      return pageResult;
     },
     refetchInterval: pollMs,
     refetchIntervalInBackground: false,
@@ -135,32 +177,67 @@ export function useBetsStream({
 
   useEffect(() => {
     pendingRef.current = [];
+    lastKnownIdRef.current = 0;
     setBufferVersion((version) => version + 1);
-  }, [streamId]);
+  }, [streamId, minMultiplier, order]);
 
   useEffect(() => {
-    const offRows = EventsOn(`live:newrows:${streamId}`, (...payload: RawLiveBet[]) => {
-      if (!payload || payload.length === 0) return;
-      const flatPayload = payload.length === 1 && Array.isArray(payload[0]) ? (payload[0] as RawLiveBet[]) : payload;
-      if (!flatPayload.length) return;
-      const normalized = flatPayload.map(normalizeLiveBet);
-      const existingIds = new Set(pendingRef.current.map((bet) => bet.id));
-      const deduped = normalized.filter((bet) => !existingIds.has(bet.id));
-      if (!deduped.length) return;
-      pendingRef.current = mergeRows(pendingRef.current, deduped, order);
-      setBufferVersion((version) => version + 1);
-      setIsStreaming(true);
-    });
+    let cancelled = false;
+    let fetchingTail = false;
 
+    const handleTailFetch = async () => {
+      if (cancelled || fetchingTail) return;
+      fetchingTail = true;
+      try {
+        const { rows: rawRows, lastId } = await fetchTailPage({
+          apiBase,
+          streamId,
+          sinceId: lastKnownIdRef.current,
+          limit: Math.max(pageSize, 500),
+        });
+        if (cancelled) return;
+        if (!rawRows.length) {
+          setIsStreaming(true);
+          return;
+        }
+        const normalized = rawRows
+          .map(normalizeLiveBet)
+          .filter((bet) => bet.round_result >= minMultiplier);
+        if (!normalized.length) {
+          lastKnownIdRef.current = Math.max(lastKnownIdRef.current, lastId);
+          setIsStreaming(true);
+          return;
+        }
+        normalized.sort((a, b) => {
+          if (b.nonce !== a.nonce) return b.nonce - a.nonce;
+          return b.id - a.id;
+        });
+        updateLastKnownId(normalized);
+        lastKnownIdRef.current = Math.max(lastKnownIdRef.current, lastId);
+        pendingRef.current = mergeRows(pendingRef.current, normalized, order);
+        setBufferVersion((version) => version + 1);
+        setIsStreaming(true);
+      } catch (err) {
+        if (!cancelled) {
+          console.warn('Failed to fetch live tail bets', err);
+          setIsStreaming(false);
+        }
+      } finally {
+        fetchingTail = false;
+      }
+    };
+
+    const offRows = EventsOn(`live:newrows:${streamId}`, handleTailFetch);
     const offStatus = EventsOn(`live:status:${streamId}`, (status: 'connected' | 'disconnected') => {
       setIsStreaming(status === 'connected');
     });
 
     return () => {
+      cancelled = true;
       offRows();
       offStatus();
     };
-  }, [order, streamId]);
+  }, [apiBase, fetchTailPage, minMultiplier, order, pageSize, streamId, updateLastKnownId]);
 
   const prepend = useCallback(
     (rows: LiveBet[]) => {

@@ -81,6 +81,25 @@ func (m *LiveModule) GetBets(streamID string, minMultiplier float64, order strin
 	return m.store.ListBets(m.ctx, id, minMultiplier, order, limit, offset)
 }
 
+// BetsPage is a convenience wrapper exposing both rows and total for frontend consumption.
+type BetsPage struct {
+	Rows  []livestore.LiveBet `json:"rows"`
+	Total int64               `json:"total"`
+}
+
+// GetBetsPage returns the bets page along with the total row count.
+func (m *LiveModule) GetBetsPage(streamID string, minMultiplier float64, order string, limit int, offset int) (BetsPage, error) {
+	id, err := uuid.Parse(streamID)
+	if err != nil {
+		return BetsPage{}, fmt.Errorf("invalid stream id: %w", err)
+	}
+	rows, total, err := m.store.ListBets(m.ctx, id, minMultiplier, order, limit, offset)
+	if err != nil {
+		return BetsPage{}, err
+	}
+	return BetsPage{Rows: rows, Total: total}, nil
+}
+
 // Tail returns bets with id > sinceID ordered by id ASC and the new lastID.
 type TailResponse struct {
 	Rows   []livestore.LiveBet `json:"rows"`
