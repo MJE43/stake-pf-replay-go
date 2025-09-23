@@ -225,8 +225,10 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
   if (!rows.length) {
     return (
       <div className="relative">
-        {filterControl}
-        <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white text-slate-500">
+        <div className="px-4 pb-3">
+          {filterControl}
+        </div>
+        <div className="flex h-64 flex-col items-center justify-center gap-3 text-slate-500 mb-8">
           <span>No bets yet. Stay tuned!</span>
         </div>
       </div>
@@ -235,7 +237,10 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
 
   return (
     <div className="relative">
-      {filterControl}
+      <div className="px-4 pb-3">
+        {filterControl}
+      </div>
+      
       {pendingCount > 0 && !isPinnedToTop && (
         <div className="pointer-events-none absolute inset-x-0 top-16 z-30 flex justify-center">
           <Button onClick={revealBufferedRows} className="pointer-events-auto shadow" size="sm">
@@ -244,7 +249,7 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
         </div>
       )}
 
-      <div style={{ height: '500px' }}>
+      <div style={{ height: '500px' }} className="mb-8">
         <TableVirtuoso
           ref={virtuosoRef}
           data={rows}
@@ -277,13 +282,13 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
       </div>
 
       {!isStreaming && (
-        <div className="absolute bottom-4 left-1/2 z-30 -translate-x-1/2 rounded-full border border-amber-300 bg-amber-50 px-4 py-1 text-xs text-amber-600 shadow">
+        <div className="absolute bottom-12 left-1/2 z-30 -translate-x-1/2 rounded-full border border-amber-300 bg-amber-50 px-4 py-1 text-xs text-amber-600 shadow">
           Reconnecting to live feed...
         </div>
       )}
 
       {isFetchingNextPage && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 shadow">
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 shadow">
           Loading older bets...
         </div>
       )}
