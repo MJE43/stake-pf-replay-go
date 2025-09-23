@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   IconArrowRight,
+  IconChevronDown,
+  IconChevronUp,
   IconChecks,
   IconCirclePlus,
   IconPlayerPlay,
@@ -88,6 +90,8 @@ export function SeedRunWorkspace({
   const [availableGames, setAvailableGames] = useState<GameInfo[]>([]);
   const [loadingGames, setLoadingGames] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const contentId = useId();
   const runs = group.runs ?? [];
 
   const {
@@ -384,10 +388,24 @@ export function SeedRunWorkspace({
   return (
     <Card className="border border-slate-200 bg-white">
       <CardHeader className="space-y-3">
-        <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
-          <IconRepeat size={18} className="text-indigo-500" />
-          Seed Workspace
-        </CardTitle>
+        <div className="flex items-center justify-between gap-4">
+          <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+            <IconRepeat size={18} className="text-indigo-500" />
+            Seed Workspace
+          </CardTitle>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="gap-1 text-slate-600 hover:text-slate-900"
+            onClick={() => setIsExpanded((value) => !value)}
+            aria-expanded={isExpanded}
+            aria-controls={contentId}
+          >
+            {isExpanded ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+            {isExpanded ? 'Hide workspace' : 'Show workspace'}
+          </Button>
+        </div>
         <div className="flex flex-wrap gap-3 text-xs text-slate-500">
           <Badge variant="outline" className="border-slate-300 font-mono text-[11px]">
             Hash: {group.seeds.serverHash?.slice(0, 16) ?? '--'}...
@@ -409,8 +427,15 @@ export function SeedRunWorkspace({
             </Badge>
           )}
         </div>
+        {!isExpanded && (
+          <p className="text-xs text-slate-500">Expand to view reruns, start new scans, or refresh this seed group.</p>
+        )}
       </CardHeader>
-      <CardContent className="space-y-8">
+      <CardContent
+        id={contentId}
+        className={`space-y-8 ${isExpanded ? '' : 'hidden'}`}
+        aria-hidden={!isExpanded}
+      >
         <section className="space-y-3">
           <div className="flex items-center gap-2 text-sm text-slate-600">
             <IconChecks size={16} className="text-emerald-500" />
