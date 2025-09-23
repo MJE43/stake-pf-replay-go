@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { IconArrowLeft, IconExternalLink } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { CopyableField } from '@/components/ui/copyable-field';
 import StreamInfoCard, { StreamSummary } from '@/components/StreamInfoCard';
 import LiveBetsTable from '@/components/LiveBetsTable';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -195,16 +196,82 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
           </Button>
         </div>
       ) : summary ? (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_1fr]">
-          <StreamInfoCard
-            summary={summary}
-            onSaveNotes={onSaveNotes}
-            onExportCsv={onExportCsv}
-            onDeleteStream={onDeleteStream}
-            isSavingNotes={savingNotes}
-            isDeletingStream={deleting}
-          />
+        <div className="flex flex-col gap-6">
+          {/* Horizontal Stream Summary Bar */}
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-6 text-sm">
+                <CopyableField
+                  label="Server Seed"
+                  value={summary.serverSeedHashed}
+                  displayValue={`${summary.serverSeedHashed.slice(0, 12)}...`}
+                />
+                <CopyableField
+                  label="Client Seed"
+                  value={summary.clientSeed}
+                  displayValue={`${summary.clientSeed.slice(0, 12)}...`}
+                />
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-slate-600">Total Bets:</span>
+                  <span className="font-semibold text-slate-900">{summary.totalBets?.toLocaleString() ?? 0}</span>
+                </div>
+                {summary.highestMultiplier && (
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-slate-600">Highest:</span>
+                    <span className="font-semibold text-indigo-600">{summary.highestMultiplier.toFixed(2)}×</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={onExportCsv}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-xs"
+                >
+                  Export CSV
+                </Button>
+                <Button
+                  onClick={onDeleteStream}
+                  variant="destructive"
+                  size="sm"
+                  disabled={deleting}
+                  className="gap-2 text-xs"
+                >
+                  {deleting ? 'Deleting...' : 'Delete Stream'}
+                </Button>
+              </div>
+            </div>
+            
+            {/* Notes Section - Always visible for editing */}
+            <div className="mt-4 rounded-lg bg-slate-50 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+                  📝 Notes
+                </div>
+                <Button
+                  onClick={() => {
+                    const newNotes = window.prompt('Edit notes:', summary.notes || '');
+                    if (newNotes !== null) {
+                      onSaveNotes(newNotes);
+                    }
+                  }}
+                  variant="ghost"
+                  size="sm"
+                  disabled={savingNotes}
+                  className="text-xs h-6 px-2"
+                >
+                  {savingNotes ? 'Saving...' : 'Edit'}
+                </Button>
+              </div>
+              <p className="text-sm text-slate-700">
+                {summary.notes || 'No notes yet. Click Edit to add observations about this stream.'}
+              </p>
+            </div>
+          </div>
 
+          {/* Full-Width Live Bets Table */}
           <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex flex-col gap-1">
               <h2 className="text-lg font-semibold text-slate-900">Live bets</h2>
@@ -213,7 +280,9 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
               </p>
             </div>
 
-            <LiveBetsTable streamId={streamId} minMultiplier={0} apiBase={apiBase} />
+            <div style={{ height: 'calc(75vh - 120px)' }}>
+              <LiveBetsTable streamId={streamId} minMultiplier={0} apiBase={apiBase} />
+            </div>
           </div>
         </div>
       ) : null}

@@ -244,35 +244,37 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
         </div>
       )}
 
-      <TableVirtuoso
-        ref={virtuosoRef}
-        data={rows}
-        totalCount={rows.length}
-        components={tableComponents}
-        fixedHeaderContent={() => fixedHeader}
-        endReached={handleEndReached}
-        rangeChanged={handleRangeChange}
-        overscan={200}
-        initialTopMostItemIndex={0}
-        itemContent={(index, bet) => {
-          const variant = difficultyVariant[bet.difficulty as keyof typeof difficultyVariant] ?? 'default';
-          return (
-            <>
-              <td data-index={index} className="px-3 py-2 font-mono text-xs text-slate-600">{bet.nonce}</td>
-              <td className="px-3 py-2 font-mono text-xs text-slate-700">{formatDate(bet.date_time)}</td>
-              <td className="px-3 py-2 font-mono text-xs text-slate-800">{bet.amount.toFixed(2)}</td>
-              <td className="px-3 py-2 font-mono text-xs text-slate-800">{bet.payout.toFixed(2)}</td>
-              <td className="px-3 py-2">
-                <Badge variant={variant} className="capitalize">
-                  {bet.difficulty}
-                </Badge>
-              </td>
-              <td className="px-3 py-2 font-mono text-xs text-slate-600">{bet.round_target ?? '--'}</td>
-              <td className="px-3 py-2 font-mono text-xs text-indigo-600">{bet.round_result.toFixed(2)}</td>
-            </>
-          );
-        }}
-      />
+      <div style={{ height: '500px' }}>
+        <TableVirtuoso
+          ref={virtuosoRef}
+          data={rows}
+          totalCount={rows.length}
+          components={tableComponents}
+          fixedHeaderContent={() => fixedHeader}
+          endReached={handleEndReached}
+          rangeChanged={handleRangeChange}
+          overscan={200}
+          initialTopMostItemIndex={0}
+          itemContent={(index, bet) => {
+            const variant = difficultyVariant[bet.difficulty as keyof typeof difficultyVariant] ?? 'default';
+            return (
+              <>
+                <td data-index={index} className="px-3 py-2 font-mono text-xs text-slate-600">{bet.nonce}</td>
+                <td className="px-3 py-2 font-mono text-xs text-slate-700">{formatDate(bet.date_time)}</td>
+                <td className="px-3 py-2 font-mono text-xs text-slate-800">{bet.amount.toFixed(2)}</td>
+                <td className="px-3 py-2 font-mono text-xs text-slate-800">{bet.payout.toFixed(2)}</td>
+                <td className="px-3 py-2">
+                  <Badge variant={variant} className="capitalize">
+                    {bet.difficulty}
+                  </Badge>
+                </td>
+                <td className="px-3 py-2 font-mono text-xs text-slate-600">{bet.round_target ?? '--'}</td>
+                <td className="px-3 py-2 font-mono text-xs text-indigo-600">{bet.round_result.toFixed(2)}</td>
+              </>
+            );
+          }}
+        />
+      </div>
 
       {!isStreaming && (
         <div className="absolute bottom-4 left-1/2 z-30 -translate-x-1/2 rounded-full border border-amber-300 bg-amber-50 px-4 py-1 text-xs text-amber-600 shadow">
