@@ -32,6 +32,16 @@ export const pumpParamsSchema = z.object({
     .optional(),
 });
 
+export const plinkoParamsSchema = z.object({
+  risk: z.enum(['low', 'medium', 'high']).default('medium'),
+  rows: z
+    .number()
+    .int('Rows must be an integer')
+    .min(8, 'Rows must be between 8 and 16')
+    .max(16, 'Rows must be between 8 and 16')
+    .default(16),
+});
+
 // Main scan form schema
 export const scanFormSchema = z.object({
   serverSeed: z.string().min(1, 'Server seed is required'),
@@ -81,6 +91,8 @@ export function validateGameParams(game: string, params: any): z.ZodSchema {
       return rouletteParamsSchema;
     case 'pump':
       return pumpParamsSchema;
+    case 'plinko':
+      return plinkoParamsSchema;
     default:
       return z.object({});
   }
@@ -93,4 +105,5 @@ export type GameParams = {
   dice: z.infer<typeof diceParamsSchema>;
   roulette: z.infer<typeof rouletteParamsSchema>;
   pump: z.infer<typeof pumpParamsSchema>;
+  plinko: z.infer<typeof plinkoParamsSchema>;
 };

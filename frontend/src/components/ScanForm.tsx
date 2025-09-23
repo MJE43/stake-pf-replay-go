@@ -148,6 +148,10 @@ export function ScanForm() {
       case 'pump':
         setValue('params.difficulty', 'expert', { shouldDirty: false });
         break;
+      case 'plinko':
+        setValue('params.risk', 'medium', { shouldDirty: false });
+        setValue('params.rows', 16, { shouldDirty: false });
+        break;
       default:
         setValue('params', {}, { shouldDirty: false });
     }
@@ -305,6 +309,54 @@ export function ScanForm() {
     />
   );
 
+  const plinkoParams = (
+    <div className="grid gap-4 md:grid-cols-2">
+      <Controller
+        name="params.risk"
+        control={control}
+        render={({ field, fieldState }) => (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700">Difficulty</label>
+            <Select value={(field.value as string) ?? 'medium'} onValueChange={field.onChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select difficulty" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
+            {fieldState.error && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
+          </div>
+        )}
+      />
+      <Controller
+        name="params.rows"
+        control={control}
+        render={({ field, fieldState }) => (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700">Rows</label>
+            <Input
+              type="number"
+              min={8}
+              max={16}
+              step={1}
+              value={field.value ?? 16}
+              onChange={(event) =>
+                field.onChange(event.target.value === '' ? undefined : Number(event.target.value))
+              }
+              className="max-w-xs font-mono"
+              placeholder="16"
+            />
+            <p className="text-xs text-slate-500">Plinko allows 8 to 16 rows (pins).</p>
+            {fieldState.error && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
+          </div>
+        )}
+      />
+    </div>
+  );
+
   const renderGameParams = () => {
     const selectedGame = availableGames.find((g) => g.id === watchedGame);
     if (!selectedGame) return null;
@@ -316,6 +368,8 @@ export function ScanForm() {
         return limboParams;
       case 'pump':
         return pumpParams;
+      case 'plinko':
+        return plinkoParams;
       case 'roulette':
         return (
           <p className="text-sm text-slate-500">
