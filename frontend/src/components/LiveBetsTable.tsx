@@ -1,4 +1,5 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ComponentPropsWithoutRef } from 'react';
 import type { TableComponents, TableVirtuosoHandle } from 'react-virtuoso';
 import { TableVirtuoso } from 'react-virtuoso';
 import { Badge } from '@/components/ui/badge';
@@ -10,31 +11,54 @@ import { useBetsStream } from '@/hooks/useBetsStream';
 import { cn } from '@/lib/utils';
 import type { LiveBet } from '@/types/live';
 
-const tableComponents: TableComponents<LiveBet> = {
-  Table: ({ style, ...props }) => (
+const Table = forwardRef<HTMLTableElement, ComponentPropsWithoutRef<'table'>>(
+  ({ style, className, ...props }, ref) => (
     <table
-      {...props}
+      ref={ref}
       style={style}
-      className="w-full border-separate border-spacing-0 text-left text-xs md:text-sm"
+      className={cn('w-full border-separate border-spacing-0 text-left text-xs md:text-sm', className)}
+      {...props}
     />
   ),
-  TableHead: ({ style, ...props }) => (
+);
+Table.displayName = 'Table';
+
+const TableHead = forwardRef<HTMLTableSectionElement, ComponentPropsWithoutRef<'thead'>>(
+  ({ style, className, ...props }, ref) => (
     <thead
-      {...props}
+      ref={ref}
       style={style}
-      className="bg-muted/60 text-[0.65rem] uppercase tracking-wide text-slate-500"
+      className={cn('bg-muted/60 text-[0.65rem] uppercase tracking-wide text-slate-500', className)}
+      {...props}
     />
   ),
-  TableRow: ({ style, ...props }) => (
+);
+TableHead.displayName = 'TableHead';
+
+const TableRow = forwardRef<HTMLTableRowElement, ComponentPropsWithoutRef<'tr'>>(
+  ({ style, className, ...props }, ref) => (
     <tr
-      {...props}
+      ref={ref}
       style={style}
-      className="border-b border-slate-100 transition-colors hover:bg-slate-50 focus-visible:bg-slate-100"
+      className={cn('border-b border-slate-100 transition-colors hover:bg-slate-50 focus-visible:bg-slate-100', className)}
+      {...props}
     />
   ),
-  TableBody: ({ style, ...props }) => (
-    <tbody {...props} style={style} className="bg-white" />
+);
+TableRow.displayName = 'TableRow';
+
+const TableBody = forwardRef<HTMLTableSectionElement, ComponentPropsWithoutRef<'tbody'>>(
+  ({ style, className, ...props }, ref) => (
+    <tbody ref={ref} style={style} className={cn('bg-white', className)} {...props} />
   ),
+);
+TableBody.displayName = 'TableBody';
+
+const tableComponents: TableComponents<LiveBet> = {
+  Table,
+  TableHead,
+  TableRow,
+  TableBody,
 };
 
 type LiveBetsTableProps = {
@@ -233,8 +257,8 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
         itemContent={(index, bet) => {
           const variant = difficultyVariant[bet.difficulty as keyof typeof difficultyVariant] ?? 'default';
           return (
-            <tr key={bet.id} data-index={index}>
-              <td className="px-3 py-2 font-mono text-xs text-slate-600">{bet.nonce}</td>
+            <>
+              <td data-index={index} className="px-3 py-2 font-mono text-xs text-slate-600">{bet.nonce}</td>
               <td className="px-3 py-2 font-mono text-xs text-slate-700">{formatDate(bet.date_time)}</td>
               <td className="px-3 py-2 font-mono text-xs text-slate-800">{bet.amount.toFixed(2)}</td>
               <td className="px-3 py-2 font-mono text-xs text-slate-800">{bet.payout.toFixed(2)}</td>
@@ -245,7 +269,7 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
               </td>
               <td className="px-3 py-2 font-mono text-xs text-slate-600">{bet.round_target ?? '--'}</td>
               <td className="px-3 py-2 font-mono text-xs text-indigo-600">{bet.round_result.toFixed(2)}</td>
-            </tr>
+            </>
           );
         }}
       />
