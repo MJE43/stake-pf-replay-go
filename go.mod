@@ -2,6 +2,8 @@ module github.com/MJE43/stake-pf-replay-go-desktop
 
 go 1.24.6
 
+toolchain go1.24.7
+
 replace github.com/MJE43/stake-pf-replay-go => ./backend
 
 require (

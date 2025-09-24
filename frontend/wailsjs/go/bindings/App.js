@@ -14,12 +14,12 @@ export function GetRun(arg1) {
   return window['go']['bindings']['App']['GetRun'](arg1);
 }
 
-export function GetSeedRuns(arg1) {
-  return window['go']['bindings']['App']['GetSeedRuns'](arg1);
-}
-
 export function GetRunHits(arg1, arg2, arg3) {
   return window['go']['bindings']['App']['GetRunHits'](arg1, arg2, arg3);
+}
+
+export function GetSeedRuns(arg1) {
+  return window['go']['bindings']['App']['GetSeedRuns'](arg1);
 }
 
 export function HashServerSeed(arg1) {
