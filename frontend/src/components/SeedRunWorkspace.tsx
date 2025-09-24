@@ -250,7 +250,7 @@ export function SeedRunWorkspace({
               control={control}
               render={({ field, fieldState }) => (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">Target</label>
+                  <label className="text-sm font-medium text-foreground/80">Target</label>
                   <Input
                     type="number"
                     step="0.01"
@@ -260,7 +260,7 @@ export function SeedRunWorkspace({
                     onChange={(event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value))}
                     className="font-mono"
                   />
-                  {fieldState.error && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
+                  {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
                 </div>
               )}
             />
@@ -269,7 +269,7 @@ export function SeedRunWorkspace({
               control={control}
               render={({ field, fieldState }) => (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">Condition</label>
+                  <label className="text-sm font-medium text-foreground/80">Condition</label>
                   <Select value={(field.value as string) ?? 'over'} onValueChange={field.onChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select condition" />
@@ -279,7 +279,7 @@ export function SeedRunWorkspace({
                       <SelectItem value="under">Under</SelectItem>
                     </SelectContent>
                   </Select>
-                  {fieldState.error && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
+                  {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
                 </div>
               )}
             />
@@ -292,7 +292,7 @@ export function SeedRunWorkspace({
             control={control}
             render={({ field, fieldState }) => (
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">House Edge</label>
+                <label className="text-sm font-medium text-foreground/80">House Edge</label>
                 <Input
                   type="number"
                   step="0.01"
@@ -303,7 +303,7 @@ export function SeedRunWorkspace({
                   className="max-w-xs font-mono"
                   placeholder="0.99"
                 />
-                {fieldState.error && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
+                {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
               </div>
             )}
           />
@@ -315,7 +315,7 @@ export function SeedRunWorkspace({
             control={control}
             render={({ field, fieldState }) => (
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Difficulty</label>
+                <label className="text-sm font-medium text-foreground/80">Difficulty</label>
                 <Select value={(field.value as string) ?? 'expert'} onValueChange={field.onChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select difficulty" />
@@ -327,7 +327,7 @@ export function SeedRunWorkspace({
                     <SelectItem value="expert">Expert (10 POP tokens)</SelectItem>
                   </SelectContent>
                 </Select>
-                {fieldState.error && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
+                {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
               </div>
             )}
           />
@@ -340,7 +340,7 @@ export function SeedRunWorkspace({
               control={control}
               render={({ field, fieldState }) => (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">Risk</label>
+                  <label className="text-sm font-medium text-foreground/80">Risk</label>
                   <Select value={(field.value as string) ?? 'medium'} onValueChange={field.onChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select risk" />
@@ -351,7 +351,7 @@ export function SeedRunWorkspace({
                       <SelectItem value="high">High</SelectItem>
                     </SelectContent>
                   </Select>
-                  {fieldState.error && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
+                  {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
                 </div>
               )}
             />
@@ -360,7 +360,7 @@ export function SeedRunWorkspace({
               control={control}
               render={({ field, fieldState }) => (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">Rows</label>
+                  <label className="text-sm font-medium text-foreground/80">Rows</label>
                   <Input
                     type="number"
                     min={8}
@@ -371,33 +371,33 @@ export function SeedRunWorkspace({
                     className="max-w-xs font-mono"
                     placeholder="16"
                   />
-                  <p className="text-xs text-slate-500">Plinko allows 8 to 16 rows (pins).</p>
-                  {fieldState.error && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
+                  <p className="text-xs text-muted-foreground">Plinko allows 8 to 16 rows (pins).</p>
+                  {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
                 </div>
               )}
             />
           </div>
         );
       case 'roulette':
-        return <p className="text-sm text-slate-500">Roulette does not require additional parameters.</p>;
+        return <p className="text-sm text-muted-foreground">Roulette does not require additional parameters.</p>;
       default:
         return null;
     }
   };
 
   return (
-    <Card className="border border-slate-200 bg-white">
+    <Card className="border border-border bg-card shadow-[var(--shadow-sm)]">
       <CardHeader className="space-y-3">
         <div className="flex items-center justify-between gap-4">
-          <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
-            <IconRepeat size={18} className="text-indigo-500" />
+          <CardTitle className="flex items-center gap-2 text-lg text-foreground">
+            <IconRepeat size={18} className="text-[hsl(var(--primary))]" />
             Seed Workspace
           </CardTitle>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="gap-1 text-slate-600 hover:text-slate-900"
+            className="gap-1 text-muted-foreground hover:text-foreground"
             onClick={() => setIsExpanded((value) => !value)}
             aria-expanded={isExpanded}
             aria-controls={contentId}
@@ -406,29 +406,29 @@ export function SeedRunWorkspace({
             {isExpanded ? 'Hide workspace' : 'Show workspace'}
           </Button>
         </div>
-        <div className="flex flex-wrap gap-3 text-xs text-slate-500">
-          <Badge variant="outline" className="border-slate-300 font-mono text-[11px]">
+        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+          <Badge variant="outline" className="border-border font-mono text-[11px]">
             Hash: {group.seeds.serverHash?.slice(0, 16) ?? '--'}...
           </Badge>
           {group.seeds.server && (
-            <Badge variant="outline" className="border-slate-300 font-mono text-[11px]">
+            <Badge variant="outline" className="border-border font-mono text-[11px]">
               Server: {group.seeds.server.slice(0, 12)}...
             </Badge>
           )}
-          <Badge variant="outline" className="border-slate-300 font-mono text-[11px]">
+          <Badge variant="outline" className="border-border font-mono text-[11px]">
             Client: {group.seeds.client}
           </Badge>
-          <Badge className="bg-indigo-500/10 text-indigo-600">
+          <Badge className="border border-[hsl(var(--primary))]/40 bg-[hsl(var(--primary))]/15 text-[hsl(var(--primary))]">
             {runs.length} run{runs.length === 1 ? '' : 's'}
           </Badge>
           {groupLoading && (
-            <Badge variant="outline" className="border-indigo-200 text-indigo-600">
+            <Badge variant="outline" className="border-[hsl(var(--primary))]/40 text-[hsl(var(--primary))]">
               Refreshing...
             </Badge>
           )}
         </div>
         {!isExpanded && (
-          <p className="text-xs text-slate-500">Expand to view reruns, start new scans, or refresh this seed group.</p>
+          <p className="text-xs text-muted-foreground">Expand to view reruns, start new scans, or refresh this seed group.</p>
         )}
       </CardHeader>
       <CardContent
@@ -437,8 +437,8 @@ export function SeedRunWorkspace({
         aria-hidden={!isExpanded}
       >
         <section className="space-y-3">
-          <div className="flex items-center gap-2 text-sm text-slate-600">
-            <IconChecks size={16} className="text-emerald-500" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <IconChecks size={16} className="text-emerald-300" />
             <span>Existing variations for this seed pair</span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -450,7 +450,9 @@ export function SeedRunWorkspace({
                 className="gap-2 text-xs"
                 onClick={() => onRunSelected(run.id)}
               >
-                <Badge className="bg-indigo-500/10 text-indigo-600 uppercase">{run.game}</Badge>
+                <Badge className="border border-[hsl(var(--primary))]/40 bg-[hsl(var(--primary))]/15 text-[hsl(var(--primary))] uppercase">
+                  {run.game}
+                </Badge>
                 <span>{new Date(run.created_at).toLocaleDateString()}</span>
                 {run.id === currentRun.id ? (
                   <IconChecks size={14} />
@@ -460,15 +462,15 @@ export function SeedRunWorkspace({
               </Button>
             ))}
             {runs.length === 0 && (
-              <Badge className="bg-slate-500/10 text-slate-600">No previous runs yet</Badge>
+              <Badge className="border border-border bg-secondary/20 text-muted-foreground">No previous runs yet</Badge>
             )}
           </div>
         </section>
 
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-sm text-slate-700">
-              <IconCirclePlus size={18} className="text-indigo-500" />
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
+              <IconCirclePlus size={18} className="text-[hsl(var(--primary))]" />
               <span>Start another scan with these seeds</span>
             </div>
             <Button
@@ -501,7 +503,7 @@ export function SeedRunWorkspace({
                 control={control}
                 render={({ field, fieldState }) => (
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">Game</label>
+                    <label className="text-sm font-medium text-foreground/80">Game</label>
                     <Select value={field.value} onValueChange={field.onChange} disabled={loadingGames}>
                       <SelectTrigger>
                         <SelectValue placeholder={loadingGames ? 'Loading games...' : 'Select game'} />
@@ -517,9 +519,12 @@ export function SeedRunWorkspace({
                         )}
                       </SelectContent>
                     </Select>
-                    {fieldState.error && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
+                    {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
                     {matchingRuns.length > 0 && (
-                      <Alert variant="default" className="bg-indigo-50 text-indigo-700">
+                      <Alert
+                        variant="default"
+                        className="border border-[hsl(var(--primary))]/40 bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]"
+                      >
                         <div className="flex items-center justify-between gap-2">
                           <span>
                             {matchingRuns.length} run{matchingRuns.length === 1 ? '' : 's'} already exist for this game.
@@ -541,23 +546,23 @@ export function SeedRunWorkspace({
               />
 
               <div className="grid gap-2">
-                <label className="text-sm font-medium text-slate-700">Nonce Range</label>
+                <label className="text-sm font-medium text-foreground/80">Nonce Range</label>
                 <div className="flex items-center gap-3">
                   <Input type="number" className="font-mono" {...register('nonceStart', { valueAsNumber: true })} />
-                  <span className="text-xs text-slate-500">to</span>
+                  <span className="text-xs text-muted-foreground">to</span>
                   <Input type="number" className="font-mono" {...register('nonceEnd', { valueAsNumber: true })} />
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   Evaluating {Math.max(0, (nonceEnd ?? 0) - (nonceStart ?? 0)).toLocaleString()} nonces
                 </p>
-                {errors.nonceStart && <p className="text-sm text-red-600">{errors.nonceStart.message}</p>}
-                {errors.nonceEnd && <p className="text-sm text-red-600">{errors.nonceEnd.message}</p>}
+                {errors.nonceStart && <p className="text-sm text-destructive">{errors.nonceStart.message}</p>}
+                {errors.nonceEnd && <p className="text-sm text-destructive">{errors.nonceEnd.message}</p>}
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Target Operator</label>
+                <label className="text-sm font-medium text-foreground/80">Target Operator</label>
                 <Controller
                   name="targetOp"
                   control={control}
@@ -578,27 +583,27 @@ export function SeedRunWorkspace({
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Target Value</label>
+                <label className="text-sm font-medium text-foreground/80">Target Value</label>
                 <Input type="number" step="0.0001" className="font-mono" {...register('targetVal', { valueAsNumber: true })} />
-                {errors.targetVal && <p className="text-sm text-red-600">{errors.targetVal.message}</p>}
+                {errors.targetVal && <p className="text-sm text-destructive">{errors.targetVal.message}</p>}
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Tolerance</label>
+                <label className="text-sm font-medium text-foreground/80">Tolerance</label>
                 <Input type="number" step="0.0001" className="font-mono" {...register('tolerance', { valueAsNumber: true })} />
-                {errors.tolerance && <p className="text-sm text-red-600">{errors.tolerance.message}</p>}
+                {errors.tolerance && <p className="text-sm text-destructive">{errors.tolerance.message}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Hit Limit</label>
+                <label className="text-sm font-medium text-foreground/80">Hit Limit</label>
                 <Input type="number" className="font-mono" {...register('limit', { valueAsNumber: true })} />
-                {errors.limit && <p className="text-sm text-red-600">{errors.limit.message}</p>}
+                {errors.limit && <p className="text-sm text-destructive">{errors.limit.message}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Timeout (ms)</label>
+                <label className="text-sm font-medium text-foreground/80">Timeout (ms)</label>
                 <Input type="number" className="font-mono" {...register('timeoutMs', { valueAsNumber: true })} />
-                {errors.timeoutMs && <p className="text-sm text-red-600">{errors.timeoutMs.message}</p>}
+                {errors.timeoutMs && <p className="text-sm text-destructive">{errors.timeoutMs.message}</p>}
               </div>
             </div>
 

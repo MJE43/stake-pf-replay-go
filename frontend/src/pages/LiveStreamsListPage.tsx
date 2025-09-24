@@ -138,18 +138,20 @@ export default function LiveStreamsListPage() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-indigo-600">
-          <Badge className="bg-indigo-500/10 text-indigo-600">{streams.length}</Badge>
-          <h1 className="text-xl font-semibold text-slate-900">Live Streams</h1>
+        <div className="flex items-center gap-2 text-[hsl(var(--primary))]">
+          <Badge className="border border-[hsl(var(--primary))]/50 bg-[hsl(var(--primary))]/15 text-[hsl(var(--primary))]">
+            {streams.length}
+          </Badge>
+          <h1 className="text-xl font-semibold text-foreground">Live Streams</h1>
         </div>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Monitor active Stake Originals sessions and jump into their live bet feeds.
         </p>
       </div>
 
-      <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 rounded-none border border-border bg-card p-4 shadow-[var(--shadow-sm)] md:flex-row md:items-center md:justify-between">
         <div className="relative flex-1">
-          <IconSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <IconSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -158,14 +160,14 @@ export default function LiveStreamsListPage() {
           />
         </div>
         <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 text-sm text-slate-600">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <Switch checked={autoFollow} onCheckedChange={setAutoFollow} />
             Auto-follow latest
           </label>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={load}>
+                <Button variant="outline" size="icon" onClick={load} className="border-border">
                   <IconRefresh size={16} />
                 </Button>
               </TooltipTrigger>
@@ -182,14 +184,14 @@ export default function LiveStreamsListPage() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-          <IconLoader2 className="h-5 w-5 animate-spin text-indigo-600" />
-          <span className="text-sm text-slate-600">Loading streams...</span>
+        <div className="flex items-center justify-center gap-2 rounded-none border border-border bg-card p-8 shadow-[var(--shadow-sm)]">
+          <IconLoader2 className="h-5 w-5 animate-spin text-[hsl(var(--primary))]" />
+          <span className="text-sm text-muted-foreground">Loading streams...</span>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white p-12 text-center shadow-sm">
-          <span className="text-lg font-semibold text-slate-800">No streams yet</span>
-          <span className="text-sm text-slate-500">
+        <div className="flex flex-col items-center gap-3 rounded-none border border-border bg-card p-12 text-center shadow-[var(--shadow-sm)]">
+          <span className="text-lg font-semibold text-foreground">No streams yet</span>
+          <span className="text-sm text-muted-foreground">
             Point Antebot to the ingest URL and start betting to populate this list.
           </span>
         </div>
@@ -225,11 +227,11 @@ function StreamCard({
   const exportHref = apiBase ? `${apiBase}/live/streams/${stream.id}/export.csv` : undefined;
 
   return (
-    <div className="flex h-full flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="flex h-full flex-col gap-4 rounded-none border border-border bg-card p-5 shadow-[var(--shadow-sm)]">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Client Seed</span>
-          <p className="text-sm font-medium text-slate-800 break-all">{stream.clientSeed || '--'}</p>
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Client Seed</span>
+          <p className="break-all text-sm font-medium text-foreground">{stream.clientSeed || '--'}</p>
         </div>
         <div className="flex items-center gap-2">
           <TooltipProvider>
@@ -261,18 +263,18 @@ function StreamCard({
       </div>
 
       <div className="space-y-1">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Server Seed Hash</span>
-        <p className="font-mono text-xs text-slate-700">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Server Seed Hash</span>
+        <p className="font-mono text-xs text-muted-foreground">
           {stream.serverSeedHashed ? `${stream.serverSeedHashed.slice(0, 16)}...` : '--'}
         </p>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Badge className="bg-indigo-500/10 text-indigo-600">
+        <Badge className="border border-[hsl(var(--primary))]/50 bg-[hsl(var(--primary))]/15 text-[hsl(var(--primary))]">
           {stream.totalBets.toLocaleString()} bets
         </Badge>
         {stream.highestRoundResult && (
-          <Badge className="bg-violet-500/10 text-violet-600">
+          <Badge className="border border-[hsl(var(--chart-2))]/40 bg-[hsl(var(--chart-2))]/15 text-[hsl(var(--chart-2))]">
             Max x{stream.highestRoundResult.toLocaleString()}
           </Badge>
         )}
@@ -280,13 +282,13 @@ function StreamCard({
 
       <div className="mt-auto flex items-center justify-between">
         <div>
-          <span className="text-xs text-slate-500">Last seen</span>
-          <p className="text-sm font-medium text-slate-700">{lastSeen}</p>
+          <span className="text-xs text-muted-foreground">Last seen</span>
+          <p className="text-sm font-medium text-foreground/80">{lastSeen}</p>
         </div>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={() => onOpen(stream.id)}>
+              <Button variant="outline" size="icon" onClick={() => onOpen(stream.id)} className="border-border">
                 <IconArrowRight size={16} />
               </Button>
             </TooltipTrigger>

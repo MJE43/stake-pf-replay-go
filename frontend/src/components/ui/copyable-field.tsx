@@ -25,22 +25,22 @@ export function CopyableField({ value, displayValue, label, className }: Copyabl
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
-      {label && <span className="font-medium text-slate-600">{label}:</span>}
-      <div className="flex items-center gap-1 rounded bg-slate-100 px-2 py-1">
-        <code className="font-mono text-xs text-slate-800">
+      {label && <span className="font-medium text-muted-foreground">{label}:</span>}
+      <div className="flex items-center gap-1 rounded bg-secondary px-2 py-1">
+        <code className="font-mono text-xs text-foreground">
           {displayValue || value}
         </code>
         <Button
           variant="ghost"
           size="sm"
           onClick={handleCopy}
-          className="h-5 w-5 p-0 hover:bg-slate-200"
+          className="h-5 w-5 p-0 hover:bg-[hsl(var(--primary))]/10"
           title={`Copy ${label || 'value'}`}
         >
           {copied ? (
-            <IconCheck size={12} className="text-green-600" />
+            <IconCheck size={12} className="text-emerald-200" />
           ) : (
-            <IconCopy size={12} className="text-slate-500" />
+            <IconCopy size={12} className="text-muted-foreground" />
           )}
         </Button>
       </div>

@@ -226,7 +226,7 @@ export function ScanForm() {
         control={control}
         render={({ field, fieldState }) => (
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Target</label>
+            <label className="text-sm font-medium text-foreground/80">Target</label>
             <Input
               type="number"
               step="0.01"
@@ -236,7 +236,7 @@ export function ScanForm() {
               onChange={(event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value))}
               className="font-mono"
             />
-            {fieldState.error && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
+            {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
           </div>
         )}
       />
@@ -245,7 +245,7 @@ export function ScanForm() {
         control={control}
         render={({ field, fieldState }) => (
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Condition</label>
+            <label className="text-sm font-medium text-foreground/80">Condition</label>
             <Select value={(field.value as string) ?? 'over'} onValueChange={field.onChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Select condition" />
@@ -255,7 +255,7 @@ export function ScanForm() {
                 <SelectItem value="under">Under</SelectItem>
               </SelectContent>
             </Select>
-            {fieldState.error && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
+            {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
           </div>
         )}
       />
@@ -268,7 +268,7 @@ export function ScanForm() {
       control={control}
       render={({ field, fieldState }) => (
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700">House Edge</label>
+          <label className="text-sm font-medium text-foreground/80">House Edge</label>
           <Input
             type="number"
             step="0.01"
@@ -279,7 +279,7 @@ export function ScanForm() {
             className="max-w-xs font-mono"
             placeholder="0.99"
           />
-          {fieldState.error && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
+          {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
         </div>
       )}
     />
@@ -291,7 +291,7 @@ export function ScanForm() {
       control={control}
       render={({ field, fieldState }) => (
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700">Difficulty</label>
+          <label className="text-sm font-medium text-foreground/80">Difficulty</label>
           <Select value={(field.value as string) ?? 'expert'} onValueChange={field.onChange}>
             <SelectTrigger>
               <SelectValue placeholder="Select difficulty" />
@@ -303,7 +303,7 @@ export function ScanForm() {
               <SelectItem value="expert">Expert (10 POP tokens)</SelectItem>
             </SelectContent>
           </Select>
-          {fieldState.error && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
+          {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
         </div>
       )}
     />
@@ -316,7 +316,7 @@ export function ScanForm() {
         control={control}
         render={({ field, fieldState }) => (
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Difficulty</label>
+            <label className="text-sm font-medium text-foreground/80">Difficulty</label>
             <Select value={(field.value as string) ?? 'medium'} onValueChange={field.onChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Select difficulty" />
@@ -327,7 +327,7 @@ export function ScanForm() {
                 <SelectItem value="high">High</SelectItem>
               </SelectContent>
             </Select>
-            {fieldState.error && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
+            {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
           </div>
         )}
       />
@@ -336,7 +336,7 @@ export function ScanForm() {
         control={control}
         render={({ field, fieldState }) => (
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Rows</label>
+            <label className="text-sm font-medium text-foreground/80">Rows</label>
             <Input
               type="number"
               min={8}
@@ -349,8 +349,8 @@ export function ScanForm() {
               className="max-w-xs font-mono"
               placeholder="16"
             />
-            <p className="text-xs text-slate-500">Plinko allows 8 to 16 rows (pins).</p>
-            {fieldState.error && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
+            <p className="text-xs text-muted-foreground">Plinko allows 8 to 16 rows (pins).</p>
+            {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
           </div>
         )}
       />
@@ -372,13 +372,13 @@ export function ScanForm() {
         return plinkoParams;
       case 'roulette':
         return (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Roulette does not require additional parameters.
           </p>
         );
       default:
         return (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             No additional parameters required for {selectedGame.name}.
           </p>
         );
@@ -395,21 +395,21 @@ export function ScanForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-      <Card className="border border-slate-200">
+      <Card className="border border-border">
         <CardHeader className="space-y-2">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <IconKey size={18} className="text-indigo-500" />
+            <IconKey size={18} className="text-[hsl(var(--primary))]" />
             Seeds Configuration
-            <Badge className="bg-indigo-500/10 text-indigo-600">Required</Badge>
+            <Badge className="bg-[hsl(var(--primary))]/15 text-[hsl(var(--primary))]">Required</Badge>
           </CardTitle>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Provide the server and client seeds used for the betting session.
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex flex-col gap-4 md:flex-row">
             <div className="flex-1 space-y-2">
-              <label className="text-sm font-medium text-slate-700">Server Seed</label>
+              <label className="text-sm font-medium text-foreground/80">Server Seed</label>
               <div className="flex items-center gap-2">
                 <Input
                   {...register('serverSeed')}
@@ -427,36 +427,36 @@ export function ScanForm() {
                 </Button>
               </div>
               {errors.serverSeed && (
-                <p className="text-sm text-red-600">{errors.serverSeed.message}</p>
+                <p className="text-sm text-destructive">{errors.serverSeed.message}</p>
               )}
               {showHashPreview && hashPreview && (
-                <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs font-mono">
+                <div className="rounded-md border border-border bg-secondary p-3 text-xs font-mono">
                   {hashPreview}
                 </div>
               )}
             </div>
 
             <div className="flex-1 space-y-2">
-              <label className="text-sm font-medium text-slate-700">Client Seed</label>
+              <label className="text-sm font-medium text-foreground/80">Client Seed</label>
               <Input
                 {...register('clientSeed')}
                 placeholder="Enter client seed"
               />
               {errors.clientSeed && (
-                <p className="text-sm text-red-600">{errors.clientSeed.message}</p>
+                <p className="text-sm text-destructive">{errors.clientSeed.message}</p>
               )}
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Optional Notes</label>
+            <label className="text-sm font-medium text-foreground/80">Optional Notes</label>
             <Textarea placeholder="Describe the scan purpose or link to a ticket" rows={4} disabled className="opacity-50" />
-            <p className="text-xs text-slate-400">Notes are not sent to the backend yet.</p>
+            <p className="text-xs text-muted-foreground/70">Notes are not sent to the backend yet.</p>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="border border-slate-200">
+      <Card className="border border-border">
         <CardHeader className="space-y-2">
           <CardTitle className="flex items-center gap-2 text-lg">
             <IconDice size={18} className="text-orange-500" />
@@ -466,7 +466,7 @@ export function ScanForm() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Game Type</label>
+            <label className="text-sm font-medium text-foreground/80">Game Type</label>
             <Controller
               name="game"
               control={control}
@@ -485,7 +485,7 @@ export function ScanForm() {
                 </Select>
               )}
             />
-            {errors.game && <p className="text-sm text-red-600">{errors.game.message}</p>}
+            {errors.game && <p className="text-sm text-destructive">{errors.game.message}</p>}
           </div>
 
           {watchedGame && (
@@ -500,41 +500,41 @@ export function ScanForm() {
         </CardContent>
       </Card>
 
-      <Card className="border border-slate-200">
+      <Card className="border border-border">
         <CardHeader className="space-y-2">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <IconTarget size={18} className="text-violet-500" />
+            <IconTarget size={18} className="text-[hsl(var(--chart-2))]" />
             Target Conditions
-            <Badge className="bg-violet-500/10 text-violet-600">Filters</Badge>
+            <Badge className="bg-[hsl(var(--chart-2))]/15 text-[hsl(var(--chart-2))]">Filters</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Nonce Start</label>
+              <label className="text-sm font-medium text-foreground/80">Nonce Start</label>
               <Input
                 type="number"
                 min={0}
                 {...register('nonceStart', { valueAsNumber: true })}
                 className="font-mono"
               />
-              {errors.nonceStart && <p className="text-sm text-red-600">{errors.nonceStart.message}</p>}
+              {errors.nonceStart && <p className="text-sm text-destructive">{errors.nonceStart.message}</p>}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Nonce End</label>
+              <label className="text-sm font-medium text-foreground/80">Nonce End</label>
               <Input
                 type="number"
                 min={0}
                 {...register('nonceEnd', { valueAsNumber: true })}
                 className="font-mono"
               />
-              {errors.nonceEnd && <p className="text-sm text-red-600">{errors.nonceEnd.message}</p>}
+              {errors.nonceEnd && <p className="text-sm text-destructive">{errors.nonceEnd.message}</p>}
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Comparison</label>
+              <label className="text-sm font-medium text-foreground/80">Comparison</label>
               <Controller
                 name="targetOp"
                 control={control}
@@ -555,7 +555,7 @@ export function ScanForm() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Target Value</label>
+              <label className="text-sm font-medium text-foreground/80">Target Value</label>
               <Input
                 type="number"
                 step="0.01"
@@ -563,10 +563,10 @@ export function ScanForm() {
                 {...register('targetVal', { valueAsNumber: true })}
                 className="font-mono"
               />
-              {errors.targetVal && <p className="text-sm text-red-600">{errors.targetVal.message}</p>}
+              {errors.targetVal && <p className="text-sm text-destructive">{errors.targetVal.message}</p>}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Tolerance</label>
+              <label className="text-sm font-medium text-foreground/80">Tolerance</label>
               <Input
                 type="number"
                 step="0.01"
@@ -574,23 +574,23 @@ export function ScanForm() {
                 {...register('tolerance', { valueAsNumber: true })}
                 className="font-mono"
               />
-              {errors.tolerance && <p className="text-sm text-red-600">{errors.tolerance.message}</p>}
+              {errors.tolerance && <p className="text-sm text-destructive">{errors.tolerance.message}</p>}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="border border-slate-200">
+      <Card className="border border-border">
         <CardHeader className="space-y-2">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <IconSettings size={18} className="text-slate-500" />
+            <IconSettings size={18} className="text-muted-foreground" />
             Advanced Settings
-            <Badge className="bg-slate-500/10 text-slate-600">Optional</Badge>
+            <Badge className="border border-border bg-secondary/20 text-muted-foreground">Optional</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Result Limit</label>
+            <label className="text-sm font-medium text-foreground/80">Result Limit</label>
             <Input
               type="number"
               min={1}
@@ -598,10 +598,10 @@ export function ScanForm() {
               {...register('limit', { valueAsNumber: true })}
               className="font-mono"
             />
-            {errors.limit && <p className="text-sm text-red-600">{errors.limit.message}</p>}
+            {errors.limit && <p className="text-sm text-destructive">{errors.limit.message}</p>}
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Timeout (ms)</label>
+            <label className="text-sm font-medium text-foreground/80">Timeout (ms)</label>
             <Input
               type="number"
               min={1000}
@@ -610,7 +610,7 @@ export function ScanForm() {
               {...register('timeoutMs', { valueAsNumber: true })}
               className="font-mono"
             />
-            {errors.timeoutMs && <p className="text-sm text-red-600">{errors.timeoutMs.message}</p>}
+            {errors.timeoutMs && <p className="text-sm text-destructive">{errors.timeoutMs.message}</p>}
           </div>
         </CardContent>
       </Card>
@@ -628,23 +628,23 @@ export function ScanForm() {
       )}
 
       {watchedGame && nonceEnd !== undefined && nonceStart !== undefined && validationErrors.length === 0 && (
-        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm">
-          <div className="font-semibold text-indigo-700">Scan Summary</div>
+        <div className="rounded-lg border border-[hsl(var(--primary))]/40 bg-[hsl(var(--primary))]/10 p-4 text-sm text-[hsl(var(--primary))]">
+          <div className="font-semibold text-[hsl(var(--primary))]">Scan Summary</div>
           <div className="mt-2 grid gap-2 md:grid-cols-2">
             <div>
-              <span className="text-xs text-slate-500">Game</span>
+              <span className="text-xs text-muted-foreground">Game</span>
               <div>{availableGames.find((g) => g.id === watchedGame)?.name ?? watchedGame}</div>
             </div>
             <div>
-              <span className="text-xs text-slate-500">Nonce Range</span>
+              <span className="text-xs text-muted-foreground">Nonce Range</span>
               <div>{(nonceEnd - nonceStart).toLocaleString()} nonces</div>
             </div>
             <div>
-              <span className="text-xs text-slate-500">Target Condition</span>
+              <span className="text-xs text-muted-foreground">Target Condition</span>
               <div>{targetOp} {targetVal}</div>
             </div>
             <div>
-              <span className="text-xs text-slate-500">Result Limit</span>
+              <span className="text-xs text-muted-foreground">Result Limit</span>
               <div>{limit?.toLocaleString()} hits</div>
             </div>
           </div>

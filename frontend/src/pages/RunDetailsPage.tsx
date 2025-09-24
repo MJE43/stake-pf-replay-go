@@ -79,7 +79,7 @@ export function RunDetailsPage() {
     if (!run) return null;
     if (run.timed_out) {
       return (
-        <Badge className="gap-1 bg-amber-500/15 text-amber-600">
+        <Badge className="gap-1 border border-amber-400/60 bg-amber-500/15 text-amber-200">
           <IconClock size={12} />
           <span>Timed Out</span>
         </Badge>
@@ -87,14 +87,14 @@ export function RunDetailsPage() {
     }
     if (run.hit_count > 0) {
       return (
-        <Badge className="gap-1 bg-emerald-500/15 text-emerald-600">
+        <Badge className="gap-1 border border-emerald-500/40 bg-emerald-500/15 text-emerald-200">
           <IconCheck size={12} />
           <span>Completed</span>
         </Badge>
       );
     }
     return (
-      <Badge className="gap-1 bg-slate-500/15 text-slate-600">
+      <Badge className="gap-1 border border-border bg-secondary/40 text-muted-foreground">
         <IconX size={12} />
         <span>No Hits</span>
       </Badge>
@@ -104,14 +104,14 @@ export function RunDetailsPage() {
   if (loading) {
     return (
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
-        <Button variant="ghost" className="w-fit gap-2 text-slate-500" disabled>
+        <Button variant="ghost" className="w-fit gap-2 text-muted-foreground" disabled>
           <IconArrowLeft size={16} />
           Back to scan history
         </Button>
-        <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-          <div className="flex items-center gap-3 text-indigo-600">
+        <div className="rounded-none border border-border bg-card p-8 shadow-[var(--shadow-sm)]">
+          <div className="flex items-center gap-3 text-[hsl(var(--primary))]">
             <IconLoader2 className="animate-spin" size={20} />
-            <p className="text-sm text-slate-500">Loading run details...</p>
+            <p className="text-sm text-muted-foreground">Loading run details...</p>
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <Skeleton className="h-32 rounded-lg" />
@@ -127,7 +127,7 @@ export function RunDetailsPage() {
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4">
         <Button
           variant="ghost"
-          className="w-fit gap-2 text-slate-600 hover:text-slate-900"
+          className="w-fit gap-2 text-muted-foreground hover:text-foreground"
           onClick={() => navigate('/runs')}
         >
           <IconArrowLeft size={16} />
@@ -145,7 +145,7 @@ export function RunDetailsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button
           variant="ghost"
-          className="gap-2 text-slate-600 hover:text-slate-900"
+          className="gap-2 text-muted-foreground hover:text-foreground"
           onClick={() => navigate('/runs')}
         >
           <IconArrowLeft size={16} />

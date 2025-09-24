@@ -167,14 +167,14 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
-            className="gap-2 text-sm text-slate-600 hover:text-slate-900"
+            className="gap-2 text-sm text-muted-foreground hover:text-foreground"
             onClick={() => navigate('/live')}
           >
             <IconArrowLeft size={16} />
             Back to streams
           </Button>
           {detail && (
-            <Badge className="gap-2 bg-indigo-500/10 text-indigo-600">
+            <Badge className="gap-2 bg-[hsl(var(--primary))]/15 text-[hsl(var(--primary))]">
               Live Stream
               <IconExternalLink size={14} />
             </Badge>
@@ -188,7 +188,7 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
           <Skeleton className="h-[400px] rounded-xl" />
         </div>
       ) : error && !detail ? (
-        <div className="flex flex-col items-start gap-4 rounded-lg border border-red-200 bg-red-50 p-6 text-red-600">
+        <div className="flex flex-col items-start gap-4 rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-destructive">
           <h2 className="text-lg font-semibold">Something went wrong</h2>
           <p className="text-sm">{error}</p>
           <Button onClick={() => load()} variant="destructive">
@@ -198,7 +198,7 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
       ) : summary ? (
         <div className="flex flex-col gap-6">
           {/* Horizontal Stream Summary Bar */}
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-6 text-sm">
                 <CopyableField
@@ -212,13 +212,13 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
                   displayValue={`${summary.clientSeed.slice(0, 12)}...`}
                 />
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-slate-600">Total Bets:</span>
-                  <span className="font-semibold text-slate-900">{summary.totalBets?.toLocaleString() ?? 0}</span>
+                  <span className="font-medium text-muted-foreground">Total Bets:</span>
+                  <span className="font-semibold text-foreground">{summary.totalBets?.toLocaleString() ?? 0}</span>
                 </div>
                 {summary.highestMultiplier && (
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-slate-600">Highest:</span>
-                    <span className="font-semibold text-indigo-600">{summary.highestMultiplier.toFixed(2)}×</span>
+                    <span className="font-medium text-muted-foreground">Highest:</span>
+                    <span className="font-semibold text-[hsl(var(--primary))]">{summary.highestMultiplier.toFixed(2)}×</span>
                   </div>
                 )}
               </div>
@@ -245,9 +245,9 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
             </div>
             
             {/* Notes Section - Always visible for editing */}
-            <div className="mt-4 rounded-lg bg-slate-50 p-3">
+            <div className="mt-4 rounded-lg bg-secondary p-3">
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                   📝 Notes
                 </div>
                 <Button
@@ -265,7 +265,7 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
                   {savingNotes ? 'Saving...' : 'Edit'}
                 </Button>
               </div>
-              <p className="text-sm text-slate-700">
+              <p className="text-sm text-foreground/80">
                 {summary.notes || 'No notes yet. Click Edit to add observations about this stream.'}
               </p>
             </div>
@@ -275,7 +275,7 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
           <div className="flex flex-col gap-4 rounded-xl border border-slate-900 bg-slate-950/95 shadow-xl shadow-slate-950/30 ring-1 ring-slate-900/60 overflow-hidden">
             <div className="flex flex-col gap-1 px-4 pt-4">
               <h2 className="text-lg font-semibold text-slate-100">Live bets</h2>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-muted-foreground/70">
                 Newest bets appear at the top. Scroll to load older history.
               </p>
             </div>

@@ -30,75 +30,81 @@ export function RunSummary({ run }: RunSummaryProps) {
   };
 
   return (
-    <Card className="border border-slate-200 bg-white">
+    <Card className="border border-border bg-card shadow-[var(--shadow-sm)]">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
-          <IconTrendingUp size={20} className="text-indigo-500" />
+        <CardTitle className="flex items-center gap-2 text-lg text-foreground">
+          <IconTrendingUp size={20} className="text-[hsl(var(--primary))]" />
           Scan Summary
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <section className="grid gap-6 md:grid-cols-2">
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Scan Parameters</h3>
-            <div className="flex items-center gap-2 text-sm text-slate-700">
-              <IconDice size={16} className="text-indigo-500" />
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Scan Parameters</h3>
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
+              <IconDice size={16} className="text-[hsl(var(--primary))]" />
               <span className="font-medium">Game:</span>
-              <Badge className="bg-indigo-500/10 text-indigo-600 uppercase">{run.game}</Badge>
+              <Badge className="border border-[hsl(var(--primary))]/40 bg-[hsl(var(--primary))]/15 uppercase text-[hsl(var(--primary))]">
+                {run.game}
+              </Badge>
             </div>
-            <div className="flex items-center gap-2 text-sm text-slate-700">
-              <IconHash size={16} className="text-indigo-500" />
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
+              <IconHash size={16} className="text-[hsl(var(--primary))]" />
               <span className="font-medium">Server Seed Hash:</span>
-              <span className="font-mono text-xs text-slate-500">{run.server_seed_hash.substring(0, 16)}...</span>
+              <span className="font-mono text-xs text-muted-foreground">{run.server_seed_hash.substring(0, 16)}...</span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-slate-700">
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
               <span className="font-medium">Client Seed:</span>
-              <span className="font-mono text-xs text-slate-600">{run.client_seed}</span>
+              <span className="font-mono text-xs text-muted-foreground">{run.client_seed}</span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-slate-700">
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
               <span className="font-medium">Nonce Range:</span>
               <span>
                 {run.nonce_start.toLocaleString()} - {run.nonce_end.toLocaleString()}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-slate-700">
-              <IconTarget size={16} className="text-indigo-500" />
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
+              <IconTarget size={16} className="text-[hsl(var(--primary))]" />
               <span className="font-medium">Target:</span>
               <span>
                 {run.target_op} {run.target_val} (±{run.tolerance})
               </span>
             </div>
             {Object.keys(parsedParams).length > 0 && (
-              <div className="text-sm text-slate-700">
+              <div className="text-sm text-foreground/80">
                 <span className="font-medium">Game Parameters:</span>{' '}
-                <span className="font-mono text-xs text-slate-600">
+                <span className="font-mono text-xs text-muted-foreground">
                   {JSON.stringify(parsedParams)}
                 </span>
               </div>
             )}
           </div>
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Execution Metadata</h3>
-            <div className="flex items-center gap-2 text-sm text-slate-700">
-              <IconClock size={16} className="text-indigo-500" />
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Execution Metadata</h3>
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
+              <IconClock size={16} className="text-[hsl(var(--primary))]" />
               <span className="font-medium">Created:</span>
               <span>{createdDate}</span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-slate-700">
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
               <span className="font-medium">Engine Version:</span>
-              <Badge variant="outline" className="border-slate-300 text-slate-600">
+              <Badge variant="outline" className="border-border text-muted-foreground">
                 {run.engine_version}
               </Badge>
             </div>
-            <div className="flex items-center gap-2 text-sm text-slate-700">
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
               <span className="font-medium">Status:</span>
               <Badge
-                className={run.timed_out ? 'bg-amber-500/15 text-amber-600' : 'bg-emerald-500/15 text-emerald-600'}
+                className={
+                  run.timed_out
+                    ? 'border border-amber-400/60 bg-amber-500/15 text-amber-200'
+                    : 'border border-emerald-500/40 bg-emerald-500/15 text-emerald-200'
+                }
               >
                 {run.timed_out ? 'Timed Out' : 'Completed'}
               </Badge>
             </div>
-            <div className="flex items-center gap-2 text-sm text-slate-700">
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
               <span className="font-medium">Hit Limit:</span>
               <span>{run.hit_limit.toLocaleString()}</span>
             </div>
@@ -106,22 +112,26 @@ export function RunSummary({ run }: RunSummaryProps) {
         </section>
 
         <section className="space-y-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Statistics</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Statistics</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Total Evaluated" value={run.total_evaluated.toLocaleString()} tone="text-indigo-600" />
-            <StatCard label="Hits Found" value={run.hit_count.toLocaleString()} tone="text-emerald-600" />
-            <StatCard label="Hit Rate" value={`${hitRate.toFixed(4)}%`} tone="text-amber-600" />
+            <StatCard
+              label="Total Evaluated"
+              value={run.total_evaluated.toLocaleString()}
+              tone="text-[hsl(var(--primary))]"
+            />
+            <StatCard label="Hits Found" value={run.hit_count.toLocaleString()} tone="text-emerald-200" />
+            <StatCard label="Hit Rate" value={`${hitRate.toFixed(4)}%`} tone="text-amber-200" />
             <StatCard
               label="Summary Count"
               value={run.summary_count ? run.summary_count.toLocaleString() : 'N/A'}
-              tone="text-violet-600"
+              tone="text-[hsl(var(--chart-2))]"
             />
           </div>
           {(run.summary_min !== undefined || run.summary_max !== undefined || run.summary_sum !== undefined) && (
             <div className="grid gap-4 sm:grid-cols-3">
-              <StatCard label="Min Metric" value={formatNumber(run.summary_min)} tone="text-red-600" />
-              <StatCard label="Max Metric" value={formatNumber(run.summary_max)} tone="text-teal-600" />
-              <StatCard label="Sum Metric" value={formatNumber(run.summary_sum)} tone="text-indigo-600" />
+              <StatCard label="Min Metric" value={formatNumber(run.summary_min)} tone="text-destructive" />
+              <StatCard label="Max Metric" value={formatNumber(run.summary_max)} tone="text-teal-200" />
+              <StatCard label="Sum Metric" value={formatNumber(run.summary_sum)} tone="text-[hsl(var(--primary))]" />
             </div>
           )}
         </section>
@@ -138,9 +148,9 @@ type StatCardProps = {
 
 function StatCard({ label, value, tone }: StatCardProps) {
   return (
-    <div className="flex flex-col items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/60 p-4 text-center">
+    <div className="flex flex-col items-center gap-1 rounded-none border border-border bg-secondary/60 p-4 text-center shadow-[var(--shadow-xs)]">
       <span className={`text-xl font-semibold ${tone}`}>{value}</span>
-      <span className="text-xs uppercase tracking-wide text-slate-500">{label}</span>
+      <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
     </div>
   );
 }
