@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout, ErrorBoundary } from './components';
 import { AppToaster } from '@/components/ui/sonner-toaster';
+import { ThemeProvider } from '@/components/theme-provider';
 import './styles/globals.css';
 
 const ScanPage = lazy(() => import('./pages/ScanPage').then((module) => ({ default: module.ScanPage })));
@@ -29,22 +30,24 @@ const queryClient = new QueryClient({
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ErrorBoundary>
-        <Router>
-          <Layout>
-            <Suspense fallback={<div className="p-6 text-sm text-slate-500">Loading...</div>}>
-              <Routes>
-                <Route path="/" element={<ScanPage />} />
-                <Route path="/runs" element={<RunsPage />} />
-                <Route path="/runs/:id" element={<RunDetailsPage />} />
-                <Route path="/live" element={<LiveStreamsPage />} />
-                <Route path="/live/:id" element={<LiveStreamDetailPage />} />
-              </Routes>
-            </Suspense>
-          </Layout>
-        </Router>
-        <AppToaster />
-      </ErrorBoundary>
+      <ThemeProvider defaultTheme="dark">
+        <ErrorBoundary>
+          <Router>
+            <Layout>
+              <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading...</div>}>
+                <Routes>
+                  <Route path="/" element={<ScanPage />} />
+                  <Route path="/runs" element={<RunsPage />} />
+                  <Route path="/runs/:id" element={<RunDetailsPage />} />
+                  <Route path="/live" element={<LiveStreamsPage />} />
+                  <Route path="/live/:id" element={<LiveStreamDetailPage />} />
+                </Routes>
+              </Suspense>
+            </Layout>
+          </Router>
+          <AppToaster />
+        </ErrorBoundary>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

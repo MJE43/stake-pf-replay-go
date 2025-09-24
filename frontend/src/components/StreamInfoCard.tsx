@@ -64,7 +64,7 @@ function CopyButton({ value, label }: CopyButtonProps) {
             variant={copied ? 'default' : 'outline'}
             size="icon"
             className={cn(
-              'h-9 w-9 border border-indigo-100 text-indigo-600 hover:bg-indigo-50',
+              'h-9 w-9 border border-[hsl(var(--primary))]/40 text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]/10',
               copied && 'bg-emerald-500 text-white hover:bg-emerald-500/90',
             )}
             onClick={handleCopy}
@@ -151,11 +151,11 @@ export default function StreamInfoCard(props: {
   );
 
   return (
-    <Card className="w-full border border-slate-200 bg-white shadow-sm">
+    <Card className="w-full border border-border bg-card shadow-sm">
       <CardHeader className="flex flex-col gap-3 pb-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600">
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--primary))]/15 text-[hsl(var(--primary))]">
               <IconHash size={18} />
             </span>
             <div className="flex flex-col">
@@ -182,23 +182,23 @@ export default function StreamInfoCard(props: {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
-            <Label className="mb-1 flex items-center gap-2 text-xs uppercase tracking-wide text-slate-500">
+          <div className="rounded-lg border border-border bg-secondary/50 p-4">
+            <Label className="mb-1 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
               <IconKey size={14} /> Server Seed Hash
             </Label>
             <div className="flex items-start justify-between gap-3">
-              <span className="line-clamp-2 break-all text-sm font-medium text-slate-700">
+              <span className="line-clamp-2 break-all text-sm font-medium text-foreground/80">
                 {summary.serverSeedHashed || '--'}
               </span>
               {summary.serverSeedHashed && <CopyButton value={summary.serverSeedHashed} label="Server seed" />}
             </div>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
-            <Label className="mb-1 flex items-center gap-2 text-xs uppercase tracking-wide text-slate-500">
+          <div className="rounded-lg border border-border bg-secondary/50 p-4">
+            <Label className="mb-1 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
               <IconKey size={14} /> Client Seed
             </Label>
             <div className="flex items-start justify-between gap-3">
-              <span className="line-clamp-2 break-all text-sm font-medium text-slate-700">
+              <span className="line-clamp-2 break-all text-sm font-medium text-foreground/80">
                 {summary.clientSeed || '--'}
               </span>
               {summary.clientSeed && <CopyButton value={summary.clientSeed} label="Client seed" />}
@@ -208,11 +208,11 @@ export default function StreamInfoCard(props: {
       </CardHeader>
 
       <CardContent className="grid gap-6">
-        <div className="grid gap-4 rounded-lg border border-slate-200 bg-slate-50/40 p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 rounded-lg border border-border bg-secondary/40 p-4 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
             <div key={stat.label} className="flex flex-col gap-1">
-              <span className="text-xs uppercase tracking-wide text-slate-500">{stat.label}</span>
-              <span className="font-mono text-sm text-slate-800">{stat.value}</span>
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">{stat.label}</span>
+              <span className="font-mono text-sm text-foreground">{stat.value}</span>
             </div>
           ))}
         </div>
@@ -221,10 +221,10 @@ export default function StreamInfoCard(props: {
           <div className="flex items-center justify-between gap-3">
             <div className="flex flex-col">
               <span className="text-sm font-semibold">Notes</span>
-              <span className="text-xs text-slate-500">Document findings, reminders, or next actions.</span>
+              <span className="text-xs text-muted-foreground">Document findings, reminders, or next actions.</span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-600">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="secondary" className="bg-[hsl(var(--primary))]/15 text-[hsl(var(--primary))]">
                 {notesDirty ? 'Unsaved changes' : editing ? 'Editing' : 'Read-only'}
               </Badge>
             </div>
@@ -242,8 +242,8 @@ export default function StreamInfoCard(props: {
         </div>
       </CardContent>
 
-      <CardFooter className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/60 py-4">
-        <div className="text-xs text-slate-500">
+      <CardFooter className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-secondary/60 py-4">
+        <div className="text-xs text-muted-foreground">
           <p className="font-medium">Stream ID</p>
           <p className="font-mono">{summary.id}</p>
         </div>
