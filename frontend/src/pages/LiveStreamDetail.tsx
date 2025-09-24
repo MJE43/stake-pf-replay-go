@@ -272,10 +272,10 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
           </div>
 
           {/* Full-Width Live Bets Table */}
-          <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex flex-col gap-4 rounded-xl border border-slate-900 bg-slate-950/95 shadow-xl shadow-slate-950/30 ring-1 ring-slate-900/60 overflow-hidden">
             <div className="flex flex-col gap-1 px-4 pt-4">
-              <h2 className="text-lg font-semibold text-slate-900">Live bets</h2>
-              <p className="text-sm text-slate-500">
+              <h2 className="text-lg font-semibold text-slate-100">Live bets</h2>
+              <p className="text-sm text-slate-400">
                 Newest bets appear at the top. Scroll to load older history.
               </p>
             </div>
