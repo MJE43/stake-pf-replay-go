@@ -268,7 +268,7 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
             const toneClass = difficultyTone[bet.difficulty as keyof typeof difficultyTone] ?? difficultyTone.medium;
             return (
               <>
-                <td data-index={index} className="px-4 py-3 font-mono text-[0.7rem] text-muted-foreground/70">{bet.nonce}</td>
+                <td data-index={index} className="px-4 py-3 font-mono text-[0.7rem] text-slate-300">{bet.nonce}</td>
                 <td className="px-4 py-3 font-mono text-[0.7rem] text-slate-300">{formatDate(bet.date_time)}</td>
                 <td className="px-4 py-3 font-mono text-[0.7rem] text-slate-200">{bet.amount.toFixed(2)}</td>
                 <td className="px-4 py-3 font-mono text-[0.7rem] text-slate-200">{bet.payout.toFixed(2)}</td>
