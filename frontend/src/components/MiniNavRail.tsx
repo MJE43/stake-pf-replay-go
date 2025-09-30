@@ -49,7 +49,7 @@ export function MiniNavRail({ items }: MiniNavRailProps) {
 
   return (
     <TooltipProvider>
-      <aside className="sticky top-0 z-30 hidden h-screen w-[var(--rail-width,60px)] shrink-0 border-r border-border/70 bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))] md:flex md:flex-col md:items-center md:justify-between">
+      <aside className="sticky top-0 z-40 hidden h-[100dvh] w-[var(--rail-width,60px)] shrink-0 border-r border-border/70 bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))] md:flex md:flex-col md:items-center md:justify-between">
         <nav className="flex flex-col items-center gap-2 py-5">
           {items.map((item, index) => {
             const active =
