@@ -16,7 +16,7 @@ const Table = forwardRef<HTMLTableElement, ComponentPropsWithoutRef<'table'>>(
     <table
       ref={ref}
       style={style}
-      className={cn('w-full border-separate border-spacing-0 text-left text-xs md:text-sm text-foreground/80', className)}
+      className={cn('w-full border-separate border-spacing-0 text-left text-sm leading-6 text-foreground/85', className)}
       {...props}
     />
   ),
@@ -28,7 +28,7 @@ const TableHead = forwardRef<HTMLTableSectionElement, ComponentPropsWithoutRef<'
     <thead
       ref={ref}
       style={style}
-      className={cn('bg-muted/80 text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground', className)}
+      className={cn('bg-muted/80 text-[0.65rem] md:text-xs uppercase tracking-[0.18em] text-muted-foreground', className)}
       {...props}
     />
   ),
@@ -40,7 +40,7 @@ const TableRow = forwardRef<HTMLTableRowElement, ComponentPropsWithoutRef<'tr'>>
     <tr
       ref={ref}
       style={style}
-      className={cn('border-b border-border/60 transition-colors bg-card/70 hover:bg-muted/60 focus-visible:bg-muted/60', className)}
+      className={cn('group border-b border-border/60 bg-card/70 transition-colors hover:bg-muted/70 focus-visible:bg-muted/60', className)}
       {...props}
     />
   ),
@@ -156,14 +156,14 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
 
   const fixedHeader = useMemo(
     () => (
-      <tr className="sticky top-0 z-20 bg-card/95 text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground backdrop-blur-sm">
-        <th className="w-[90px] px-4 py-3 text-left font-semibold text-foreground/80">Nonce</th>
-        <th className="w-[160px] px-4 py-3 text-left font-semibold text-foreground/80">Date</th>
-        <th className="w-[120px] px-4 py-3 text-left font-semibold text-foreground/80">Amount</th>
-        <th className="w-[120px] px-4 py-3 text-left font-semibold text-foreground/80">Payout</th>
-        <th className="w-[120px] px-4 py-3 text-left font-semibold text-foreground/80">Difficulty</th>
-        <th className="w-[120px] px-4 py-3 text-left font-semibold text-foreground/80">Target</th>
-        <th className="w-[120px] px-4 py-3 text-left font-semibold text-foreground/80">Result</th>
+      <tr className="sticky top-0 z-20 bg-card/95 text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground backdrop-blur-sm">
+        <th className="w-[90px] px-4 py-3 text-left font-semibold text-foreground/75">Nonce</th>
+        <th className="w-[160px] px-4 py-3 text-left font-semibold text-foreground/75">Date</th>
+        <th className="w-[120px] px-4 py-3 text-right font-semibold text-foreground/75">Amount</th>
+        <th className="w-[120px] px-4 py-3 text-right font-semibold text-foreground/75">Payout</th>
+        <th className="w-[120px] px-4 py-3 text-left font-semibold text-foreground/75">Difficulty</th>
+        <th className="w-[120px] px-4 py-3 text-right font-semibold text-foreground/75">Target</th>
+        <th className="w-[120px] px-4 py-3 text-right font-semibold text-foreground/75">Result</th>
       </tr>
     ),
     [],
@@ -277,17 +277,32 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
             const toneClass = difficultyTone[bet.difficulty as keyof typeof difficultyTone] ?? difficultyTone.medium;
             return (
               <>
-                <td data-index={index} className="px-4 py-3 font-mono text-[0.7rem] text-foreground/70">{bet.nonce}</td>
-                <td className="px-4 py-3 font-mono text-[0.7rem] text-foreground/70">{formatDate(bet.date_time)}</td>
-                <td className="px-4 py-3 font-mono text-[0.7rem] text-foreground/80">{bet.amount.toFixed(2)}</td>
-                <td className="px-4 py-3 font-mono text-[0.7rem] text-foreground/80">{bet.payout.toFixed(2)}</td>
+                <td
+                  data-index={index}
+                  className="px-4 py-3 font-mono text-xs md:text-sm text-muted-foreground tabular-nums tracking-tight"
+                >
+                  {bet.nonce}
+                </td>
+                <td className="px-4 py-3 text-xs md:text-sm font-medium text-foreground/85 tracking-tight">
+                  {formatDate(bet.date_time)}
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-xs md:text-sm font-semibold text-foreground tabular-nums tracking-tight">
+                  {bet.amount.toFixed(2)}
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-xs md:text-sm font-semibold text-foreground tabular-nums tracking-tight">
+                  {bet.payout.toFixed(2)}
+                </td>
                 <td className="px-4 py-3">
-                  <Badge className={cn('capitalize border px-2 py-0.5 text-[0.65rem] font-medium', toneClass)}>
+                  <Badge className={cn('capitalize border px-2 py-0.5 text-[0.65rem] font-medium tracking-wide', toneClass)}>
                     {bet.difficulty}
                   </Badge>
                 </td>
-                <td className="px-4 py-3 font-mono text-[0.7rem] text-foreground/70">{bet.round_target ?? '--'}</td>
-                <td className="px-4 py-3 font-mono text-[0.7rem] text-[hsl(var(--primary))]">{bet.round_result.toFixed(2)}</td>
+                <td className="px-4 py-3 text-right font-mono text-xs md:text-sm text-muted-foreground tabular-nums tracking-tight">
+                  {bet.round_target ?? '--'}
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-xs md:text-sm font-semibold text-[hsl(var(--primary))] tabular-nums tracking-tight">
+                  {bet.round_result.toFixed(2)}
+                </td>
               </>
             );
           }}

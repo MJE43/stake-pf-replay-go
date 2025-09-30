@@ -132,23 +132,27 @@ export function HitsTable({ runId }: HitsTableProps) {
       </div>
 
       <div className="mt-6 overflow-hidden rounded-lg border border-border/60 bg-card/60">
-        <table className="min-w-full border-separate border-spacing-0 text-sm text-foreground/80">
-          <thead className="bg-muted/70 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+        <table className="min-w-full border-separate border-spacing-0 text-sm leading-6 text-foreground/85">
+          <thead className="bg-muted/70 text-xs uppercase tracking-[0.18em] text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-left font-semibold text-foreground/70">Nonce</th>
-              <th className="px-3 py-2 text-left font-semibold text-foreground/70">Metric</th>
-              <th className="px-3 py-2 text-left font-semibold text-foreground/70">Delta</th>
+              <th className="px-3 py-2 text-right font-semibold text-foreground/70">Metric</th>
+              <th className="px-3 py-2 text-right font-semibold text-foreground/70">Delta</th>
             </tr>
           </thead>
           <tbody>
             {data.map((hit) => (
               <tr
                 key={`${hit.nonce}-${hit.delta_nonce ?? 'na'}`}
-                className="border-b border-border/40 bg-card/40 transition-colors last:border-0 hover:bg-muted/40"
+                className="group border-b border-border/40 bg-card/40 transition-colors last:border-0 hover:bg-muted/50"
               >
-                <td className="px-3 py-2 font-mono text-xs text-foreground/70">{hit.nonce.toLocaleString()}</td>
-                <td className="px-3 py-2 font-mono text-xs text-foreground/70">{hit.metric.toFixed(6)}</td>
-                <td className="px-3 py-2 font-mono text-xs text-foreground/70">
+                <td className="px-3 py-2 font-mono text-xs md:text-sm text-muted-foreground tabular-nums tracking-tight">
+                  {hit.nonce.toLocaleString()}
+                </td>
+                <td className="px-3 py-2 text-right font-mono text-xs md:text-sm font-semibold text-foreground tabular-nums tracking-tight">
+                  {hit.metric.toFixed(6)}
+                </td>
+                <td className="px-3 py-2 text-right font-mono text-xs md:text-sm text-muted-foreground tabular-nums tracking-tight">
                   {hit.delta_nonce != null ? hit.delta_nonce.toLocaleString() : '-'}
                 </td>
               </tr>
