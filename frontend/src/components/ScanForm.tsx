@@ -8,12 +8,12 @@ import {
   IconAlertCircle,
   IconChevronDown,
   IconDice,
-  IconDownload,
   IconGauge,
-  IconHash,
   IconInfoCircle,
   IconKey,
+  IconLoader2,
   IconNumbers,
+  IconPlayerPlay,
   IconRefresh,
   IconRepeat,
   IconTarget,
@@ -26,7 +26,6 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 import {
   Form,
@@ -45,7 +44,6 @@ import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CopyableField } from '@/components/ui/copyable-field';
 
 interface GameInfo {
   id: string;
@@ -132,9 +130,9 @@ function SectionHeader({ icon, title, description }: { icon: ReactNode; title: s
 
 function SummaryChip({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/20 px-3 py-1.5">
-      <span className="text-xs uppercase text-muted-foreground/80">{label}</span>
-      <span className="font-mono text-sm text-foreground">{value}</span>
+    <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/15 px-3.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/75">{label}</span>
+      <span className="font-mono text-sm text-foreground/90">{value}</span>
     </div>
   );
 }
@@ -534,11 +532,21 @@ function StickyActionsBar({
   return (
     <div className="sticky bottom-0 left-0 right-0 mt-8 border-t border-border/70 bg-background/95 px-4 py-4 backdrop-blur supports-[backdrop-filter]:backdrop-blur md:px-0">
       <div className="flex flex-wrap justify-end gap-3">
-        <Button type="button" variant="outline" onClick={onReset} disabled={isSubmitting}>
-          <IconRefresh size={16} aria-hidden /> Reset
+        <Button type="button" variant="outline" onClick={onReset} disabled={isSubmitting} className="gap-2 px-4 py-2">
+          <IconRefresh size={16} aria-hidden />
+          Reset
         </Button>
-        <Button type="submit" className="gap-2" aria-busy={isSubmitting} disabled={isSubmitting}>
-          <IconRepeat size={16} className={isSubmitting ? 'animate-spin' : undefined} aria-hidden />
+        <Button
+          type="submit"
+          className="gap-2 px-5 py-2.5 text-base font-semibold"
+          aria-busy={isSubmitting}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <IconLoader2 size={18} className="animate-spin" aria-hidden />
+          ) : (
+            <IconPlayerPlay size={18} aria-hidden />
+          )}
           {isSubmitting ? 'Starting scan…' : 'Start scan'}
         </Button>
       </div>
@@ -550,9 +558,6 @@ export function ScanForm() {
   const navigate = useNavigate();
   const [availableGames, setAvailableGames] = useState<GameInfo[]>([]);
   const [loadingGames, setLoadingGames] = useState(false);
-  const [hashPreview, setHashPreview] = useState('');
-  const [showHashPreview, setShowHashPreview] = useState(false);
-  const [hashLoading, setHashLoading] = useState(false);
   const gameLoadAttempts = useRef(0);
   const gameRetryTimer = useRef<number | null>(null);
   const gameErrorShown = useRef(false);
@@ -566,7 +571,6 @@ export function ScanForm() {
   const { errors, isSubmitting } = formState;
 
   const watchedGame = watch('game');
-  const watchedServerSeed = watch('serverSeed');
   const nonceStart = watch('nonceStart');
   const nonceEnd = watch('nonceEnd');
   const targetOp = watch('targetOp');
@@ -674,26 +678,6 @@ export function ScanForm() {
     [form, nonceStart, nonceEnd],
   );
 
-  const handleHashPreview = useCallback(async () => {
-    if (!watchedServerSeed.trim()) {
-      toast.error('Please enter a server seed first');
-      return;
-    }
-
-    setHashLoading(true);
-    try {
-      const { HashServerSeed } = await getAppBindings();
-      const hash = await HashServerSeed(watchedServerSeed);
-      setHashPreview(hash);
-      setShowHashPreview(true);
-    } catch (error) {
-      console.error('Failed to hash server seed:', error);
-      toast.error('Failed to generate server seed hash');
-    } finally {
-      setHashLoading(false);
-    }
-  }, [watchedServerSeed]);
-
   const onSubmit = async (values: ScanFormValues) => {
     try {
       const data = scanFormSchema.parse(values);
@@ -739,8 +723,8 @@ export function ScanForm() {
     <TooltipProvider>
       <Form {...form}>
         <form onSubmit={handleSubmit(onSubmit)} className="relative space-y-10">
-          <Card className="border border-border shadow-[var(--shadow-sm)]">
-            <CardHeader className="space-y-4">
+          <Card className="rounded-2xl border border-border/60 bg-card/95 shadow-[0_24px_60px_-28px_rgba(0,0,0,0.85)]">
+            <CardHeader className="space-y-6">
               <div>
                 <CardTitle className="flex items-center gap-2 text-xl">
                   <IconRepeat size={20} className="text-[hsl(var(--primary))]" aria-hidden />
@@ -751,29 +735,59 @@ export function ScanForm() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <SummaryChip label="Game" value={availableGames.find((g) => g.id === watchedGame)?.name ?? '—'} />
-                <SummaryChip label="Range" value={`${nonceCount.toLocaleString()} nonces`} />
-                <SummaryChip
-                  label="Target"
-                  value={`${targetOp ?? '—'} ${typeof targetVal === 'number' && Number.isFinite(targetVal) ? targetVal.toString() : '—'}`}
-                />
-                <SummaryChip
-                  label="Limit"
-                  value={typeof limit === 'number' && Number.isFinite(limit) ? limit.toLocaleString() : '—'}
-                />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <SummaryChip label="Game" value={availableGames.find((g) => g.id === watchedGame)?.name ?? '—'} />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" align="center">
+                    Currently selected game
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <SummaryChip label="Range" value={`${nonceCount.toLocaleString()} nonces`} />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" align="center">
+                    Total nonces that will be evaluated
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <SummaryChip
+                        label="Target"
+                        value={`${targetOp ?? '—'} ${
+                          typeof targetVal === 'number' && Number.isFinite(targetVal) ? targetVal.toString() : '—'
+                        }`}
+                      />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" align="center">
+                    Outcome threshold used to flag results
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <SummaryChip
+                        label="Limit"
+                        value={typeof limit === 'number' && Number.isFinite(limit) ? limit.toLocaleString() : '—'}
+                      />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" align="center">
+                    Maximum bets the scan will pull before stopping
+                  </TooltipContent>
+                </Tooltip>
               </div>
-              {showHashPreview && hashPreview && (
-                <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
-                  <CopyableField value={hashPreview} label="Server hash" className="flex-1" />
-                  <Badge variant="outline" className="text-xs text-muted-foreground">
-                    Generated from current server seed
-                  </Badge>
-                </div>
-              )}
             </CardHeader>
 
-            <CardContent className="space-y-10">
-              <section className="space-y-4">
+            <CardContent className="space-y-12">
+              <section className="space-y-5">
                 <SectionHeader icon={<IconKey size={16} />} title="Seeds" description="Enter the server and client seeds" />
                 <div className="grid gap-6 md:grid-cols-2">
                   <FormField
@@ -781,25 +795,9 @@ export function ScanForm() {
                     render={({ field }) => (
                       <FormItem className="space-y-3">
                         <FormLabel>Server seed</FormLabel>
-                        <div className="flex items-center gap-2">
-                          <FormControl>
-                            <Input
-                              placeholder="Enter server seed"
-                              value={field.value ?? ''}
-                              onChange={field.onChange}
-                            />
-                          </FormControl>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={handleHashPreview}
-                            disabled={hashLoading}
-                            aria-label="Generate server hash preview"
-                          >
-                            {hashLoading ? <IconDownload size={16} className="animate-spin" aria-hidden /> : <IconHash size={16} aria-hidden />}
-                          </Button>
-                        </div>
+                        <FormControl>
+                          <Input placeholder="Enter server seed" value={field.value ?? ''} onChange={field.onChange} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -817,16 +815,9 @@ export function ScanForm() {
                     )}
                   />
                 </div>
-                <FormItem>
-                  <FormLabel>Optional notes</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Describe the scan purpose or link to a ticket" rows={4} disabled className="resize-none opacity-60" />
-                  </FormControl>
-                  <FormDescription>UI only for now — notes are not persisted.</FormDescription>
-                </FormItem>
               </section>
 
-              <section className="space-y-4">
+              <section className="space-y-5">
                 <SectionHeader icon={<IconDice size={16} />} title="Game" description="Choose the game and tweak parameters" />
                 <FormField
                   name="game"
@@ -845,7 +836,7 @@ export function ScanForm() {
                 )}
               </section>
 
-              <section className="space-y-4">
+              <section className="space-y-5">
                 <SectionHeader icon={<IconNumbers size={16} />} title="Nonce range" description="Define which bets to evaluate" />
                 <div className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
@@ -917,7 +908,7 @@ export function ScanForm() {
                 </div>
               </section>
 
-              <section className="space-y-4">
+              <section className="space-y-5">
                 <SectionHeader icon={<IconTarget size={16} />} title="Target" description="Define success criteria" />
                 <div className="grid gap-4 md:grid-cols-[240px_minmax(0,1fr)]">
                   <FormField
@@ -983,7 +974,7 @@ export function ScanForm() {
                 />
               </section>
 
-              <section className="space-y-4">
+              <section className="space-y-5">
                 <SectionHeader icon={<IconGauge size={16} />} title="Constraints" description="Optional fine-tuning" />
                 <AdvancedPanel />
               </section>
@@ -1006,8 +997,6 @@ export function ScanForm() {
             isSubmitting={isSubmitting}
             onReset={() => {
               reset(DEFAULT_VALUES);
-              setHashPreview('');
-              setShowHashPreview(false);
             }}
           />
         </form>

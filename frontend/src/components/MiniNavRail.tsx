@@ -49,8 +49,8 @@ export function MiniNavRail({ items }: MiniNavRailProps) {
 
   return (
     <TooltipProvider>
-      <aside className="sticky top-0 z-40 hidden h-[100dvh] w-[var(--rail-width,60px)] shrink-0 border-r border-border/70 bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))] md:flex md:flex-col md:items-center md:justify-between">
-        <nav className="flex flex-col items-center gap-2 py-5">
+      <aside className="sticky top-0 z-40 hidden h-[100dvh] w-[var(--rail-width,60px)] shrink-0 border-r border-border/50 bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))] shadow-[inset_-1px_0_0_rgba(0,0,0,0.25)] md:flex md:flex-col md:items-center md:justify-between">
+        <nav className="flex flex-col items-center gap-3 py-5">
           {items.map((item, index) => {
             const active =
               location.pathname === item.path ||
@@ -64,17 +64,17 @@ export function MiniNavRail({ items }: MiniNavRailProps) {
                     type="button"
                     aria-label={item.label}
                     className={cn(
-                      'group relative flex h-12 w-12 items-center justify-center rounded-lg border border-transparent text-[hsl(var(--sidebar-foreground))]/75 transition-colors hover:text-[hsl(var(--primary))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--sidebar))]',
+                      'group relative flex h-11 w-11 items-center justify-center rounded-xl border border-transparent text-[hsl(var(--sidebar-foreground))]/70 transition-all hover:border-[hsl(var(--primary))]/35 hover:bg-[hsl(var(--primary))]/7 hover:text-[hsl(var(--primary))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--sidebar))]',
                       active &&
-                        'border-[hsl(var(--primary))]/50 bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]',
+                        'border-[hsl(var(--primary))]/40 bg-[hsl(var(--primary))]/12 text-[hsl(var(--primary))] shadow-[0_0_0_1px_hsl(var(--primary))_/20] saturate-150',
                     )}
                     onClick={() => navigate(item.path)}
                   >
                     <span
                       className={cn(
-                        'pointer-events-none absolute left-1 top-2 bottom-2 w-1 rounded-full bg-[hsl(var(--primary))] opacity-0 transition-opacity',
+                        'pointer-events-none absolute inset-y-2 left-1 w-[3px] rounded-full bg-[hsl(var(--primary))] opacity-0 transition-opacity',
                         active && 'opacity-100',
-                        !active && 'group-hover:opacity-40',
+                        !active && 'group-hover:opacity-60',
                       )}
                     />
                     <item.icon size={18} strokeWidth={1.9} />
@@ -86,7 +86,7 @@ export function MiniNavRail({ items }: MiniNavRailProps) {
                     <span className="sr-only">Shortcut {shortcut}</span>
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right">
+                <TooltipContent side="right" align="center">
                   <div className="flex flex-col gap-1">
                     <span className="text-sm font-medium">{item.label}</span>
                     {item.description ? (
@@ -105,6 +105,7 @@ export function MiniNavRail({ items }: MiniNavRailProps) {
         </nav>
 
         <div className="flex flex-col items-center gap-3 pb-4">
+          <div className="h-px w-8 bg-border/40" />
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex h-9 w-9 items-center justify-center rounded-md border border-transparent bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))]/70 transition-colors hover:border-[hsl(var(--accent))]/40 hover:text-[hsl(var(--accent))]">

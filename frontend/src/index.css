@@ -39,7 +39,7 @@
   --font-sans: 'Fira Sans', sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
   --font-mono: 'Fira Code', monospace;
-  --radius: 8px;
+  --radius: 16px;
   --shadow-2xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.05);
   --shadow-xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.05);
   --shadow-sm: 0px 1px 2px 0px rgba(0, 0, 0, 0.05);
@@ -89,7 +89,7 @@
   --font-sans: 'Fira Sans', sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
   --font-mono: 'Fira Code', monospace;
-  --radius: 8px;
+  --radius: 16px;
   --shadow-2xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
   --shadow-xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
   --shadow-sm: 0px 1px 2px 0px rgba(0, 0, 0, 0.3);

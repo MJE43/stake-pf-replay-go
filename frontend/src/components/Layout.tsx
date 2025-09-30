@@ -62,14 +62,14 @@ export function Layout({ children }: LayoutProps) {
         <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
           <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:h-20">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))] shadow-[var(--shadow-sm)]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-border/80 bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))] shadow-[0_6px_20px_-12px_rgba(0,0,0,0.6)]">
                 <IconChartBar size={20} />
               </div>
               <div className="flex flex-col">
-                <span className="tracking-[var(--tracking-normal)] text-base font-semibold md:text-lg">
+                <span className="tracking-[var(--tracking-normal)] text-lg font-semibold md:text-xl">
                   Stake PF Replay
                 </span>
-                <span className="text-sm text-muted-foreground">Provable Fairness Analysis Tool</span>
+                <span className="text-sm text-muted-foreground/85">Provable Fairness Analysis Tool</span>
               </div>
             </div>
 

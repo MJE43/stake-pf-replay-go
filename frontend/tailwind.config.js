@@ -198,10 +198,10 @@ export default {
         overlay: "0px 12px 32px -4px rgba(0, 0, 0, 0.08), 0px 4px 8px -2px rgba(0, 0, 0, 0.08)",
       },
       borderRadius: {
-        sm: "4px",
-        md: "8px",
-        DEFAULT: "8px",
-        lg: "12px",
+        sm: "12px",
+        md: "16px",
+        DEFAULT: "16px",
+        lg: "24px",
         full: "9999px",
         // Keep CSS variable radius for shadcn components
         "radius-var": "var(--radius)",
