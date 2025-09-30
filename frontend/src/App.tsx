@@ -1,31 +1,53 @@
+import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { MantineProvider } from '@mantine/core';
-import { Notifications } from '@mantine/notifications';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout, ErrorBoundary } from './components';
-import { ScanPage, RunsPage, RunDetailsPage } from './pages';
-import { theme } from './theme';
-import '@mantine/core/styles.css';
-import '@mantine/notifications/styles.css';
-import "mantine-react-table/styles.css";
-import './styles/global.css';
+import { AppToaster } from '@/components/ui/sonner-toaster';
+import { ThemeProvider } from '@/components/theme-provider';
+import './styles/globals.css';
 
-function App() {
+const ScanPage = lazy(() => import('./pages/ScanPage').then((module) => ({ default: module.ScanPage })));
+const RunsPage = lazy(() => import('./pages/RunsPage').then((module) => ({ default: module.RunsPage })));
+const RunDetailsPage = lazy(
+  () => import('./pages/RunDetailsPage').then((module) => ({ default: module.RunDetailsPage })),
+);
+const LiveStreamsPage = lazy(
+  () => import('./pages/LiveStreamsListPage').then((module) => ({ default: module.default })),
+);
+const LiveStreamDetailPage = lazy(
+  () => import('./pages/LiveStreamDetail').then((module) => ({ default: module.default })),
+);
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      retry: 1,
+    },
+  },
+});
+
+export default function App() {
   return (
-    <MantineProvider theme={theme}>
-      <Notifications />
-      <ErrorBoundary>
-        <Router>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<ScanPage />} />
-              <Route path="/runs" element={<RunsPage />} />
-              <Route path="/runs/:id" element={<RunDetailsPage />} />
-            </Routes>
-          </Layout>
-        </Router>
-      </ErrorBoundary>
-    </MantineProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="dark">
+        <ErrorBoundary>
+          <Router>
+            <Layout>
+              <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading...</div>}>
+                <Routes>
+                  <Route path="/" element={<ScanPage />} />
+                  <Route path="/runs" element={<RunsPage />} />
+                  <Route path="/runs/:id" element={<RunDetailsPage />} />
+                  <Route path="/live" element={<LiveStreamsPage />} />
+                  <Route path="/live/:id" element={<LiveStreamDetailPage />} />
+                </Routes>
+              </Suspense>
+            </Layout>
+          </Router>
+          <AppToaster />
+        </ErrorBoundary>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
-
-export default App;

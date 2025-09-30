@@ -1,0 +1,289 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { IconArrowLeft, IconExternalLink } from '@tabler/icons-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { CopyableField } from '@/components/ui/copyable-field';
+import StreamInfoCard, { StreamSummary } from '@/components/StreamInfoCard';
+import LiveBetsTable from '@/components/LiveBetsTable';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from '@/components/ui/use-toast';
+import { EventsOn } from '@wails/runtime/runtime';
+import { GetStream, UpdateNotes, DeleteStream, ExportCSV, IngestInfo } from '@wails/go/livehttp/LiveModule';
+import { livestore } from '@wails/go/models';
+
+function normalizeStream(s: livestore.LiveStream) {
+  const idStr = Array.isArray(s.id) ? s.id.join('-') : String(s.id);
+
+  return {
+    id: idStr,
+    server_seed_hashed: s.server_seed_hashed ?? '',
+    client_seed: s.client_seed ?? '',
+    created_at: s.created_at ? new Date(s.created_at).toISOString() : '',
+    last_seen_at: s.last_seen_at ? new Date(s.last_seen_at).toISOString() : '',
+    notes: s.notes ?? '',
+    total_bets: s.total_bets ?? 0,
+    highest_round_result: s.highest_result ?? undefined,
+  };
+}
+
+type StreamDetail = ReturnType<typeof normalizeStream>;
+
+export default function LiveStreamDetailPage(props: { streamId?: string }) {
+  const params = useParams();
+  const navigate = useNavigate();
+  const streamId = props.streamId ?? params.id!;
+  const [detail, setDetail] = useState<StreamDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [apiBase, setApiBase] = useState<string>('');
+
+  const load = useCallback(async (attempt = 0) => {
+    let scheduledRetry = false;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const stream = await GetStream(streamId);
+      setDetail(normalizeStream(stream));
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Failed to load stream';
+      if (message.includes('not found') && attempt < 3) {
+        scheduledRetry = true;
+        setTimeout(() => load(attempt + 1), 1000);
+      } else {
+        setError(message);
+        toast.error(message);
+      }
+    } finally {
+      if (!scheduledRetry) {
+        setLoading(false);
+      }
+    }
+  }, [streamId]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const info = await IngestInfo();
+        try {
+          const url = new URL(info.url);
+          setApiBase(`${url.protocol}//${url.host}`);
+        } catch {
+          setApiBase('');
+        }
+      } catch {
+        setApiBase('');
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    setDetail(null);
+    load();
+    const off = EventsOn(`live:newrows:${streamId}`, () => {
+      load();
+    });
+    return () => {
+      off();
+    };
+  }, [streamId, load]);
+
+  const onExportCsv = useCallback(async () => {
+    try {
+      const exported = await ExportCSV(streamId);
+      if (exported.includes('\n') || exported.includes(',')) {
+        const blob = new Blob([exported], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `stream-${streamId}.csv`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        window.URL.revokeObjectURL(url);
+        toast.success('CSV downloaded');
+      } else {
+        toast.success(`CSV written to ${exported}`);
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Failed to export CSV';
+      toast.error(message);
+    }
+  }, [streamId]);
+
+  const onSaveNotes = useCallback(async (notes: string) => {
+    setSavingNotes(true);
+    try {
+      await UpdateNotes(streamId, notes);
+      setDetail((current) => (current ? { ...current, notes } : current));
+      toast.success('Notes updated');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Failed to save notes';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setSavingNotes(false);
+    }
+  }, [streamId]);
+
+  const onDeleteStream = useCallback(async () => {
+    if (!window.confirm('Delete this stream and all associated bets? This action cannot be undone.')) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await DeleteStream(streamId);
+      toast.success('Stream removed successfully');
+      navigate('/live');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Failed to delete stream';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setDeleting(false);
+    }
+  }, [streamId, navigate]);
+
+  const summary: StreamSummary | null = useMemo(() => {
+    if (!detail) return null;
+    return {
+      id: detail.id,
+      serverSeedHashed: detail.server_seed_hashed,
+      clientSeed: detail.client_seed,
+      createdAt: detail.created_at,
+      lastSeenAt: detail.last_seen_at,
+      notes: detail.notes,
+      totalBets: detail.total_bets ?? undefined,
+      highestMultiplier: detail.highest_round_result ?? undefined,
+    } satisfies StreamSummary;
+  }, [detail]);
+
+  return (
+    <div className="flex flex-col gap-6 pb-8">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            className="gap-2 text-sm text-muted-foreground hover:text-foreground"
+            onClick={() => navigate('/live')}
+          >
+            <IconArrowLeft size={16} />
+            Back to streams
+          </Button>
+          {detail && (
+            <Badge className="gap-2 bg-[hsl(var(--primary))]/15 text-[hsl(var(--primary))]">
+              Live Stream
+              <IconExternalLink size={14} />
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      {loading && !detail ? (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_1fr]">
+          <Skeleton className="h-[400px] rounded-xl" />
+          <Skeleton className="h-[400px] rounded-xl" />
+        </div>
+      ) : error && !detail ? (
+        <div className="flex flex-col items-start gap-4 rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-destructive">
+          <h2 className="text-lg font-semibold">Something went wrong</h2>
+          <p className="text-sm">{error}</p>
+          <Button onClick={() => load()} variant="destructive">
+            Try again
+          </Button>
+        </div>
+      ) : summary ? (
+        <div className="flex flex-col gap-6">
+          {/* Horizontal Stream Summary Bar */}
+          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-6 text-sm">
+                <CopyableField
+                  label="Server Seed"
+                  value={summary.serverSeedHashed}
+                  displayValue={`${summary.serverSeedHashed.slice(0, 12)}...`}
+                />
+                <CopyableField
+                  label="Client Seed"
+                  value={summary.clientSeed}
+                  displayValue={`${summary.clientSeed.slice(0, 12)}...`}
+                />
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-muted-foreground">Total Bets:</span>
+                  <span className="font-semibold text-foreground">{summary.totalBets?.toLocaleString() ?? 0}</span>
+                </div>
+                {summary.highestMultiplier && (
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-muted-foreground">Highest:</span>
+                    <span className="font-semibold text-[hsl(var(--primary))]">{summary.highestMultiplier.toFixed(2)}×</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={onExportCsv}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-xs"
+                >
+                  Export CSV
+                </Button>
+                <Button
+                  onClick={onDeleteStream}
+                  variant="destructive"
+                  size="sm"
+                  disabled={deleting}
+                  className="gap-2 text-xs"
+                >
+                  {deleting ? 'Deleting...' : 'Delete Stream'}
+                </Button>
+              </div>
+            </div>
+            
+            {/* Notes Section - Always visible for editing */}
+            <div className="mt-4 rounded-lg bg-secondary p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  📝 Notes
+                </div>
+                <Button
+                  onClick={() => {
+                    const newNotes = window.prompt('Edit notes:', summary.notes || '');
+                    if (newNotes !== null) {
+                      onSaveNotes(newNotes);
+                    }
+                  }}
+                  variant="ghost"
+                  size="sm"
+                  disabled={savingNotes}
+                  className="text-xs h-6 px-2"
+                >
+                  {savingNotes ? 'Saving...' : 'Edit'}
+                </Button>
+              </div>
+              <p className="text-sm text-foreground/80">
+                {summary.notes || 'No notes yet. Click Edit to add observations about this stream.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Full-Width Live Bets Table */}
+          <div className="flex flex-col gap-4 rounded-xl border border-slate-900 bg-slate-950/95 shadow-xl shadow-slate-950/30 ring-1 ring-slate-900/60 overflow-hidden">
+            <div className="flex flex-col gap-1 px-4 pt-4">
+              <h2 className="text-lg font-semibold text-slate-100">Live bets</h2>
+              <p className="text-sm text-muted-foreground/70">
+                Newest bets appear at the top. Scroll to load older history.
+              </p>
+            </div>
+
+            <LiveBetsTable streamId={streamId} minMultiplier={0} apiBase={apiBase} />
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}

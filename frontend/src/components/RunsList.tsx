@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Container, Title, Paper, LoadingOverlay, Alert, Stack, Box, Text, Group, Badge, Button } from '@mantine/core';
-import { IconAlertCircle, IconHistory, IconRefresh, IconPlus } from '@tabler/icons-react';
+import { useState, useEffect, useMemo } from 'react';
+import { IconAlertCircle, IconHistory, IconPlus, IconRefresh } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
-import { ListRuns } from '../../wailsjs/go/bindings/App';
-import { bindings } from '../../wailsjs/go/models';
-import { RunsTable } from './RunsTable';
+import { ListRuns } from '@wails/go/bindings/App';
+import { bindings } from '@wails/go/models';
+import { RunsTable } from '@/components/RunsTable';
+import { callWithRetry, waitForWailsBinding } from '@/lib/wails';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 export function RunsList() {
   const navigate = useNavigate();
@@ -14,17 +16,19 @@ export function RunsList() {
   const [currentQuery, setCurrentQuery] = useState<bindings.RunsQuery>({
     page: 1,
     perPage: 25,
-    game: undefined
+    game: undefined,
   });
 
   const fetchRuns = async (query: bindings.RunsQuery) => {
     try {
       setLoading(true);
       setError(null);
-      const result = await ListRuns(query);
+      await waitForWailsBinding(['go', 'bindings', 'App', 'ListRuns'], { timeoutMs: 10_000 });
+      const result = await callWithRetry(() => ListRuns(query), 4, 250);
       setRunsData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load runs');
+      const msg = err instanceof Error ? err.message : 'Failed to load runs';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -34,168 +38,116 @@ export function RunsList() {
     fetchRuns(currentQuery);
   }, [currentQuery]);
 
-  const handleQueryChange = (newQuery: Partial<bindings.RunsQuery>) => {
-    setCurrentQuery(prev => ({
+  const handleQueryChange = (patch: Partial<bindings.RunsQuery>) => {
+    setCurrentQuery((prev) => ({
       ...prev,
-      ...newQuery,
-      // Reset to page 1 when changing filters
-      page: newQuery.page ?? 1
+      ...patch,
+      page: patch.page ?? 1,
     }));
   };
 
-  const handleRefresh = () => {
-    fetchRuns(currentQuery);
-  };
+  const refresh = () => fetchRuns(currentQuery);
+
+  const totalPages = useMemo(() => {
+    if (!runsData?.totalCount || !currentQuery.perPage) return 1;
+    return Math.max(1, Math.ceil(runsData.totalCount / currentQuery.perPage));
+  }, [runsData?.totalCount, currentQuery.perPage]);
+
+  const header = (
+    <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2 text-[hsl(var(--primary))]">
+          <IconHistory size={24} />
+          <h1 className="text-xl font-semibold text-foreground">Scan History</h1>
+        </div>
+        <p className="text-sm text-muted-foreground">View and manage your previous scan results.</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" className="gap-2" onClick={refresh} disabled={loading}>
+          <IconRefresh size={16} />
+          Refresh
+        </Button>
+        <Button className="gap-2" onClick={() => navigate('/')}>
+          <IconPlus size={16} />
+          New Scan
+        </Button>
+      </div>
+    </div>
+  );
 
   if (error) {
     return (
-      <Container size="xl" className="fade-in">
-        <Stack gap="lg">
-          {/* Header */}
-          <Box>
-            <Group justify="space-between" align="flex-start" mb="lg">
-              <Box>
-                <Title order={2} className="text-gradient" mb="xs">
-                  Scan History
-                </Title>
-                <Text c="dimmed" size="sm">
-                  View and manage your previous scan results
-                </Text>
-              </Box>
-              
-              <Group gap="md">
-                <Button
-                  leftSection={<IconRefresh size={16} />}
-                  variant="light"
-                  onClick={handleRefresh}
-                >
-                  Refresh
-                </Button>
-                <Button
-                  leftSection={<IconPlus size={16} />}
-                  onClick={() => navigate('/')}
-                  className="btn-gradient"
-                >
-                  New Scan
-                </Button>
-              </Group>
-            </Group>
-          </Box>
-
-          <Alert
-            icon={<IconAlertCircle size="1.2rem" />}
-            title="Error Loading Scan History"
-            color="red"
-            radius="md"
-            className="card-hover"
-          >
-            {error}
-          </Alert>
-        </Stack>
-      </Container>
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
+        {header}
+        <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+          <IconAlertCircle size={18} />
+          <div>
+            <p className="font-medium">Error loading scan history</p>
+            <p className="mt-1 text-xs text-destructive">{error}</p>
+          </div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Container size="xl" className="fade-in">
-      <Stack gap="xl">
-        {/* Header Section */}
-        <Box>
-          <Group justify="space-between" align="flex-start" mb="lg">
-            <Box>
-              <Group gap="xs" mb="xs">
-                <IconHistory size={24} color="var(--mantine-color-blue-6)" />
-                <Title order={2} className="text-gradient">
-                  Scan History
-                </Title>
-              </Group>
-              <Text c="dimmed" size="sm">
-                View and manage your previous scan results
-              </Text>
-            </Box>
-            
-            <Group gap="md">
-              <Button
-                leftSection={<IconRefresh size={16} />}
-                variant="light"
-                onClick={handleRefresh}
-                loading={loading}
-              >
-                Refresh
-              </Button>
-              <Button
-                leftSection={<IconPlus size={16} />}
-                onClick={() => navigate('/')}
-                className="btn-gradient"
-              >
-                New Scan
-              </Button>
-            </Group>
-          </Group>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
+      {header}
 
-          {/* Stats Summary */}
-          {runsData && (
-            <Paper p="md" bg="blue.0" withBorder radius="md" className="fade-in">
-              <Group justify="space-around" ta="center">
-                <Box>
-                  <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Total Scans</Text>
-                  <Text size="xl" fw={700} c="blue.8">{runsData.totalCount.toLocaleString()}</Text>
-                </Box>
-                <Box>
-                  <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Current Page</Text>
-                  <Text size="xl" fw={700} c="blue.8">
-                    {currentQuery.page} of {Math.ceil(runsData.totalCount / (currentQuery.perPage || 25))}
-                  </Text>
-                </Box>
-                <Box>
-                  <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Per Page</Text>
-                  <Text size="xl" fw={700} c="blue.8">{currentQuery.perPage}</Text>
-                </Box>
-                {currentQuery.game && (
-                  <Box>
-                    <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Filtered by</Text>
-                    <Badge variant="filled" color="blue" size="lg" mt={4}>
-                      {currentQuery.game.toUpperCase()}
-                    </Badge>
-                  </Box>
-                )}
-              </Group>
-            </Paper>
+      {runsData && runsData.totalCount !== undefined && (
+        <div className="grid gap-4 rounded-none border border-border bg-card p-4 shadow-[var(--shadow-sm)] md:grid-cols-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total scans</p>
+            <p className="text-xl font-semibold text-[hsl(var(--primary))]">
+              {runsData.totalCount.toLocaleString()}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current page</p>
+            <p className="text-xl font-semibold text-[hsl(var(--primary))]">
+              {currentQuery.page} of {totalPages}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rows per page</p>
+            <p className="text-xl font-semibold text-[hsl(var(--primary))]">{currentQuery.perPage}</p>
+          </div>
+          {currentQuery.game && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Filter</p>
+              <Badge className="mt-2 border border-[hsl(var(--primary))]/50 bg-[hsl(var(--primary))]/15 text-[hsl(var(--primary))]">
+                {currentQuery.game.toUpperCase()}
+              </Badge>
+            </div>
           )}
-        </Box>
+        </div>
+      )}
 
-        {/* Main Content */}
-        <Box style={{ position: 'relative' }}>
-          <LoadingOverlay 
-            visible={loading} 
-            overlayProps={{ blur: 2 }}
-            loaderProps={{ size: 'lg', type: 'dots' }}
-          />
-          
-          {runsData && runsData.runs.length === 0 ? (
-            <Paper p="xl" withBorder radius="lg" ta="center" className="card-hover">
-              <IconHistory size={48} color="var(--mantine-color-gray-5)" style={{ marginBottom: 16 }} />
-              <Title order={3} c="gray.6" mb="xs">No Scan History</Title>
-              <Text c="dimmed" mb="lg">
-                You haven't run any scans yet. Start by creating your first scan.
-              </Text>
-              <Button
-                leftSection={<IconPlus size={16} />}
-                onClick={() => navigate('/')}
-                className="btn-gradient"
-              >
-                Create First Scan
-              </Button>
-            </Paper>
-          ) : runsData ? (
-            <RunsTable
-              data={runsData}
-              query={currentQuery}
-              onQueryChange={handleQueryChange}
-            />
-          ) : null}
-        </Box>
-      </Stack>
-    </Container>
+      <div className="relative rounded-none border border-border bg-card p-2 shadow-[var(--shadow-sm)]">
+        {loading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-none bg-card/70 backdrop-blur">
+            <span className="animate-pulse text-sm text-muted-foreground">Loading runs...</span>
+          </div>
+        )}
+
+        {!loading && runsData && runsData.runs && runsData.runs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-4 rounded-lg bg-secondary p-12 text-center">
+            <IconHistory size={42} className="text-muted-foreground/60" />
+            <div className="flex flex-col gap-1">
+              <p className="text-lg font-semibold text-foreground">No scan history yet</p>
+              <p className="text-sm text-muted-foreground">
+                You haven't run any scans. Start by creating your first scan.
+              </p>
+            </div>
+            <Button className="gap-2" onClick={() => navigate('/')}>
+              <IconPlus size={16} />
+              Create first scan
+            </Button>
+          </div>
+        ) : runsData && runsData.runs ? (
+          <RunsTable data={runsData} query={currentQuery} onQueryChange={handleQueryChange} />
+        ) : null}
+      </div>
+    </div>
   );
 }

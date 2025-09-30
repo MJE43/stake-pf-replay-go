@@ -10,13 +10,13 @@ type Seeds struct {
 type Game interface {
 	// Evaluate processes a single nonce with the given seeds and parameters
 	Evaluate(seeds Seeds, nonce uint64, params map[string]any) (GameResult, error)
-	
+
 	// EvaluateWithFloats processes pre-computed floats (performance optimization for scanning)
 	EvaluateWithFloats(floats []float64, params map[string]any) (GameResult, error)
-	
+
 	// FloatCount returns how many floats this game requires per evaluation
 	FloatCount(params map[string]any) int
-	
+
 	// Spec returns metadata about this game
 	Spec() GameSpec
 }
@@ -65,4 +65,5 @@ func init() {
 	RegisterGame(&DiceGame{})
 	RegisterGame(&RouletteGame{})
 	RegisterGame(&PumpGame{})
+	RegisterGame(&PlinkoGame{})
 }

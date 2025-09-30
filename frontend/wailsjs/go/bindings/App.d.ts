@@ -3,6 +3,7 @@
 import {games} from '../models';
 import {store} from '../models';
 import {bindings} from '../models';
+import {context} from '../models';
 
 export function CancelRun(arg1:string):Promise<void>;
 
@@ -12,8 +13,12 @@ export function GetRun(arg1:string):Promise<store.Run>;
 
 export function GetRunHits(arg1:string,arg2:number,arg3:number):Promise<bindings.HitsPage>;
 
+export function GetSeedRuns(arg1:string):Promise<bindings.SeedRunGroup>;
+
 export function HashServerSeed(arg1:string):Promise<string>;
 
 export function ListRuns(arg1:bindings.RunsQuery):Promise<bindings.RunsList>;
 
 export function StartScan(arg1:bindings.ScanRequest):Promise<bindings.ScanResult>;
+
+export function Startup(arg1:context.Context):Promise<void>;

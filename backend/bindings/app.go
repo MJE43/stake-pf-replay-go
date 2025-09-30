@@ -29,8 +29,15 @@ type ScanRequest struct {
 	TimeoutMs  int
 }
 
-type Hit struct{ Nonce uint64; Metric float64 }
-type Summary struct{ Count uint64; Min, Max, Sum float64; TotalEvaluated uint64 }
+type Hit struct {
+	Nonce  uint64
+	Metric float64
+}
+type Summary struct {
+	Count          uint64
+	Min, Max, Sum  float64
+	TotalEvaluated uint64
+}
 type ScanResult struct {
 	RunID          string
 	Hits           []Hit
@@ -39,6 +46,17 @@ type ScanResult struct {
 	Echo           ScanRequest
 	TimedOut       bool
 	ServerSeedHash string
+}
+
+type SeedGroupSeeds struct {
+	Server     string `json:"server"`
+	ServerHash string `json:"serverHash"`
+	Client     string `json:"client"`
+}
+
+type SeedRunGroup struct {
+	Seeds SeedGroupSeeds `json:"seeds"`
+	Runs  []store.Run    `json:"runs"`
 }
 
 // RunsQuery represents query parameters for listing runs
@@ -138,10 +156,10 @@ func (a *App) StartScan(req ScanRequest) (ScanResult, error) {
 
 	// Create a cancellable context for this scan
 	scanCtx, cancel := context.WithCancel(context.Background())
-	
+
 	// Create the run first to get an ID for tracking
 	serverHash, _ := a.HashServerSeed(req.Seeds.Server)
-	
+
 	// Convert params to JSON
 	paramsJSON := "{}"
 	if req.Params != nil {
@@ -258,9 +276,37 @@ func (a *App) StartScan(req ScanRequest) (ScanResult, error) {
 		ServerSeedHash: serverHash,
 	}, nil
 }
+
 // GetRun retrieves individual run metadata and summary
 func (a *App) GetRun(runID string) (*store.Run, error) {
 	return a.db.GetRun(runID)
+}
+
+// GetSeedRuns returns every run that shares the server/client seed combo of the provided run ID
+func (a *App) GetSeedRuns(runID string) (*SeedRunGroup, error) {
+	run, err := a.db.GetRun(runID)
+	if err != nil {
+		return nil, err
+	}
+
+	serverHash := run.ServerSeedHash
+	if serverHash == "" && run.ServerSeed != "" {
+		serverHash, _ = a.HashServerSeed(run.ServerSeed)
+	}
+
+	groupRuns, err := a.db.ListRunsBySeed(serverHash, run.ServerSeed, run.ClientSeed)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SeedRunGroup{
+		Seeds: SeedGroupSeeds{
+			Server:     run.ServerSeed,
+			ServerHash: serverHash,
+			Client:     run.ClientSeed,
+		},
+		Runs: groupRuns,
+	}, nil
 }
 
 // GetRunHits retrieves hits for a run with server-side pagination and delta nonce calculation

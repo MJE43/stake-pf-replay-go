@@ -1,31 +1,21 @@
-import {
-  Container,
-  Title,
-  Paper,
-  LoadingOverlay,
-  Alert,
-  Stack,
-  Box,
-  Group,
-  Badge,
-  Text,
-  Button,
-  Breadcrumbs,
-  Anchor,
-} from "@mantine/core";
-import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { GetRun, GetRunHits } from "../../wailsjs/go/bindings/App";
-import { store, bindings } from "../../wailsjs/go/models";
-import { RunSummary, HitsTable } from "../components";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   IconAlertCircle,
   IconArrowLeft,
-  IconEye,
-  IconClock,
   IconCheck,
+  IconClock,
+  IconLoader2,
   IconX,
-} from "@tabler/icons-react";
+} from '@tabler/icons-react';
+import { GetRun, GetSeedRuns } from '@wails/go/bindings/App';
+import { bindings, store } from '@wails/go/models';
+import { RunSummary, HitsTable, SeedRunWorkspace } from '@/components';
+import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { waitForWailsBinding } from '@/lib/wails';
 
 export function RunDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -33,10 +23,36 @@ export function RunDetailsPage() {
   const [run, setRun] = useState<store.Run | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [seedGroup, setSeedGroup] = useState<bindings.SeedRunGroup | null>(null);
+  const [groupLoading, setGroupLoading] = useState(false);
+  const [groupError, setGroupError] = useState<string | null>(null);
+
+  const refreshGroup = useCallback(
+    async (runId?: string) => {
+      const targetId = runId ?? id;
+      if (!targetId) {
+        return;
+      }
+
+      try {
+        setGroupLoading(true);
+        await waitForWailsBinding(['go', 'bindings', 'App', 'GetSeedRuns'], { timeoutMs: 10_000 });
+        const groupData = await GetSeedRuns(targetId);
+        setSeedGroup(groupData);
+        setGroupError(null);
+      } catch (err) {
+        console.error('Failed to load related runs', err);
+        setGroupError(err instanceof Error ? err.message : 'Failed to load related runs');
+      } finally {
+        setGroupLoading(false);
+      }
+    },
+    [id],
+  );
 
   useEffect(() => {
     if (!id) {
-      setError("Run ID is required");
+      setError('Run ID is required');
       setLoading(false);
       return;
     }
@@ -47,241 +63,125 @@ export function RunDetailsPage() {
         setError(null);
         const runData = await GetRun(id);
         setRun(runData);
+        await refreshGroup(id);
       } catch (err) {
-        console.error("Failed to fetch run:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to load run details"
-        );
+        console.error('Failed to fetch run:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load run details');
       } finally {
         setLoading(false);
       }
     };
 
     fetchRun();
-  }, [id]);
+  }, [id, refreshGroup]);
 
-  const getStatusBadge = (run: store.Run) => {
+  const statusBadge = useMemo(() => {
+    if (!run) return null;
     if (run.timed_out) {
       return (
-        <Badge
-          variant="light"
-          color="orange"
-          leftSection={<IconClock size={12} />}
-          size="lg"
-        >
-          Timed Out
-        </Badge>
-      );
-    } else if (run.hit_count > 0) {
-      return (
-        <Badge
-          variant="light"
-          color="green"
-          leftSection={<IconCheck size={12} />}
-          size="lg"
-        >
-          Completed
-        </Badge>
-      );
-    } else {
-      return (
-        <Badge
-          variant="light"
-          color="gray"
-          leftSection={<IconX size={12} />}
-          size="lg"
-        >
-          No Hits
+        <Badge className="gap-1 border border-amber-400/60 bg-amber-500/15 text-amber-200">
+          <IconClock size={12} />
+          <span>Timed Out</span>
         </Badge>
       );
     }
-  };
+    if (run.hit_count > 0) {
+      return (
+        <Badge className="gap-1 border border-emerald-500/40 bg-emerald-500/15 text-emerald-200">
+          <IconCheck size={12} />
+          <span>Completed</span>
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="gap-1 border border-border bg-secondary/40 text-muted-foreground">
+        <IconX size={12} />
+        <span>No Hits</span>
+      </Badge>
+    );
+  }, [run]);
 
   if (loading) {
     return (
-      <Container size="xl" className="fade-in">
-        <Paper
-          p="xl"
-          withBorder
-          pos="relative"
-          mih={400}
-          className="glass-effect"
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
+        <Button variant="ghost" className="w-fit gap-2 text-muted-foreground" disabled>
+          <IconArrowLeft size={16} />
+          Back to scan history
+        </Button>
+        <div className="rounded-none border border-border bg-card p-8 shadow-[var(--shadow-sm)]">
+          <div className="flex items-center gap-3 text-[hsl(var(--primary))]">
+            <IconLoader2 className="animate-spin" size={20} />
+            <p className="text-sm text-muted-foreground">Loading run details...</p>
+          </div>
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <Skeleton className="h-32 rounded-lg" />
+            <Skeleton className="h-32 rounded-lg" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !run) {
+    return (
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4">
+        <Button
+          variant="ghost"
+          className="w-fit gap-2 text-muted-foreground hover:text-foreground"
+          onClick={() => navigate('/runs')}
         >
-          <LoadingOverlay
-            visible={loading}
-            overlayProps={{ blur: 2 }}
-            loaderProps={{ size: "lg", type: "dots" }}
-          />
-          <Box ta="center" py="xl">
-            <Text size="lg" c="dimmed">
-              Loading run details...
-            </Text>
-          </Box>
-        </Paper>
-      </Container>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container size="xl" className="fade-in">
-        <Stack gap="lg">
-          {/* Breadcrumbs */}
-          <Breadcrumbs>
-            <Anchor onClick={() => navigate("/runs")} c="blue">
-              Scan History
-            </Anchor>
-            <Text c="dimmed">Error</Text>
-          </Breadcrumbs>
-
-          <Alert
-            icon={<IconAlertCircle size="1.2rem" />}
-            title="Error Loading Run"
-            color="red"
-            radius="md"
-            className="card-hover"
-          >
-            {error}
-          </Alert>
-
-          <Button
-            leftSection={<IconArrowLeft size={16} />}
-            variant="light"
-            onClick={() => navigate("/runs")}
-          >
-            Back to Scan History
-          </Button>
-        </Stack>
-      </Container>
-    );
-  }
-
-  if (!run) {
-    return (
-      <Container size="xl" className="fade-in">
-        <Stack gap="lg">
-          {/* Breadcrumbs */}
-          <Breadcrumbs>
-            <Anchor onClick={() => navigate("/runs")} c="blue">
-              Scan History
-            </Anchor>
-            <Text c="dimmed">Not Found</Text>
-          </Breadcrumbs>
-
-          <Alert
-            icon={<IconAlertCircle size="1.2rem" />}
-            title="Run Not Found"
-            color="yellow"
-            radius="md"
-            className="card-hover"
-          >
-            The requested scan run could not be found.
-          </Alert>
-
-          <Button
-            leftSection={<IconArrowLeft size={16} />}
-            variant="light"
-            onClick={() => navigate("/runs")}
-          >
-            Back to Scan History
-          </Button>
-        </Stack>
-      </Container>
+          <IconArrowLeft size={16} />
+          Back to scan history
+        </Button>
+        <Alert variant="destructive" icon={<IconAlertCircle size={20} />} title="Error loading run">
+          {error ?? 'Run not found'}
+        </Alert>
+      </div>
     );
   }
 
   return (
-    <Container size="xl" className="fade-in">
-      <Stack gap="xl">
-        {/* Header Section */}
-        <Box>
-          {/* Breadcrumbs */}
-          <Breadcrumbs mb="md">
-            <Anchor onClick={() => navigate("/runs")} c="blue">
-              Scan History
-            </Anchor>
-            <Text c="dimmed">Run {run.id.slice(0, 8)}...</Text>
-          </Breadcrumbs>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Button
+          variant="ghost"
+          className="gap-2 text-muted-foreground hover:text-foreground"
+          onClick={() => navigate('/runs')}
+        >
+          <IconArrowLeft size={16} />
+          Back to scan history
+        </Button>
+        {statusBadge}
+      </div>
 
-          {/* Title and Status */}
-          <Group justify="space-between" align="flex-start" mb="lg">
-            <Box>
-              <Title order={2} className="text-gradient" mb="xs">
-                Scan Run Details
-              </Title>
-              <Text c="dimmed" size="sm">
-                Detailed analysis results for scan run {run.id}
-              </Text>
-            </Box>
+      {groupError && (
+        <Alert variant="destructive" icon={<IconAlertCircle size={18} />} title="Related runs unavailable">
+          {groupError}
+        </Alert>
+      )}
 
-            <Group gap="md">
-              {getStatusBadge(run)}
-              <Badge variant="filled" color="blue" size="lg">
-                {run.game.toUpperCase()}
-              </Badge>
-            </Group>
-          </Group>
+      {seedGroup && run && (
+        <SeedRunWorkspace
+          currentRun={run}
+          group={seedGroup}
+          groupLoading={groupLoading}
+          refreshGroup={refreshGroup}
+          onRunSelected={(runId) => {
+            if (runId !== run.id) {
+              navigate(`/runs/${runId}`);
+            }
+          }}
+          onRunCreated={(runId) => {
+            if (runId !== run.id) {
+              navigate(`/runs/${runId}`);
+            }
+          }}
+        />
+      )}
 
-          {/* Quick Stats */}
-          <Paper p="md" bg="blue.0" withBorder radius="md" className="fade-in">
-            <Group justify="space-around" ta="center">
-              <Box>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Total Hits
-                </Text>
-                <Text size="xl" fw={700} c="blue.8">
-                  {run.hit_count.toLocaleString()}
-                </Text>
-              </Box>
-              <Box>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Evaluated
-                </Text>
-                <Text size="xl" fw={700} c="blue.8">
-                  {run.total_evaluated.toLocaleString()}
-                </Text>
-              </Box>
-              <Box>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Hit Rate
-                </Text>
-                <Text size="xl" fw={700} c="blue.8">
-                  {run.total_evaluated > 0
-                    ? ((run.hit_count / run.total_evaluated) * 100).toFixed(3)
-                    : "0"}
-                  %
-                </Text>
-              </Box>
-              <Box>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Created
-                </Text>
-                <Text size="sm" fw={500} c="blue.8">
-                  {new Date(run.created_at).toLocaleDateString()}
-                </Text>
-              </Box>
-            </Group>
-          </Paper>
-        </Box>
+      <RunSummary run={run} />
 
-        {/* Main Content */}
-        <Stack gap="lg">
-          <RunSummary run={run} />
-          <HitsTable runId={run.id} />
-        </Stack>
-
-        {/* Back Button */}
-        <Group justify="flex-start">
-          <Button
-            leftSection={<IconArrowLeft size={16} />}
-            variant="light"
-            onClick={() => navigate("/runs")}
-            size="md"
-          >
-            Back to Scan History
-          </Button>
-        </Group>
-      </Stack>
-    </Container>
+      <HitsTable runId={run.id} />
+    </div>
   );
 }

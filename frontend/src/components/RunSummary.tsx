@@ -1,202 +1,156 @@
-import { Paper, Title, Grid, Text, Badge, Group, Stack, Divider } from '@mantine/core';
-import { store } from '../../wailsjs/go/models';
-import { IconClock, IconTarget, IconHash, IconDice, IconTrendingUp } from '@tabler/icons-react';
+import { store } from '@wails/go/models';
+import {
+  IconClock,
+  IconTarget,
+  IconHash,
+  IconDice,
+  IconTrendingUp,
+} from '@tabler/icons-react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface RunSummaryProps {
   run: store.Run;
 }
 
 export function RunSummary({ run }: RunSummaryProps) {
-  // Parse the params JSON safely
-  let parsedParams: Record<string, any> = {};
+  let parsedParams: Record<string, unknown> = {};
   try {
     parsedParams = JSON.parse(run.params_json);
   } catch (e) {
     console.warn('Failed to parse params JSON:', e);
   }
 
-  // Format the created date
   const createdDate = new Date(run.created_at).toLocaleString();
+  const hitRate = run.total_evaluated > 0 ? (run.hit_count / run.total_evaluated) * 100 : 0;
 
-  // Calculate hit rate
-  const hitRate = run.total_evaluated > 0 ? (run.hit_count / run.total_evaluated * 100) : 0;
-
-  // Format numbers with appropriate precision
-  const formatNumber = (num: number | undefined, precision = 6) => {
+  const formatNumber = (num: number | undefined | null, precision = 6) => {
     if (num === undefined || num === null) return 'N/A';
     return num.toFixed(precision);
   };
 
-  const formatInteger = (num: number) => {
-    return num.toLocaleString();
-  };
-
   return (
-    <Paper p="md" withBorder>
-      <Title order={3} mb="md">
-        <Group gap="xs">
-          <IconTrendingUp size="1.2rem" />
+    <Card className="border border-border bg-card shadow-[var(--shadow-sm)]">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg text-foreground">
+          <IconTrendingUp size={20} className="text-[hsl(var(--primary))]" />
           Scan Summary
-        </Group>
-      </Title>
-
-      <Grid>
-        {/* Scan Parameters */}
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <Stack gap="sm">
-            <Title order={4} size="h5" c="dimmed">Scan Parameters</Title>
-            
-            <Group gap="xs">
-              <IconDice size="1rem" />
-              <Text size="sm" fw={500}>Game:</Text>
-              <Badge variant="light" color="blue">{run.game}</Badge>
-            </Group>
-
-            <Group gap="xs">
-              <IconHash size="1rem" />
-              <Text size="sm" fw={500}>Server Seed Hash:</Text>
-              <Text size="sm" ff="monospace" c="dimmed">
-                {run.server_seed_hash.substring(0, 16)}...
-              </Text>
-            </Group>
-
-            <Group gap="xs">
-              <Text size="sm" fw={500}>Client Seed:</Text>
-              <Text size="sm" ff="monospace">{run.client_seed}</Text>
-            </Group>
-
-            <Group gap="xs">
-              <Text size="sm" fw={500}>Nonce Range:</Text>
-              <Text size="sm">
-                {formatInteger(run.nonce_start)} - {formatInteger(run.nonce_end)}
-              </Text>
-            </Group>
-
-            <Group gap="xs">
-              <IconTarget size="1rem" />
-              <Text size="sm" fw={500}>Target:</Text>
-              <Text size="sm">
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <section className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Scan Parameters</h3>
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
+              <IconDice size={16} className="text-[hsl(var(--primary))]" />
+              <span className="font-medium">Game:</span>
+              <Badge className="border border-[hsl(var(--primary))]/40 bg-[hsl(var(--primary))]/15 uppercase text-[hsl(var(--primary))]">
+                {run.game}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
+              <IconHash size={16} className="text-[hsl(var(--primary))]" />
+              <span className="font-medium">Server Seed Hash:</span>
+              <span className="font-mono text-xs text-muted-foreground">{run.server_seed_hash.substring(0, 16)}...</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
+              <span className="font-medium">Client Seed:</span>
+              <span className="font-mono text-xs text-muted-foreground">{run.client_seed}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
+              <span className="font-medium">Nonce Range:</span>
+              <span>
+                {run.nonce_start.toLocaleString()} - {run.nonce_end.toLocaleString()}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
+              <IconTarget size={16} className="text-[hsl(var(--primary))]" />
+              <span className="font-medium">Target:</span>
+              <span>
                 {run.target_op} {run.target_val} (±{run.tolerance})
-              </Text>
-            </Group>
-
+              </span>
+            </div>
             {Object.keys(parsedParams).length > 0 && (
-              <Group gap="xs">
-                <Text size="sm" fw={500}>Game Parameters:</Text>
-                <Text size="sm" ff="monospace">
+              <div className="text-sm text-foreground/80">
+                <span className="font-medium">Game Parameters:</span>{' '}
+                <span className="font-mono text-xs text-muted-foreground">
                   {JSON.stringify(parsedParams)}
-                </Text>
-              </Group>
+                </span>
+              </div>
             )}
-          </Stack>
-        </Grid.Col>
-
-        {/* Execution Metadata */}
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <Stack gap="sm">
-            <Title order={4} size="h5" c="dimmed">Execution Metadata</Title>
-            
-            <Group gap="xs">
-              <IconClock size="1rem" />
-              <Text size="sm" fw={500}>Created:</Text>
-              <Text size="sm">{createdDate}</Text>
-            </Group>
-
-            <Group gap="xs">
-              <Text size="sm" fw={500}>Engine Version:</Text>
-              <Badge variant="outline" size="sm">{run.engine_version}</Badge>
-            </Group>
-
-            <Group gap="xs">
-              <Text size="sm" fw={500}>Status:</Text>
-              <Badge 
-                color={run.timed_out ? 'orange' : 'green'} 
-                variant="light"
+          </div>
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Execution Metadata</h3>
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
+              <IconClock size={16} className="text-[hsl(var(--primary))]" />
+              <span className="font-medium">Created:</span>
+              <span>{createdDate}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
+              <span className="font-medium">Engine Version:</span>
+              <Badge variant="outline" className="border-border text-muted-foreground">
+                {run.engine_version}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
+              <span className="font-medium">Status:</span>
+              <Badge
+                className={
+                  run.timed_out
+                    ? 'border border-amber-400/60 bg-amber-500/15 text-amber-200'
+                    : 'border border-emerald-500/40 bg-emerald-500/15 text-emerald-200'
+                }
               >
                 {run.timed_out ? 'Timed Out' : 'Completed'}
               </Badge>
-            </Group>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
+              <span className="font-medium">Hit Limit:</span>
+              <span>{run.hit_limit.toLocaleString()}</span>
+            </div>
+          </div>
+        </section>
 
-            <Group gap="xs">
-              <Text size="sm" fw={500}>Hit Limit:</Text>
-              <Text size="sm">{formatInteger(run.hit_limit)}</Text>
-            </Group>
-          </Stack>
-        </Grid.Col>
-      </Grid>
+        <section className="space-y-4">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Statistics</h3>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              label="Total Evaluated"
+              value={run.total_evaluated.toLocaleString()}
+              tone="text-[hsl(var(--primary))]"
+            />
+            <StatCard label="Hits Found" value={run.hit_count.toLocaleString()} tone="text-emerald-200" />
+            <StatCard label="Hit Rate" value={`${hitRate.toFixed(4)}%`} tone="text-amber-200" />
+            <StatCard
+              label="Summary Count"
+              value={run.summary_count ? run.summary_count.toLocaleString() : 'N/A'}
+              tone="text-[hsl(var(--chart-2))]"
+            />
+          </div>
+          {(run.summary_min !== undefined || run.summary_max !== undefined || run.summary_sum !== undefined) && (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <StatCard label="Min Metric" value={formatNumber(run.summary_min)} tone="text-destructive" />
+              <StatCard label="Max Metric" value={formatNumber(run.summary_max)} tone="text-teal-200" />
+              <StatCard label="Sum Metric" value={formatNumber(run.summary_sum)} tone="text-[hsl(var(--primary))]" />
+            </div>
+          )}
+        </section>
+      </CardContent>
+    </Card>
+  );
+}
 
-      <Divider my="md" />
+type StatCardProps = {
+  label: string;
+  value: string;
+  tone: string;
+};
 
-      {/* Statistics */}
-      <Title order={4} size="h5" c="dimmed" mb="sm">Statistics</Title>
-      <Grid>
-        <Grid.Col span={{ base: 6, sm: 3 }}>
-          <Stack gap={4} align="center">
-            <Text size="xl" fw={700} c="blue">
-              {formatInteger(run.total_evaluated)}
-            </Text>
-            <Text size="xs" c="dimmed" ta="center">Total Evaluated</Text>
-          </Stack>
-        </Grid.Col>
-
-        <Grid.Col span={{ base: 6, sm: 3 }}>
-          <Stack gap={4} align="center">
-            <Text size="xl" fw={700} c="green">
-              {formatInteger(run.hit_count)}
-            </Text>
-            <Text size="xs" c="dimmed" ta="center">Hits Found</Text>
-          </Stack>
-        </Grid.Col>
-
-        <Grid.Col span={{ base: 6, sm: 3 }}>
-          <Stack gap={4} align="center">
-            <Text size="xl" fw={700} c="orange">
-              {hitRate.toFixed(4)}%
-            </Text>
-            <Text size="xs" c="dimmed" ta="center">Hit Rate</Text>
-          </Stack>
-        </Grid.Col>
-
-        <Grid.Col span={{ base: 6, sm: 3 }}>
-          <Stack gap={4} align="center">
-            <Text size="xl" fw={700} c="violet">
-              {run.summary_count ? formatInteger(run.summary_count) : 'N/A'}
-            </Text>
-            <Text size="xs" c="dimmed" ta="center">Summary Count</Text>
-          </Stack>
-        </Grid.Col>
-
-        {(run.summary_min !== undefined || run.summary_max !== undefined || run.summary_sum !== undefined) && (
-          <>
-            <Grid.Col span={{ base: 4 }}>
-              <Stack gap={4} align="center">
-                <Text size="lg" fw={600} c="red">
-                  {formatNumber(run.summary_min)}
-                </Text>
-                <Text size="xs" c="dimmed" ta="center">Min Metric</Text>
-              </Stack>
-            </Grid.Col>
-
-            <Grid.Col span={{ base: 4 }}>
-              <Stack gap={4} align="center">
-                <Text size="lg" fw={600} c="teal">
-                  {formatNumber(run.summary_max)}
-                </Text>
-                <Text size="xs" c="dimmed" ta="center">Max Metric</Text>
-              </Stack>
-            </Grid.Col>
-
-            <Grid.Col span={{ base: 4 }}>
-              <Stack gap={4} align="center">
-                <Text size="lg" fw={600} c="indigo">
-                  {formatNumber(run.summary_sum)}
-                </Text>
-                <Text size="xs" c="dimmed" ta="center">Sum Metric</Text>
-              </Stack>
-            </Grid.Col>
-          </>
-        )}
-      </Grid>
-    </Paper>
+function StatCard({ label, value, tone }: StatCardProps) {
+  return (
+    <div className="flex flex-col items-center gap-1 rounded-none border border-border bg-secondary/60 p-4 text-center shadow-[var(--shadow-xs)]">
+      <span className={`text-xl font-semibold ${tone}`}>{value}</span>
+      <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
+    </div>
   );
 }

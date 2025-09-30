@@ -18,6 +18,10 @@ export function GetRunHits(arg1, arg2, arg3) {
   return window['go']['bindings']['App']['GetRunHits'](arg1, arg2, arg3);
 }
 
+export function GetSeedRuns(arg1) {
+  return window['go']['bindings']['App']['GetSeedRuns'](arg1);
+}
+
 export function HashServerSeed(arg1) {
   return window['go']['bindings']['App']['HashServerSeed'](arg1);
 }
@@ -28,4 +32,8 @@ export function ListRuns(arg1) {
 
 export function StartScan(arg1) {
   return window['go']['bindings']['App']['StartScan'](arg1);
+}
+
+export function Startup(arg1) {
+  return window['go']['bindings']['App']['Startup'](arg1);
 }

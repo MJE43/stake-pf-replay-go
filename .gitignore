@@ -54,3 +54,5 @@ tmp/
 temp/
 /frontend/node_modules
 /frontend/dist
+*.md5
+

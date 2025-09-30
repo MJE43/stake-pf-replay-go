@@ -1,0 +1,90 @@
+.card {
+  background: var(--mantine-color-body);
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-lg);
+  box-shadow: 0 10px 30px rgba(26, 28, 36, 0.08);
+}
+
+.header {
+  gap: var(--mantine-spacing-md);
+}
+
+.heading {
+  align-items: center;
+}
+
+.actions {
+  align-items: center;
+}
+
+.seeds {
+  display: grid;
+  gap: var(--mantine-spacing-md);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.seedCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-xs);
+  padding: var(--mantine-spacing-md);
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-default-hover);
+}
+
+.seedLabel {
+  font-size: var(--mantine-font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mantine-color-dimmed);
+}
+
+.seedValue {
+  font-family: var(--mantine-font-family-monospace);
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.statsGrid {
+  display: grid;
+  gap: var(--mantine-spacing-md);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statLabel {
+  font-size: var(--mantine-font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mantine-color-dimmed);
+}
+
+.statValue {
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+}
+
+.notesSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+}
+
+.notesLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+}
+
+.notesInput textarea {
+  font-size: var(--mantine-font-size-sm);
+}
+
+.notesActions {
+  align-items: center;
+}
