@@ -1,0 +1,17 @@
+{
+  "name": "stake-pf-replay-go",
+  "version": "1.0.0",
+  "description": "Stake PF Replay - Provably Fair Game Verification Tool",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "verify:constraints": "node scripts/verify-design-constraints.mjs",
+    "verify:constraints:verbose": "node scripts/verify-design-constraints.mjs --verbose"
+  },
+  "devDependencies": {
+    "glob": "^10.3.10"
+  },
+  "dependencies": {
+    "stake-pf-replay-go": "file:"
+  }
+}

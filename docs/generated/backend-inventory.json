@@ -1,0 +1,1105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "generated_at": "2025-10-01T10:57:00Z",
+  "description": "Comprehensive inventory of all backend API surfaces for Stake PF Replay",
+  "categories": {
+    "wails_bindings": {
+      "description": "Desktop IPC methods exposed via Wails bindings for direct frontend calls",
+      "transport": "IPC",
+      "auth_model": "none",
+      "endpoints": [
+        {
+          "method": "GetGames",
+          "description": "Lists all supported game types with metadata",
+          "params": [],
+          "returns": {
+            "type": "[]games.GameSpec",
+            "fields": ["id", "name", "metric_label"]
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": null,
+          "filtering": null,
+          "sorting": null,
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 1,
+            "p95_ms": 3,
+            "source": "estimate"
+          },
+          "payload_size": {
+            "p95_kb": 1,
+            "source": "estimate"
+          },
+          "bulk_operations": false,
+          "relationships": [],
+          "realtime": false,
+          "notes": "Static metadata, constant time operation"
+        },
+        {
+          "method": "HashServerSeed",
+          "description": "Computes SHA256 hash of a server seed",
+          "params": [
+            {
+              "name": "server",
+              "type": "string",
+              "required": true,
+              "validation": "non-empty string"
+            }
+          ],
+          "returns": {
+            "type": "string",
+            "description": "SHA256 hash in hex encoding"
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": null,
+          "filtering": null,
+          "sorting": null,
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 0.5,
+            "p95_ms": 2,
+            "source": "estimate"
+          },
+          "payload_size": {
+            "p95_kb": 0.1,
+            "source": "estimate"
+          },
+          "bulk_operations": false,
+          "relationships": [],
+          "realtime": false,
+          "notes": "Pure cryptographic function, deterministic"
+        },
+        {
+          "method": "StartScan",
+          "description": "Initiates a nonce scan operation across a seed range with cancellation support",
+          "params": [
+            {
+              "name": "req",
+              "type": "ScanRequest",
+              "required": true,
+              "validation": "see ValidateScanRequest"
+            }
+          ],
+          "returns": {
+            "type": "ScanResult",
+            "fields": ["runID", "hits", "summary", "timedOut", "serverSeedHash"]
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "unsafe",
+          "pagination": {
+            "type": "limit",
+            "default": 100,
+            "max": 100000,
+            "notes": "Hits are limited, not paginated"
+          },
+          "filtering": {
+            "capabilities": ["target_op", "target_val", "tolerance"]
+          },
+          "sorting": null,
+          "consistency": "eventual",
+          "latency": {
+            "p50_ms": 5000,
+            "p95_ms": 30000,
+            "source": "benchmark_tests",
+            "notes": "Highly variable based on nonce_range (1-10M max), target criteria selectivity, and game complexity. 100K nonces: ~5-10s, 1M nonces: ~30-60s"
+          },
+          "payload_size": {
+            "p95_kb": 2000,
+            "source": "estimate",
+            "notes": "Up to 100K hits * ~20 bytes per hit"
+          },
+          "bulk_operations": false,
+          "relationships": [
+            "creates Run entity",
+            "creates Hit entities"
+          ],
+          "realtime": false,
+          "notes": "Long-running operation with timeout support (max 300s). Creates persistent DB records. Context cancellation via CancelRun."
+        },
+        {
+          "method": "GetRun",
+          "description": "Retrieves metadata and summary for a single scan run",
+          "params": [
+            {
+              "name": "runID",
+              "type": "string",
+              "required": true,
+              "validation": "UUID"
+            }
+          ],
+          "returns": {
+            "type": "*store.Run",
+            "description": "Complete run metadata including summary statistics"
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": null,
+          "filtering": null,
+          "sorting": null,
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 5,
+            "p95_ms": 15,
+            "source": "estimate",
+            "notes": "Single row SQLite query with primary key"
+          },
+          "payload_size": {
+            "p95_kb": 1,
+            "source": "estimate"
+          },
+          "bulk_operations": false,
+          "relationships": [
+            "has many Hit entities"
+          ],
+          "realtime": false,
+          "notes": "Direct database read, no joins"
+        },
+        {
+          "method": "GetSeedRuns",
+          "description": "Returns all runs sharing the same server/client seed combination",
+          "params": [
+            {
+              "name": "runID",
+              "type": "string",
+              "required": true,
+              "validation": "UUID"
+            }
+          ],
+          "returns": {
+            "type": "*SeedRunGroup",
+            "description": "Seed metadata plus array of related runs"
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": null,
+          "filtering": null,
+          "sorting": null,
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 20,
+            "p95_ms": 50,
+            "source": "estimate",
+            "notes": "Query by seed hash with index, typically 1-100 runs per seed"
+          },
+          "payload_size": {
+            "p95_kb": 50,
+            "source": "estimate",
+            "notes": "Depends on number of runs sharing seed pair"
+          },
+          "bulk_operations": false,
+          "relationships": [
+            "groups Run entities by seed"
+          ],
+          "realtime": false,
+          "notes": "Useful for comparing different scan parameters on same seed"
+        },
+        {
+          "method": "GetRunHits",
+          "description": "Retrieves paginated hits for a run with delta nonce calculation",
+          "params": [
+            {
+              "name": "runID",
+              "type": "string",
+              "required": true,
+              "validation": "UUID"
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": true,
+              "validation": ">= 1"
+            },
+            {
+              "name": "perPage",
+              "type": "int",
+              "required": true,
+              "validation": "1-1000"
+            }
+          ],
+          "returns": {
+            "type": "*HitsPage",
+            "description": "Paginated hits with metadata and delta nonces"
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": {
+            "type": "offset",
+            "default": 50,
+            "max": 1000,
+            "notes": "Server-side cursor pagination, page numbers start at 1"
+          },
+          "filtering": null,
+          "sorting": {
+            "default": "nonce ASC",
+            "options": ["nonce"]
+          },
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 10,
+            "p95_ms": 30,
+            "source": "estimate",
+            "notes": "Indexed query with LIMIT/OFFSET, includes delta calculation"
+          },
+          "payload_size": {
+            "p95_kb": 20,
+            "source": "estimate",
+            "notes": "50 hits * ~400 bytes per hit"
+          },
+          "bulk_operations": false,
+          "relationships": [
+            "belongs to Run entity"
+          ],
+          "realtime": false,
+          "notes": "Delta nonce = nonce[i+1] - nonce[i] for sequential hit analysis"
+        },
+        {
+          "method": "ListRuns",
+          "description": "Lists scan runs with pagination and game filtering",
+          "params": [
+            {
+              "name": "query",
+              "type": "RunsQuery",
+              "required": true,
+              "validation": "page >= 1, perPage 1-100, game optional"
+            }
+          ],
+          "returns": {
+            "type": "*RunsList",
+            "description": "Paginated runs with total count and page metadata"
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": {
+            "type": "offset",
+            "default": 20,
+            "max": 100,
+            "notes": "Page-based pagination, page numbers start at 1"
+          },
+          "filtering": {
+            "capabilities": ["game"]
+          },
+          "sorting": {
+            "default": "created_at DESC",
+            "options": ["created_at"]
+          },
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 15,
+            "p95_ms": 40,
+            "source": "estimate",
+            "notes": "Indexed query with COUNT, filtered by game if provided"
+          },
+          "payload_size": {
+            "p95_kb": 10,
+            "source": "estimate",
+            "notes": "20 runs * ~500 bytes per run"
+          },
+          "bulk_operations": false,
+          "relationships": [],
+          "realtime": false,
+          "notes": "Primary list view for scan history"
+        },
+        {
+          "method": "CancelRun",
+          "description": "Cancels an in-progress scan operation via context cancellation",
+          "params": [
+            {
+              "name": "runID",
+              "type": "string",
+              "required": true,
+              "validation": "UUID"
+            }
+          ],
+          "returns": {
+            "type": "error",
+            "description": "Error if run not found or not currently running"
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "unsafe",
+          "pagination": null,
+          "filtering": null,
+          "sorting": null,
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 2,
+            "p95_ms": 10,
+            "source": "estimate",
+            "notes": "Context cancellation propagation, scan stops within milliseconds"
+          },
+          "payload_size": {
+            "p95_kb": 0.1,
+            "source": "estimate"
+          },
+          "bulk_operations": false,
+          "relationships": [
+            "affects Run entity state"
+          ],
+          "realtime": false,
+          "notes": "Graceful cancellation, partial results may be saved"
+        }
+      ]
+    },
+    "live_http_ingest": {
+      "description": "Localhost HTTP server for Antebot live bet ingest and UI queries",
+      "transport": "HTTP",
+      "base_url": "http://127.0.0.1:{port}",
+      "auth_model": "optional_token",
+      "auth_notes": "X-Ingest-Token header required for POST /live/ingest if LIVE_INGEST_TOKEN env var set",
+      "endpoints": [
+        {
+          "method": "POST",
+          "route": "/live/ingest",
+          "description": "Ingests a single bet from Antebot with idempotent duplicate handling",
+          "params": [
+            {
+              "name": "body",
+              "type": "ingestPayload",
+              "required": true,
+              "validation": "id, serverSeedHashed, clientSeed, nonce >= 1, difficulty non-empty"
+            }
+          ],
+          "returns": {
+            "type": "object",
+            "fields": ["streamId", "accepted"]
+          },
+          "auth": "optional_token",
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "idempotent",
+          "pagination": null,
+          "filtering": null,
+          "sorting": null,
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 5,
+            "p95_ms": 20,
+            "source": "estimate",
+            "notes": "Upsert stream + insert bet, emits Wails event on success"
+          },
+          "payload_size": {
+            "p95_kb": 1,
+            "source": "estimate"
+          },
+          "bulk_operations": false,
+          "relationships": [
+            "creates or finds LiveStream",
+            "creates LiveBet"
+          ],
+          "realtime": true,
+          "realtime_channel": "live:newrows:{streamId}",
+          "notes": "Duplicate bets rejected silently. Emits UI event for reactive updates."
+        },
+        {
+          "method": "GET",
+          "route": "/live/streams",
+          "description": "Lists recent live streams with aggregates",
+          "params": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "validation": "1-500",
+              "default": 100
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "required": false,
+              "validation": "0-1000000",
+              "default": 0
+            }
+          ],
+          "returns": {
+            "type": "object",
+            "fields": ["streams", "count"]
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": {
+            "type": "offset",
+            "default": 100,
+            "max": 500
+          },
+          "filtering": null,
+          "sorting": {
+            "default": "last_seen_at DESC"
+          },
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 10,
+            "p95_ms": 30,
+            "source": "estimate"
+          },
+          "payload_size": {
+            "p95_kb": 20,
+            "source": "estimate"
+          },
+          "bulk_operations": false,
+          "relationships": [],
+          "realtime": false,
+          "notes": "Ordered by last_seen_at DESC, includes aggregates"
+        },
+        {
+          "method": "GET",
+          "route": "/live/streams/{id}",
+          "description": "Retrieves single stream detail with aggregates",
+          "params": [
+            {
+              "name": "id",
+              "type": "UUID",
+              "required": true,
+              "validation": "valid UUID"
+            }
+          ],
+          "returns": {
+            "type": "LiveStream",
+            "description": "Complete stream metadata and aggregates"
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": null,
+          "filtering": null,
+          "sorting": null,
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 5,
+            "p95_ms": 15,
+            "source": "estimate"
+          },
+          "payload_size": {
+            "p95_kb": 1,
+            "source": "estimate"
+          },
+          "bulk_operations": false,
+          "relationships": [
+            "has many LiveBet entities"
+          ],
+          "realtime": false,
+          "notes": "Single row query by primary key"
+        },
+        {
+          "method": "PUT",
+          "route": "/live/streams/{id}",
+          "description": "Updates stream notes field",
+          "params": [
+            {
+              "name": "id",
+              "type": "UUID",
+              "required": true,
+              "validation": "valid UUID"
+            },
+            {
+              "name": "body",
+              "type": "object",
+              "required": true,
+              "validation": "notes field"
+            }
+          ],
+          "returns": {
+            "type": "object",
+            "fields": ["status"]
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "idempotent",
+          "pagination": null,
+          "filtering": null,
+          "sorting": null,
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 5,
+            "p95_ms": 15,
+            "source": "estimate"
+          },
+          "payload_size": {
+            "p95_kb": 0.5,
+            "source": "estimate"
+          },
+          "bulk_operations": false,
+          "relationships": [],
+          "realtime": false,
+          "notes": "Simple UPDATE by primary key"
+        },
+        {
+          "method": "DELETE",
+          "route": "/live/streams/{id}",
+          "description": "Deletes stream and all associated bets (cascade)",
+          "params": [
+            {
+              "name": "id",
+              "type": "UUID",
+              "required": true,
+              "validation": "valid UUID"
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "status": 204
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "idempotent",
+          "pagination": null,
+          "filtering": null,
+          "sorting": null,
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 20,
+            "p95_ms": 100,
+            "source": "estimate",
+            "notes": "Cascade delete, time varies with bet count"
+          },
+          "payload_size": {
+            "p95_kb": 0,
+            "source": "estimate"
+          },
+          "bulk_operations": false,
+          "relationships": [
+            "deletes LiveStream and cascaded LiveBet entities"
+          ],
+          "realtime": false,
+          "notes": "Destructive operation, no undo mechanism"
+        },
+        {
+          "method": "GET",
+          "route": "/live/streams/{id}/bets",
+          "description": "Paginated bet list with multiplier filtering and ordering",
+          "params": [
+            {
+              "name": "id",
+              "type": "UUID",
+              "required": true,
+              "validation": "valid UUID"
+            },
+            {
+              "name": "min_multiplier",
+              "type": "float",
+              "required": false,
+              "default": 0
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "validation": "1-10000",
+              "default": 500
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "required": false,
+              "validation": "0-1000000",
+              "default": 0
+            },
+            {
+              "name": "order",
+              "type": "string",
+              "required": false,
+              "validation": "asc|desc",
+              "default": "asc"
+            }
+          ],
+          "returns": {
+            "type": "object",
+            "fields": ["rows", "total"]
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": {
+            "type": "offset",
+            "default": 500,
+            "max": 10000
+          },
+          "filtering": {
+            "capabilities": ["min_multiplier"]
+          },
+          "sorting": {
+            "default": "nonce ASC",
+            "options": ["nonce ASC", "nonce DESC"]
+          },
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 30,
+            "p95_ms": 100,
+            "source": "estimate",
+            "notes": "Indexed query with filtering, count, and order"
+          },
+          "payload_size": {
+            "p95_kb": 100,
+            "source": "estimate",
+            "notes": "500 bets * ~200 bytes per bet"
+          },
+          "bulk_operations": false,
+          "relationships": [
+            "belongs to LiveStream"
+          ],
+          "realtime": false,
+          "notes": "Primary bet browsing interface with rich filtering"
+        },
+        {
+          "method": "GET",
+          "route": "/live/streams/{id}/tail",
+          "description": "Fetches new bets since a given ID for incremental polling",
+          "params": [
+            {
+              "name": "id",
+              "type": "UUID",
+              "required": true,
+              "validation": "valid UUID"
+            },
+            {
+              "name": "since_id",
+              "type": "int64",
+              "required": false,
+              "default": 0
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "validation": "1-5000",
+              "default": 1000
+            }
+          ],
+          "returns": {
+            "type": "object",
+            "fields": ["rows", "lastID"]
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": {
+            "type": "cursor",
+            "default": 1000,
+            "max": 5000,
+            "notes": "ID-based cursor for incremental fetch"
+          },
+          "filtering": null,
+          "sorting": {
+            "default": "id ASC",
+            "fixed": true
+          },
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 10,
+            "p95_ms": 40,
+            "source": "estimate",
+            "notes": "Indexed query with WHERE id > ?"
+          },
+          "payload_size": {
+            "p95_kb": 200,
+            "source": "estimate",
+            "notes": "Up to 1000 new bets"
+          },
+          "bulk_operations": false,
+          "relationships": [
+            "belongs to LiveStream"
+          ],
+          "realtime": true,
+          "realtime_pattern": "polling",
+          "notes": "Efficient incremental fetch for live updates, pairs with Wails events"
+        },
+        {
+          "method": "GET",
+          "route": "/live/streams/{id}/export.csv",
+          "description": "Exports all bets for a stream as CSV file",
+          "params": [
+            {
+              "name": "id",
+              "type": "UUID",
+              "required": true,
+              "validation": "valid UUID"
+            }
+          ],
+          "returns": {
+            "type": "text/csv",
+            "description": "CSV with headers: id,nonce,date_time,amount,payout,difficulty,round_target,round_result"
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": null,
+          "filtering": null,
+          "sorting": {
+            "default": "nonce ASC",
+            "fixed": true
+          },
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 100,
+            "p95_ms": 2000,
+            "source": "estimate",
+            "notes": "Streams all rows, time scales with bet count (chunked at 2000 per fetch)"
+          },
+          "payload_size": {
+            "p95_kb": 5000,
+            "source": "estimate",
+            "notes": "Highly variable, depends on stream size"
+          },
+          "bulk_operations": true,
+          "relationships": [
+            "belongs to LiveStream"
+          ],
+          "realtime": false,
+          "notes": "Streaming response for large datasets, RFC3339 timestamps"
+        }
+      ]
+    },
+    "backend_http_api": {
+      "description": "Backend service HTTP API (used when running standalone pf-service)",
+      "transport": "HTTP",
+      "base_url": "http://localhost:8080",
+      "auth_model": "none",
+      "endpoints": [
+        {
+          "method": "GET",
+          "route": "/health",
+          "description": "Basic health check",
+          "params": [],
+          "returns": {
+            "type": "object",
+            "fields": ["status", "engine_version", "timestamp"]
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": null,
+          "filtering": null,
+          "sorting": null,
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 1,
+            "p95_ms": 3,
+            "source": "estimate"
+          },
+          "payload_size": {
+            "p95_kb": 0.5,
+            "source": "estimate"
+          },
+          "bulk_operations": false,
+          "relationships": [],
+          "realtime": false,
+          "notes": "For monitoring and container orchestration"
+        },
+        {
+          "method": "GET",
+          "route": "/health/ready",
+          "description": "Readiness check including DB connectivity",
+          "params": [],
+          "returns": {
+            "type": "object",
+            "fields": ["status", "database", "timestamp"]
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": null,
+          "filtering": null,
+          "sorting": null,
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 5,
+            "p95_ms": 15,
+            "source": "estimate",
+            "notes": "Includes DB ping"
+          },
+          "payload_size": {
+            "p95_kb": 0.5,
+            "source": "estimate"
+          },
+          "bulk_operations": false,
+          "relationships": [],
+          "realtime": false,
+          "notes": "For Kubernetes readiness probes"
+        },
+        {
+          "method": "GET",
+          "route": "/health/live",
+          "description": "Liveness check",
+          "params": [],
+          "returns": {
+            "type": "object",
+            "fields": ["status", "timestamp"]
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": null,
+          "filtering": null,
+          "sorting": null,
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 1,
+            "p95_ms": 3,
+            "source": "estimate"
+          },
+          "payload_size": {
+            "p95_kb": 0.5,
+            "source": "estimate"
+          },
+          "bulk_operations": false,
+          "relationships": [],
+          "realtime": false,
+          "notes": "For Kubernetes liveness probes"
+        },
+        {
+          "method": "GET",
+          "route": "/metrics",
+          "description": "Performance metrics and system info",
+          "params": [],
+          "returns": {
+            "type": "object",
+            "description": "System metrics including uptime, memory, goroutines"
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": null,
+          "filtering": null,
+          "sorting": null,
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 2,
+            "p95_ms": 5,
+            "source": "estimate"
+          },
+          "payload_size": {
+            "p95_kb": 2,
+            "source": "estimate"
+          },
+          "bulk_operations": false,
+          "relationships": [],
+          "realtime": false,
+          "notes": "Basic observability endpoint"
+        },
+        {
+          "method": "GET",
+          "route": "/games",
+          "description": "Lists all supported games (legacy and v1)",
+          "params": [],
+          "returns": {
+            "type": "object",
+            "fields": ["games", "engine_version"]
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": null,
+          "filtering": null,
+          "sorting": null,
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 1,
+            "p95_ms": 3,
+            "source": "estimate"
+          },
+          "payload_size": {
+            "p95_kb": 1,
+            "source": "estimate"
+          },
+          "bulk_operations": false,
+          "relationships": [],
+          "realtime": false,
+          "notes": "Static metadata, available at /games and /api/v1/games"
+        },
+        {
+          "method": "POST",
+          "route": "/scan",
+          "description": "Scans nonce range for matching outcomes (legacy and v1)",
+          "params": [
+            {
+              "name": "body",
+              "type": "ScanRequest",
+              "required": true,
+              "validation": "see ValidateScanRequest"
+            }
+          ],
+          "returns": {
+            "type": "object",
+            "fields": ["hits", "summary", "engine_version", "echo"]
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "unsafe",
+          "pagination": {
+            "type": "limit",
+            "default": 100,
+            "max": 100000
+          },
+          "filtering": {
+            "capabilities": ["target_op", "target_val", "tolerance"]
+          },
+          "sorting": null,
+          "consistency": "eventual",
+          "latency": {
+            "p50_ms": 5000,
+            "p95_ms": 30000,
+            "source": "benchmark_tests",
+            "notes": "See StartScan Wails binding for detailed breakdown"
+          },
+          "payload_size": {
+            "p95_kb": 2000,
+            "source": "estimate"
+          },
+          "bulk_operations": false,
+          "relationships": [],
+          "realtime": false,
+          "notes": "HTTP API does not persist results, unlike Wails binding. Available at /scan and /api/v1/scan"
+        },
+        {
+          "method": "POST",
+          "route": "/verify",
+          "description": "Verifies outcome for single nonce (legacy and v1)",
+          "params": [
+            {
+              "name": "body",
+              "type": "VerifyRequest",
+              "required": true,
+              "validation": "see ValidateVerifyRequest"
+            }
+          ],
+          "returns": {
+            "type": "object",
+            "fields": ["nonce", "game_result", "engine_version", "echo"]
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": null,
+          "filtering": null,
+          "sorting": null,
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 2,
+            "p95_ms": 8,
+            "source": "benchmark_tests",
+            "notes": "Single game evaluation, varies by game complexity (Pump slowest)"
+          },
+          "payload_size": {
+            "p95_kb": 1,
+            "source": "estimate"
+          },
+          "bulk_operations": false,
+          "relationships": [],
+          "realtime": false,
+          "notes": "Pure computation, no DB access. Available at /verify and /api/v1/verify"
+        },
+        {
+          "method": "POST",
+          "route": "/seed/hash",
+          "description": "Computes SHA256 hash of server seed (legacy and v1)",
+          "params": [
+            {
+              "name": "body",
+              "type": "SeedHashRequest",
+              "required": true,
+              "validation": "server_seed required"
+            }
+          ],
+          "returns": {
+            "type": "object",
+            "fields": ["hash", "engine_version", "echo"]
+          },
+          "auth": false,
+          "permissions": [],
+          "rate_limits": "none",
+          "idempotency": "safe",
+          "pagination": null,
+          "filtering": null,
+          "sorting": null,
+          "consistency": "immediate",
+          "latency": {
+            "p50_ms": 1,
+            "p95_ms": 3,
+            "source": "estimate"
+          },
+          "payload_size": {
+            "p95_kb": 0.5,
+            "source": "estimate"
+          },
+          "bulk_operations": false,
+          "relationships": [],
+          "realtime": false,
+          "notes": "Pure cryptographic function. Available at /seed/hash and /api/v1/seed/hash"
+        }
+      ]
+    }
+  },
+  "constraints": {
+    "max_nonce_range": 10000000,
+    "max_timeout_ms": 300000,
+    "max_hit_limit": 100000,
+    "max_runs_per_page": 100,
+    "max_hits_per_page": 1000,
+    "max_streams_per_page": 500,
+    "max_bets_per_page": 10000
+  },
+  "error_taxonomy": {
+    "validation_error": {
+      "http_status": 400,
+      "category": "validation",
+      "retryable": false,
+      "user_action": "fix_input"
+    },
+    "game_not_found": {
+      "http_status": 400,
+      "category": "game",
+      "retryable": false,
+      "user_action": "select_valid_game"
+    },
+    "timeout": {
+      "http_status": 408,
+      "category": "timeout",
+      "retryable": true,
+      "user_action": "reduce_range_or_retry"
+    },
+    "internal_error": {
+      "http_status": 500,
+      "category": "system",
+      "retryable": true,
+      "user_action": "retry_with_backoff"
+    },
+    "not_found": {
+      "http_status": 404,
+      "category": "validation",
+      "retryable": false,
+      "user_action": "check_id"
+    }
+  }
+}
