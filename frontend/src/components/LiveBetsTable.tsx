@@ -16,7 +16,7 @@ const Table = forwardRef<HTMLTableElement, ComponentPropsWithoutRef<'table'>>(
     <table
       ref={ref}
       style={style}
-      className={cn('w-full border-separate border-spacing-0 text-left text-xs md:text-sm text-slate-200', className)}
+      className={cn('w-full border-separate border-spacing-0 text-left text-sm leading-6 text-foreground/85', className)}
       {...props}
     />
   ),
@@ -28,7 +28,7 @@ const TableHead = forwardRef<HTMLTableSectionElement, ComponentPropsWithoutRef<'
     <thead
       ref={ref}
       style={style}
-      className={cn('bg-slate-950/95 text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground/70', className)}
+      className={cn('bg-muted/80 text-[0.65rem] md:text-xs uppercase tracking-[0.18em] text-muted-foreground', className)}
       {...props}
     />
   ),
@@ -40,7 +40,7 @@ const TableRow = forwardRef<HTMLTableRowElement, ComponentPropsWithoutRef<'tr'>>
     <tr
       ref={ref}
       style={style}
-      className={cn('border-b border-slate-800/70 transition-colors bg-slate-950/70 hover:bg-slate-900 focus-visible:bg-slate-900', className)}
+      className={cn('group border-b border-border/60 bg-card/70 transition-colors hover:bg-muted/70 focus-visible:bg-muted/60', className)}
       {...props}
     />
   ),
@@ -49,7 +49,7 @@ TableRow.displayName = 'TableRow';
 
 const TableBody = forwardRef<HTMLTableSectionElement, ComponentPropsWithoutRef<'tbody'>>(
   ({ style, className, ...props }, ref) => (
-    <tbody ref={ref} style={style} className={cn('bg-slate-950', className)} {...props} />
+    <tbody ref={ref} style={style} className={cn('bg-card', className)} {...props} />
   ),
 );
 TableBody.displayName = 'TableBody';
@@ -68,10 +68,10 @@ type LiveBetsTableProps = {
 };
 
 const difficultyTone: Record<LiveBet['difficulty'], string> = {
-  easy: 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200',
-  medium: 'border-slate-600 bg-slate-800/80 text-slate-200',
-  hard: 'border-slate-500 bg-slate-700/80 text-slate-100',
-  expert: 'border-rose-500/60 bg-rose-500/10 text-rose-200',
+  easy: 'border-success-600/40 bg-success-600/15 text-success-600',
+  medium: 'border-muted-foreground/30 bg-muted/40 text-muted-foreground',
+  hard: 'border-warning-600/40 bg-warning-600/10 text-warning-500',
+  expert: 'border-destructive/40 bg-destructive/10 text-destructive',
 };
 
 function formatDate(value?: string) {
@@ -156,14 +156,14 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
 
   const fixedHeader = useMemo(
     () => (
-      <tr className="sticky top-0 z-20 bg-slate-950/98 text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground/70 backdrop-blur-sm">
-        <th className="w-[90px] px-4 py-3 text-left font-semibold text-slate-300">Nonce</th>
-        <th className="w-[160px] px-4 py-3 text-left font-semibold text-slate-300">Date</th>
-        <th className="w-[120px] px-4 py-3 text-left font-semibold text-slate-300">Amount</th>
-        <th className="w-[120px] px-4 py-3 text-left font-semibold text-slate-300">Payout</th>
-        <th className="w-[120px] px-4 py-3 text-left font-semibold text-slate-300">Difficulty</th>
-        <th className="w-[120px] px-4 py-3 text-left font-semibold text-slate-300">Target</th>
-        <th className="w-[120px] px-4 py-3 text-left font-semibold text-slate-300">Result</th>
+      <tr className="sticky top-0 z-20 bg-card/95 text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground backdrop-blur-sm">
+        <th className="w-[90px] px-4 py-3 text-left font-semibold text-foreground/75">Nonce</th>
+        <th className="w-[160px] px-4 py-3 text-left font-semibold text-foreground/75">Date</th>
+        <th className="w-[120px] px-4 py-3 text-right font-semibold text-foreground/75">Amount</th>
+        <th className="w-[120px] px-4 py-3 text-right font-semibold text-foreground/75">Payout</th>
+        <th className="w-[120px] px-4 py-3 text-left font-semibold text-foreground/75">Difficulty</th>
+        <th className="w-[120px] px-4 py-3 text-right font-semibold text-foreground/75">Target</th>
+        <th className="w-[120px] px-4 py-3 text-right font-semibold text-foreground/75">Result</th>
       </tr>
     ),
     [],
@@ -171,12 +171,17 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
 
   const filterControl = (
     <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span
-          className={cn('h-2.5 w-2.5 rounded-full shadow-sm shadow-emerald-500/40', isStreaming ? 'bg-emerald-500' : 'bg-amber-400 animate-pulse')}
+          className={cn(
+            'h-2.5 w-2.5 rounded-full shadow-sm',
+            isStreaming
+              ? 'bg-success-600 shadow-[0_0_12px_rgba(70,167,88,0.45)]'
+              : 'bg-warning-600 animate-pulse shadow-[0_0_12px_rgba(255,178,36,0.5)]',
+          )}
         />
-        <span className="font-medium tracking-wide text-slate-300">{isStreaming ? 'Live' : 'Reconnecting…'}</span>
-        <span className="rounded-full border border-slate-800 bg-slate-900 px-2 py-0.5 font-medium text-slate-300">
+        <span className="font-medium tracking-wide text-foreground/80">{isStreaming ? 'Live' : 'Reconnecting…'}</span>
+        <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 font-medium text-foreground/70">
           {rows.length.toLocaleString()} loaded{totalKnown != null ? ` / ${totalKnown.toLocaleString()}` : ''}
         </span>
         {pendingCount > 0 && isPinnedToTop && (
@@ -187,7 +192,7 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
       </div>
 
       <div className="flex items-center gap-2">
-        <Label htmlFor="min-multiplier" className="text-xs uppercase tracking-wider text-muted-foreground/70">
+        <Label htmlFor="min-multiplier" className="text-xs uppercase tracking-wider text-muted-foreground">
           Min ×
         </Label>
         <Input
@@ -195,7 +200,7 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
           value={minFilterRaw}
           inputMode="decimal"
           onChange={(event) => setMinFilterRaw(event.target.value.replace(/[^0-9.]/g, ''))}
-          className="h-8 w-24 rounded-md border border-slate-800 bg-slate-900 text-right font-mono text-xs text-slate-100 placeholder:text-muted-foreground focus-visible:border-[hsl(var(--primary))] focus-visible:ring-0"
+          className="h-8 w-24 rounded-md border border-border bg-background/80 text-right font-mono text-xs text-foreground placeholder:text-muted-foreground focus-visible:border-[hsl(var(--primary))] focus-visible:ring-0"
           placeholder="0"
         />
       </div>
@@ -204,18 +209,22 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
 
   if (isInitialLoading) {
     return (
-      <div className="flex h-72 items-center justify-center rounded-lg border border-slate-900 bg-slate-950">
-        <Skeleton className="h-12 w-12 rounded-full bg-slate-800" />
+      <div className="flex h-72 items-center justify-center rounded-lg border border-border bg-card">
+        <Skeleton className="h-12 w-12 rounded-full bg-muted" />
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="flex h-72 flex-col items-center justify-center gap-4 rounded-lg border border-rose-500/40 bg-rose-500/10 text-rose-200">
+      <div className="flex h-72 flex-col items-center justify-center gap-4 rounded-lg border border-destructive/40 bg-destructive/10 text-destructive">
         <span>Failed to load bets.</span>
-        <span className="text-xs text-rose-300/80">{(error as Error)?.message ?? 'Unknown error'}</span>
-        <Button onClick={() => refetch()} variant="secondary" className="border border-rose-400/40 bg-rose-500/20 text-rose-100 hover:bg-rose-500/30">
+        <span className="text-xs text-destructive/70">{(error as Error)?.message ?? 'Unknown error'}</span>
+        <Button
+          onClick={() => refetch()}
+          variant="secondary"
+          className="border border-destructive/40 bg-destructive/20 text-destructive hover:bg-destructive/30"
+        >
           Retry
         </Button>
       </div>
@@ -228,8 +237,8 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
         <div className="px-4 pb-3">
           {filterControl}
         </div>
-        <div className="mb-8 flex h-64 flex-col items-center justify-center gap-3 rounded-lg border border-slate-900 bg-slate-950 text-muted-foreground/70">
-          <span className="text-sm text-slate-300">No bets yet. Stay tuned!</span>
+        <div className="mb-8 flex h-64 flex-col items-center justify-center gap-3 rounded-lg border border-border bg-card text-muted-foreground">
+          <span className="text-sm text-foreground/70">No bets yet. Stay tuned!</span>
         </div>
       </div>
     );
@@ -246,14 +255,14 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
           <Button
             onClick={revealBufferedRows}
             size="sm"
-            className="pointer-events-auto border border-[hsl(var(--primary))]/50 bg-[hsl(var(--primary))]/20 px-3 text-[hsl(var(--primary))] shadow-lg hover:bg-[hsl(var(--primary))]/30"
+            className="pointer-events-auto border border-[hsl(var(--primary))]/50 bg-[hsl(var(--primary))]/20 px-3 text-[hsl(var(--primary))] shadow-md hover:bg-[hsl(var(--primary))]/30"
           >
             Show {pendingCount} new bet{pendingCount > 1 ? 's' : ''}
           </Button>
         </div>
       )}
 
-      <div style={{ height: '500px' }} className="mb-8 overflow-hidden rounded-xl border border-slate-900 bg-slate-950/90">
+      <div style={{ height: '500px' }} className="mb-8 overflow-hidden rounded-xl border border-border bg-card/90 shadow-md">
         <TableVirtuoso
           ref={virtuosoRef}
           data={rows}
@@ -268,17 +277,32 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
             const toneClass = difficultyTone[bet.difficulty as keyof typeof difficultyTone] ?? difficultyTone.medium;
             return (
               <>
-                <td data-index={index} className="px-4 py-3 font-mono text-[0.7rem] text-slate-300">{bet.nonce}</td>
-                <td className="px-4 py-3 font-mono text-[0.7rem] text-slate-300">{formatDate(bet.date_time)}</td>
-                <td className="px-4 py-3 font-mono text-[0.7rem] text-slate-200">{bet.amount.toFixed(2)}</td>
-                <td className="px-4 py-3 font-mono text-[0.7rem] text-slate-200">{bet.payout.toFixed(2)}</td>
+                <td
+                  data-index={index}
+                  className="px-4 py-3 font-mono text-xs md:text-sm text-muted-foreground tabular-nums tracking-tight"
+                >
+                  {bet.nonce}
+                </td>
+                <td className="px-4 py-3 text-xs md:text-sm font-medium text-foreground/85 tracking-tight">
+                  {formatDate(bet.date_time)}
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-xs md:text-sm font-semibold text-foreground tabular-nums tracking-tight">
+                  {bet.amount.toFixed(2)}
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-xs md:text-sm font-semibold text-foreground tabular-nums tracking-tight">
+                  {bet.payout.toFixed(2)}
+                </td>
                 <td className="px-4 py-3">
-                  <Badge className={cn('capitalize border px-2 py-0.5 text-[0.65rem] font-medium', toneClass)}>
+                  <Badge className={cn('capitalize border px-2 py-0.5 text-[0.65rem] font-medium tracking-wide', toneClass)}>
                     {bet.difficulty}
                   </Badge>
                 </td>
-                <td className="px-4 py-3 font-mono text-[0.7rem] text-slate-300">{bet.round_target ?? '--'}</td>
-                <td className="px-4 py-3 font-mono text-[0.7rem] text-[hsl(var(--primary))]">{bet.round_result.toFixed(2)}</td>
+                <td className="px-4 py-3 text-right font-mono text-xs md:text-sm text-muted-foreground tabular-nums tracking-tight">
+                  {bet.round_target ?? '--'}
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-xs md:text-sm font-semibold text-[hsl(var(--primary))] tabular-nums tracking-tight">
+                  {bet.round_result.toFixed(2)}
+                </td>
               </>
             );
           }}
@@ -286,13 +310,13 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
       </div>
 
       {!isStreaming && (
-        <div className="absolute bottom-12 left-1/2 z-30 -translate-x-1/2 rounded-full border border-amber-400/50 bg-amber-500/100/10 px-4 py-1 text-xs text-amber-200 shadow-lg">
+        <div className="absolute bottom-12 left-1/2 z-30 -translate-x-1/2 rounded-full border border-warning-600/40 bg-warning-600/15 px-4 py-1 text-xs text-warning-500 shadow-md">
           Reconnecting to live feed...
         </div>
       )}
 
       {isFetchingNextPage && (
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 rounded-full border border-slate-800 bg-slate-900 px-3 py-1 text-xs text-slate-300 shadow-lg">
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground shadow-md">
           Loading older bets...
         </div>
       )}
