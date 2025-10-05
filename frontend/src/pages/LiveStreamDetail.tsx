@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { IconArrowLeft, IconExternalLink } from '@tabler/icons-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { CopyableField } from '@/components/ui/copyable-field';
-import StreamInfoCard, { StreamSummary } from '@/components/StreamInfoCard';
-import LiveBetsTable from '@/components/LiveBetsTable';
-import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from '@/components/ui/use-toast';
+import { IconArrowLeft } from '@tabler/icons-react';
 import { EventsOn } from '@wails/runtime/runtime';
 import { GetStream, UpdateNotes, DeleteStream, ExportCSV, IngestInfo } from '@wails/go/livehttp/LiveModule';
 import { livestore } from '@wails/go/models';
+import LiveBetsTable from '@/components/LiveBetsTable';
+import StreamInfoCard, { StreamSummary } from '@/components/StreamInfoCard';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from '@/components/ui/use-toast';
 
 function normalizeStream(s: livestore.LiveStream) {
   const idStr = Array.isArray(s.id) ? s.id.join('-') : String(s.id);
@@ -162,7 +162,7 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
   }, [detail]);
 
   return (
-    <div className="flex flex-col gap-6 pb-8">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-10 pt-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Button
@@ -174,21 +174,20 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
             Back to streams
           </Button>
           {detail && (
-            <Badge className="gap-2 bg-[hsl(var(--primary))]/15 text-[hsl(var(--primary))]">
-              Live Stream
-              <IconExternalLink size={14} />
+            <Badge className="border border-[hsl(var(--primary))]/40 bg-[hsl(var(--primary))]/15 text-[hsl(var(--primary))]">
+              Live stream
             </Badge>
           )}
         </div>
       </div>
 
       {loading && !detail ? (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_1fr]">
-          <Skeleton className="h-[400px] rounded-xl" />
-          <Skeleton className="h-[400px] rounded-xl" />
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_1fr]">
+          <Skeleton className="h-[420px] rounded-xl" />
+          <Skeleton className="h-[520px] rounded-xl" />
         </div>
       ) : error && !detail ? (
-        <div className="flex flex-col items-start gap-4 rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-destructive">
+        <div className="flex flex-col gap-4 rounded-xl border border-destructive/40 bg-destructive/10 p-6 text-destructive">
           <h2 className="text-lg font-semibold">Something went wrong</h2>
           <p className="text-sm">{error}</p>
           <Button onClick={() => load()} variant="destructive">
@@ -196,92 +195,25 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
           </Button>
         </div>
       ) : summary ? (
-        <div className="flex flex-col gap-6">
-          {/* Horizontal Stream Summary Bar */}
-          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-6 text-sm">
-                <CopyableField
-                  label="Server Seed"
-                  value={summary.serverSeedHashed}
-                  displayValue={`${summary.serverSeedHashed.slice(0, 12)}...`}
-                />
-                <CopyableField
-                  label="Client Seed"
-                  value={summary.clientSeed}
-                  displayValue={`${summary.clientSeed.slice(0, 12)}...`}
-                />
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-muted-foreground">Total Bets:</span>
-                  <span className="font-semibold text-foreground">{summary.totalBets?.toLocaleString() ?? 0}</span>
-                </div>
-                {summary.highestMultiplier && (
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-muted-foreground">Highest:</span>
-                    <span className="font-semibold text-[hsl(var(--primary))]">{summary.highestMultiplier.toFixed(2)}×</span>
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={onExportCsv}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 text-xs"
-                >
-                  Export CSV
-                </Button>
-                <Button
-                  onClick={onDeleteStream}
-                  variant="destructive"
-                  size="sm"
-                  disabled={deleting}
-                  className="gap-2 text-xs"
-                >
-                  {deleting ? 'Deleting...' : 'Delete Stream'}
-                </Button>
-              </div>
-            </div>
-            
-            {/* Notes Section - Always visible for editing */}
-            <div className="mt-4 rounded-lg bg-secondary p-3">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                  📝 Notes
-                </div>
-                <Button
-                  onClick={() => {
-                    const newNotes = window.prompt('Edit notes:', summary.notes || '');
-                    if (newNotes !== null) {
-                      onSaveNotes(newNotes);
-                    }
-                  }}
-                  variant="ghost"
-                  size="sm"
-                  disabled={savingNotes}
-                  className="text-xs h-6 px-2"
-                >
-                  {savingNotes ? 'Saving...' : 'Edit'}
-                </Button>
-              </div>
-              <p className="text-sm text-foreground/80">
-                {summary.notes || 'No notes yet. Click Edit to add observations about this stream.'}
-              </p>
-            </div>
-          </div>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_1fr] lg:items-start">
+          <StreamInfoCard
+            summary={summary}
+            onSaveNotes={onSaveNotes}
+            onExportCsv={onExportCsv}
+            onDeleteStream={onDeleteStream}
+            isSavingNotes={savingNotes}
+            isDeletingStream={deleting}
+          />
 
-          {/* Full-Width Live Bets Table */}
-          <div className="flex flex-col gap-4 rounded-xl border border-slate-900 bg-slate-950/95 shadow-xl shadow-slate-950/30 ring-1 ring-slate-900/60 overflow-hidden">
-            <div className="flex flex-col gap-1 px-4 pt-4">
-              <h2 className="text-lg font-semibold text-slate-100">Live bets</h2>
-              <p className="text-sm text-muted-foreground/70">
-                Newest bets appear at the top. Scroll to load older history.
-              </p>
-            </div>
-
-            <LiveBetsTable streamId={streamId} minMultiplier={0} apiBase={apiBase} />
-          </div>
+          <Card className="flex h-full flex-col border border-border bg-card shadow-sm">
+            <CardHeader className="border-b border-border pb-4">
+              <CardTitle>Live bets</CardTitle>
+              <CardDescription>Newest bets appear first. Scroll to load more history.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 px-0 pb-0 pt-4">
+              <LiveBetsTable streamId={streamId} minMultiplier={0} apiBase={apiBase} />
+            </CardContent>
+          </Card>
         </div>
       ) : null}
     </div>

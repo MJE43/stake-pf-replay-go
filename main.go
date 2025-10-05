@@ -186,8 +186,10 @@ func envInt(k string, def int) int {
 func buildAppMenu() *menu.Menu {
 	rootMenu := menu.NewMenu()
 
-	if appMenu := menu.AppMenu(); appMenu != nil {
-		rootMenu.Append(appMenu)
+	if runtime.GOOS == "darwin" {
+		if appMenu := menu.AppMenu(); appMenu != nil {
+			rootMenu.Append(appMenu)
+		}
 	}
 
 	fileMenu := menu.NewMenu()
