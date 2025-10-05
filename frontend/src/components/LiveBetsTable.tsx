@@ -83,8 +83,11 @@ const difficultyTone: Record<LiveBet['difficulty'], string> = {
 };
 
 const STORAGE_PREFIX = 'live-delta-preferences';
+const DENSITY_STORAGE_PREFIX = 'live-bets-density';
 const MULTIPLIER_PRECISION = 2;
 const MAX_RECENT_HITS = 10;
+
+type RowDensity = 'comfortable' | 'compact';
 
 function normalizeMultiplier(value: number) {
   return Number(value.toFixed(MULTIPLIER_PRECISION));
@@ -114,6 +117,8 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
   const [activeMultiplierKey, setActiveMultiplierKey] = useState<string | null>(null);
   const [trackingHydrated, setTrackingHydrated] = useState(false);
   const [newTrackedInput, setNewTrackedInput] = useState('');
+  const [density, setDensity] = useState<RowDensity>('comfortable');
+  const [densityHydrated, setDensityHydrated] = useState(false);
 
   useEffect(() => {
     setMinFilterRaw(minMultiplier ? String(minMultiplier) : '');
@@ -201,6 +206,34 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
       setActiveMultiplierKey(multiplierKey(trackedMultipliers[0]));
     }
   }, [trackedMultipliers, activeMultiplierKey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      setDensityHydrated(true);
+      return;
+    }
+    const storageKey = `${DENSITY_STORAGE_PREFIX}:${streamId}`;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (raw === 'compact' || raw === 'comfortable') {
+        setDensity(raw);
+      }
+    } catch (err) {
+      console.warn('Failed to load table density preference', err);
+    } finally {
+      setDensityHydrated(true);
+    }
+  }, [streamId]);
+
+  useEffect(() => {
+    if (!densityHydrated || typeof window === 'undefined') return;
+    const storageKey = `${DENSITY_STORAGE_PREFIX}:${streamId}`;
+    try {
+      window.localStorage.setItem(storageKey, density);
+    } catch (err) {
+      console.warn('Failed to persist table density preference', err);
+    }
+  }, [densityHydrated, density, streamId]);
 
   const handleAddTrackedMultiplier = useCallback(() => {
     const trimmed = newTrackedInput.trim();
@@ -344,6 +377,14 @@ const handleTrackedInputKeyDown = useCallback(
   const candidateValue = Number(newTrackedInput.trim());
   const canAddMultiplier = trackingEnabled && Number.isFinite(candidateValue) && candidateValue > 0;
 
+  const headerPadding = density === 'compact' ? 'px-3 py-2' : 'px-4 py-3';
+  const headerTextClass = density === 'compact' ? 'text-[0.6rem]' : 'text-[0.65rem] md:text-xs';
+  const cellPadding = density === 'compact' ? 'px-3 py-2' : 'px-4 py-3';
+  const cellTextClass = density === 'compact' ? 'text-xs' : 'text-sm';
+  const monoTextClass = density === 'compact' ? 'text-xs' : 'text-sm';
+  const secondaryLineClass = density === 'compact' ? 'hidden' : 'block';
+  const tableContainerStyle = { height: 'calc(100vh - 320px)', minHeight: '420px' } as const;
+
   const handleEndReached = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
@@ -374,46 +415,57 @@ const handleTrackedInputKeyDown = useCallback(
 
   const fixedHeader = useMemo(
     () => (
-      <tr className="sticky top-0 z-20 bg-card/95 text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground backdrop-blur-sm">
-        <th className="w-[90px] px-4 py-3 text-left font-semibold text-foreground/75">Nonce</th>
-        <th className="w-[160px] px-4 py-3 text-left font-semibold text-foreground/75">Date</th>
-        <th className="w-[120px] px-4 py-3 text-right font-semibold text-foreground/75">Amount</th>
-        <th className="w-[120px] px-4 py-3 text-right font-semibold text-foreground/75">Payout</th>
-        <th className="w-[120px] px-4 py-3 text-left font-semibold text-foreground/75">Difficulty</th>
-        <th className="w-[120px] px-4 py-3 text-right font-semibold text-foreground/75">Target</th>
-        <th className="w-[120px] px-4 py-3 text-right font-semibold text-foreground/75">Result</th>
+      <tr className="sticky top-0 z-20 bg-card/95 uppercase tracking-[0.18em] text-muted-foreground backdrop-blur-sm">
+        <th className={cn(headerPadding, headerTextClass, 'text-left font-semibold text-foreground/80')}>Nonce</th>
+        <th className={cn(headerPadding, headerTextClass, 'text-right font-semibold text-foreground/80')}>Result</th>
         {showDeltaColumn && (
-          <th className="w-[140px] px-4 py-3 text-right font-semibold text-foreground/75">Δ Nonce</th>
+          <th className={cn(headerPadding, headerTextClass, 'text-right font-semibold text-foreground/80')}>Δ Nonce</th>
         )}
+        <th className={cn(headerPadding, headerTextClass, 'text-right font-semibold text-foreground/80')}>Amount</th>
+        <th className={cn(headerPadding, headerTextClass, 'text-right font-semibold text-foreground/80')}>Payout</th>
+        <th className={cn(headerPadding, headerTextClass, 'hidden xl:table-cell text-left font-semibold text-foreground/80')}>
+          Difficulty
+        </th>
+        <th className={cn(headerPadding, headerTextClass, 'hidden 2xl:table-cell text-right font-semibold text-foreground/80')}>
+          Target
+        </th>
       </tr>
     ),
-    [showDeltaColumn],
+    [headerPadding, headerTextClass, showDeltaColumn],
   );
 
   const filterControl = (
-    <div className="flex flex-col gap-3 pb-3">
+    <div className="rounded-2xl border border-border bg-card/60 p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span
             className={cn(
-              'h-2.5 w-2.5 rounded-full shadow-sm',
+              'flex items-center gap-2 rounded-full border px-3 py-1 font-semibold',
               isStreaming
-                ? 'bg-success-600 shadow-[0_0_12px_rgba(70,167,88,0.45)]'
-                : 'bg-warning-600 animate-pulse shadow-[0_0_12px_rgba(255,178,36,0.5)]',
+                ? 'border-success-500/40 bg-success-500/10 text-success-500'
+                : 'border-warning-500/40 bg-warning-500/15 text-warning-500',
             )}
-          />
-          <span className="font-medium tracking-wide text-foreground/80">{isStreaming ? 'Live' : 'Reconnecting…'}</span>
-          <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 font-medium text-foreground/70">
-            {rows.length.toLocaleString()} loaded{totalKnown != null ? ` / ${totalKnown.toLocaleString()}` : ''}
+          >
+            <span
+              className={cn(
+                'h-2 w-2 rounded-full',
+                isStreaming ? 'bg-success-500' : 'bg-warning-500 animate-pulse',
+              )}
+            />
+            {isStreaming ? 'Live' : 'Reconnecting…'}
+          </span>
+          <span className="rounded-full border border-border bg-background/60 px-3 py-1 font-medium text-foreground/80">
+            {rows.length.toLocaleString()} loaded
+            {totalKnown != null ? ` / ${totalKnown.toLocaleString()}` : ''}
           </span>
           {pendingCount > 0 && isPinnedToTop && (
-            <span className="rounded-full border border-[hsl(var(--primary))]/40 bg-[hsl(var(--primary))]/15 px-2 py-0.5 text-[hsl(var(--primary))]">
+            <span className="rounded-full border border-[hsl(var(--primary))]/40 bg-[hsl(var(--primary))]/15 px-3 py-1 text-[hsl(var(--primary))]">
               {pendingCount} buffered
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Label htmlFor="min-multiplier" className="text-xs uppercase tracking-wider text-muted-foreground">
             Min ×
           </Label>
@@ -425,10 +477,36 @@ const handleTrackedInputKeyDown = useCallback(
             className="h-8 w-24 rounded-md border border-border bg-background/80 text-right font-mono text-xs text-foreground placeholder:text-muted-foreground focus-visible:border-[hsl(var(--primary))] focus-visible:ring-0"
             placeholder="0"
           />
+          <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background/60 p-1">
+            <button
+              type="button"
+              onClick={() => setDensity('comfortable')}
+              className={cn(
+                'rounded-full px-2 py-1 text-xs font-medium transition',
+                density === 'comfortable'
+                  ? 'bg-[hsl(var(--primary))]/20 text-[hsl(var(--primary))]'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              Comfortable
+            </button>
+            <button
+              type="button"
+              onClick={() => setDensity('compact')}
+              className={cn(
+                'rounded-full px-2 py-1 text-xs font-medium transition',
+                density === 'compact'
+                  ? 'bg-[hsl(var(--primary))]/20 text-[hsl(var(--primary))]'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              Compact
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-start gap-3">
+      <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-2">
           <Switch
             id="track-multipliers-toggle"
@@ -442,14 +520,14 @@ const handleTrackedInputKeyDown = useCallback(
         </div>
 
         {trackingEnabled && (
-          <div className="flex w-full flex-col gap-2 md:flex-row md:items-center">
-            <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
+          <div className="flex flex-1 flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
               <Input
                 value={newTrackedInput}
                 onChange={(event) => setNewTrackedInput(event.target.value.replace(/[^0-9.]/g, ''))}
                 onKeyDown={handleTrackedInputKeyDown}
                 placeholder="Add multiplier (e.g. 12.5)"
-                className="h-8 w-full max-w-[180px] rounded-md border border-border bg-background/80 text-xs"
+                className="h-8 w-36 rounded-md border border-border bg-background/80 text-xs"
                 inputMode="decimal"
               />
               <Button
@@ -502,9 +580,9 @@ const handleTrackedInputKeyDown = useCallback(
       </div>
 
       {trackingEnabled && appliedMin > 0 && (
-        <span className="text-xs text-warning-500">
+        <div className="mt-2 text-xs text-warning-500">
           Deltas include only bets above the current minimum multiplier filter ({appliedMin.toFixed(2)}×).
-        </span>
+        </div>
       )}
     </div>
   );
@@ -535,10 +613,163 @@ const handleTrackedInputKeyDown = useCallback(
 
   if (!rows.length) {
     return (
-      <div className="relative">
-        <div className="px-4 pb-3">{filterControl}</div>
+      <div className="flex flex-col gap-4">
+        {filterControl}
+        <div className={cn('grid gap-4', showTrackingSummary ? 'xl:grid-cols-[minmax(0,1fr)_320px]' : '')}>
+          <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-border bg-card/70 p-8 text-sm text-muted-foreground">
+            <span className="text-foreground/70">No bets yet. Stay tuned!</span>
+          </div>
+          {showTrackingSummary && (
+            <div className="xl:sticky xl:top-4">
+              <MultiplierDeltaSummary
+                multipliers={multiplierOptions}
+                activeKey={activeMultiplierKey}
+                onSelectMultiplier={handleSelectMultiplier}
+                hits={activeHits}
+                totalHitCount={totalHitCount}
+                onJumpToHit={handleJumpToHit}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {filterControl}
+      <div className={cn('grid gap-4', showTrackingSummary ? 'xl:grid-cols-[minmax(0,1fr)_320px]' : '')}>
+        <div className="rounded-2xl border border-border bg-card/80 shadow-sm">
+          <div className="relative">
+            <div className="overflow-hidden" style={tableContainerStyle}>
+              <TableVirtuoso
+                ref={virtuosoRef}
+                data={rows}
+                totalCount={rows.length}
+                components={tableComponents}
+                fixedHeaderContent={() => fixedHeader}
+                endReached={handleEndReached}
+                rangeChanged={handleRangeChange}
+                overscan={200}
+                initialTopMostItemIndex={0}
+                itemContent={(index, bet) => {
+                  const toneClass = difficultyTone[bet.difficulty as keyof typeof difficultyTone] ?? difficultyTone.medium;
+                  const deltaInfo = showDeltaColumn ? trackingData.rowDeltaMap.get(bet.id) : undefined;
+                  const isTrackedHit = Boolean(deltaInfo);
+                  const deltaDisplay = deltaInfo
+                    ? typeof deltaInfo.delta === 'number'
+                      ? deltaInfo.delta.toLocaleString()
+                      : '—'
+                    : '—';
+                  const highlightClass = isTrackedHit ? 'bg-[hsl(var(--primary))]/10' : '';
+
+                  return (
+                    <>
+                      <td data-index={index} className={cn(cellPadding, highlightClass)}>
+                        <div className="flex flex-col">
+                          <span className={cn('font-mono font-semibold text-foreground tabular-nums tracking-tight', monoTextClass)}>
+                            {bet.nonce.toLocaleString()}
+                          </span>
+                          <span className={cn('text-[0.7rem] text-muted-foreground/70', secondaryLineClass)}>
+                            {formatDate(bet.date_time)}
+                          </span>
+                        </div>
+                      </td>
+                      <td
+                        className={cn(
+                          cellPadding,
+                          'text-right font-mono font-semibold text-[hsl(var(--primary))] tabular-nums tracking-tight',
+                          monoTextClass,
+                          highlightClass,
+                        )}
+                      >
+                        {bet.round_result.toFixed(2)}
+                      </td>
+                      {showDeltaColumn && (
+                        <td
+                          className={cn(
+                            cellPadding,
+                            'text-right font-mono tabular-nums tracking-tight',
+                            monoTextClass,
+                            highlightClass,
+                            deltaInfo ? 'text-[hsl(var(--primary))]' : 'text-muted-foreground',
+                          )}
+                          title={deltaInfo ? `Gap between ${deltaInfo.multiplier.toFixed(2)}× hits` : undefined}
+                        >
+                          {deltaInfo ? deltaDisplay : '—'}
+                        </td>
+                      )}
+                      <td
+                        className={cn(
+                          cellPadding,
+                          'text-right font-mono font-semibold text-foreground tabular-nums tracking-tight',
+                          monoTextClass,
+                          highlightClass,
+                        )}
+                      >
+                        {bet.amount.toFixed(2)}
+                      </td>
+                      <td
+                        className={cn(
+                          cellPadding,
+                          'text-right font-mono font-semibold text-foreground tabular-nums tracking-tight',
+                          monoTextClass,
+                          highlightClass,
+                        )}
+                      >
+                        {bet.payout.toFixed(2)}
+                      </td>
+                      <td className={cn(cellPadding, 'hidden xl:table-cell', highlightClass)}>
+                        <Badge className={cn('capitalize border px-2 py-0.5 text-[0.65rem] font-medium tracking-wide', toneClass)}>
+                          {bet.difficulty}
+                        </Badge>
+                      </td>
+                      <td
+                        className={cn(
+                          cellPadding,
+                          'hidden 2xl:table-cell text-right font-mono text-muted-foreground tabular-nums tracking-tight',
+                          monoTextClass,
+                          highlightClass,
+                        )}
+                      >
+                        {bet.round_target ?? '--'}
+                      </td>
+                    </>
+                  );
+                }}
+                style={{ height: '100%' }}
+              />
+            </div>
+
+            {pendingCount > 0 && !isPinnedToTop && (
+              <div className="pointer-events-none absolute left-0 right-0 top-4 z-20 flex justify-center">
+                <Button
+                  onClick={revealBufferedRows}
+                  size="sm"
+                  className="pointer-events-auto border border-[hsl(var(--primary))]/50 bg-[hsl(var(--primary))]/20 px-3 text-[hsl(var(--primary))] shadow-md hover:bg-[hsl(var(--primary))]/30"
+                >
+                  Show {pendingCount} new bet{pendingCount > 1 ? 's' : ''}
+                </Button>
+              </div>
+            )}
+
+            {!isStreaming && (
+              <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full border border-warning-600/40 bg-warning-600/15 px-4 py-1 text-xs text-warning-500 shadow-md">
+                Reconnecting to live feed…
+              </div>
+            )}
+
+            {isFetchingNextPage && (
+              <div className="absolute bottom-4 right-4 z-10 rounded-full border border-border bg-card/80 px-3 py-1 text-xs text-muted-foreground shadow-md">
+                Loading older bets…
+              </div>
+            )}
+          </div>
+        </div>
+
         {showTrackingSummary && (
-          <div className="px-4 pb-4">
+          <div className="xl:sticky xl:top-4">
             <MultiplierDeltaSummary
               multipliers={multiplierOptions}
               activeKey={activeMultiplierKey}
@@ -549,154 +780,7 @@ const handleTrackedInputKeyDown = useCallback(
             />
           </div>
         )}
-        <div className="mb-8 flex h-64 flex-col items-center justify-center gap-3 rounded-lg border border-border bg-card text-muted-foreground">
-          <span className="text-sm text-foreground/70">No bets yet. Stay tuned!</span>
-        </div>
       </div>
-    );
-  }
-
-  return (
-    <div className="relative">
-      <div className="px-4 pb-3">{filterControl}</div>
-
-      {showTrackingSummary && (
-        <div className="px-4 pb-4">
-          <MultiplierDeltaSummary
-            multipliers={multiplierOptions}
-            activeKey={activeMultiplierKey}
-            onSelectMultiplier={handleSelectMultiplier}
-            hits={activeHits}
-            totalHitCount={totalHitCount}
-            onJumpToHit={handleJumpToHit}
-          />
-        </div>
-      )}
-
-      {pendingCount > 0 && !isPinnedToTop && (
-        <div
-          className={cn(
-            'pointer-events-none absolute inset-x-0 z-30 flex justify-center',
-            showTrackingSummary ? 'top-40' : 'top-16',
-          )}
-        >
-          <Button
-            onClick={revealBufferedRows}
-            size="sm"
-            className="pointer-events-auto border border-[hsl(var(--primary))]/50 bg-[hsl(var(--primary))]/20 px-3 text-[hsl(var(--primary))] shadow-md hover:bg-[hsl(var(--primary))]/30"
-          >
-            Show {pendingCount} new bet{pendingCount > 1 ? 's' : ''}
-          </Button>
-        </div>
-      )}
-
-      <div style={{ height: '500px' }} className="mb-8 overflow-hidden rounded-xl border border-border bg-card/90 shadow-md">
-        <TableVirtuoso
-          ref={virtuosoRef}
-          data={rows}
-          totalCount={rows.length}
-          components={tableComponents}
-          fixedHeaderContent={() => fixedHeader}
-          endReached={handleEndReached}
-          rangeChanged={handleRangeChange}
-          overscan={200}
-          initialTopMostItemIndex={0}
-          itemContent={(index, bet) => {
-            const toneClass = difficultyTone[bet.difficulty as keyof typeof difficultyTone] ?? difficultyTone.medium;
-            const deltaInfo = showDeltaColumn ? trackingData.rowDeltaMap.get(bet.id) : undefined;
-            const isTrackedHit = Boolean(deltaInfo);
-            const deltaDisplay = deltaInfo
-              ? typeof deltaInfo.delta === 'number'
-                ? deltaInfo.delta.toLocaleString()
-                : '—'
-              : '—';
-
-            return (
-              <>
-                <td
-                  data-index={index}
-                  className={cn(
-                    'px-4 py-3 font-mono text-xs text-muted-foreground tabular-nums tracking-tight md:text-sm',
-                    isTrackedHit && 'bg-[hsl(var(--primary))]/10',
-                  )}
-                >
-                  {bet.nonce}
-                </td>
-                <td
-                  className={cn(
-                    'px-4 py-3 text-xs font-medium text-foreground/85 tracking-tight md:text-sm',
-                    isTrackedHit && 'bg-[hsl(var(--primary))]/10',
-                  )}
-                >
-                  {formatDate(bet.date_time)}
-                </td>
-                <td
-                  className={cn(
-                    'px-4 py-3 text-right font-mono text-xs font-semibold text-foreground tabular-nums tracking-tight md:text-sm',
-                    isTrackedHit && 'bg-[hsl(var(--primary))]/10',
-                  )}
-                >
-                  {bet.amount.toFixed(2)}
-                </td>
-                <td
-                  className={cn(
-                    'px-4 py-3 text-right font-mono text-xs font-semibold text-foreground tabular-nums tracking-tight md:text-sm',
-                    isTrackedHit && 'bg-[hsl(var(--primary))]/10',
-                  )}
-                >
-                  {bet.payout.toFixed(2)}
-                </td>
-                <td
-                  className={cn('px-4 py-3', isTrackedHit && 'bg-[hsl(var(--primary))]/10')}
-                >
-                  <Badge className={cn('capitalize border px-2 py-0.5 text-[0.65rem] font-medium tracking-wide', toneClass)}>
-                    {bet.difficulty}
-                  </Badge>
-                </td>
-                <td
-                  className={cn(
-                    'px-4 py-3 text-right font-mono text-xs text-muted-foreground tabular-nums tracking-tight md:text-sm',
-                    isTrackedHit && 'bg-[hsl(var(--primary))]/10',
-                  )}
-                >
-                  {bet.round_target ?? '--'}
-                </td>
-                <td
-                  className={cn(
-                    'px-4 py-3 text-right font-mono text-xs font-semibold text-[hsl(var(--primary))] tabular-nums tracking-tight md:text-sm',
-                    isTrackedHit && 'bg-[hsl(var(--primary))]/10',
-                  )}
-                >
-                  {bet.round_result.toFixed(2)}
-                </td>
-                {showDeltaColumn && (
-                  <td
-                    className={cn(
-                      'px-4 py-3 text-right font-mono text-xs font-semibold tabular-nums tracking-tight text-muted-foreground md:text-sm',
-                      isTrackedHit && 'bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]',
-                    )}
-                    title={deltaInfo ? `Gap between ${deltaInfo.multiplier.toFixed(2)}× hits` : undefined}
-                  >
-                    {deltaInfo ? deltaDisplay : '—'}
-                  </td>
-                )}
-              </>
-            );
-          }}
-        />
-      </div>
-
-      {!isStreaming && (
-        <div className="absolute bottom-12 left-1/2 z-30 -translate-x-1/2 rounded-full border border-warning-600/40 bg-warning-600/15 px-4 py-1 text-xs text-warning-500 shadow-md">
-          Reconnecting to live feed...
-        </div>
-      )}
-
-      {isFetchingNextPage && (
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground shadow-md">
-          Loading older bets...
-        </div>
-      )}
     </div>
   );
 };

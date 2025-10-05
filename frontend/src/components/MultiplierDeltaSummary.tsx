@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { IconChartBar, IconClockHour3, IconTarget, IconTimeline } from '@tabler/icons-react';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -83,7 +82,7 @@ export default function MultiplierDeltaSummary({
   const formattedLabel = formatMultiplierLabel(activeOption.value);
 
   return (
-    <div className="rounded-lg border border-border bg-muted/10 p-4 shadow-sm">
+    <div className="rounded-lg border border-border bg-muted/10 p-4 shadow-sm xl:max-h-[calc(100vh-220px)] xl:overflow-auto">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="flex flex-col gap-1">
           <span className="text-xs uppercase tracking-wide text-muted-foreground">Tracking summary</span>
