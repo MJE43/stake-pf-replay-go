@@ -274,8 +274,8 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col gap-6 px-6 pb-12 pt-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="flex min-h-screen flex-col gap-4 px-4 pb-10 pt-4 sm:px-6 xl:px-8">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -307,7 +307,7 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
       </div>
 
       {streamMeta && (
-        <div className="flex flex-col gap-4">
+        <>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-2 rounded-full border border-success-500/40 bg-success-500/10 px-3 py-1 font-semibold text-success-500">
               <span className="h-2 w-2 rounded-full bg-success-500" /> Live connection
@@ -315,59 +315,67 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
             <span className="rounded-full border border-border/60 bg-card/60 px-3 py-1 font-medium text-foreground/80">
               Stream ID {streamMeta.id}
             </span>
+            {streamMeta.totalBets != null && (
+              <span className="rounded-full border border-border/60 bg-card/60 px-3 py-1 font-medium text-foreground/80">
+                {streamMeta.totalBets.toLocaleString()} bets observed
+              </span>
+            )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <InfoChip label="Server hash" value={streamMeta.serverSeedHashed} copyable />
-            <InfoChip label="Client seed" value={streamMeta.clientSeed} copyable />
-            <MetricChip label="Total bets" value={streamMeta.totalBets != null ? streamMeta.totalBets.toLocaleString() : '0'} />
-            <MetricChip
-              label="Highest ×"
-              value={
-                streamMeta.highestMultiplier != null
-                  ? streamMeta.highestMultiplier.toLocaleString(undefined, { maximumFractionDigits: 2 })
-                  : '—'
-              }
-            />
-            <MetricChip label="Created" value={formatDateTime(streamMeta.createdAt)} />
-            <MetricChip label="Last seen" value={formatDateTime(streamMeta.lastSeenAt)} />
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card/60 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-foreground">Notes</span>
-                <span className="text-xs text-muted-foreground">Document findings, reminders, or next actions.</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setNotesDraft(streamMeta.notes ?? '')}
-                  disabled={!notesDirty}
-                >
-                  Reset
-                </Button>
-                <Button
-                  className="gap-2"
-                  onClick={() => onSaveNotes(notesDraft)}
-                  disabled={!notesDirty || savingNotes}
-                >
-                  {savingNotes ? 'Saving…' : 'Save notes'}
-                </Button>
-              </div>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(260px,320px)]">
+            <div className="flex flex-col gap-4">
+              <LiveBetsTable streamId={streamId} minMultiplier={0} apiBase={apiBase} />
             </div>
-            <Textarea
-              className="mt-3 h-32 resize-y text-sm"
-              value={notesDraft}
-              onChange={(event) => setNotesDraft(event.target.value)}
-              placeholder="Add observations about this stream…"
-            />
-          </div>
 
-          <div className="flex flex-col gap-4">
-            <LiveBetsTable streamId={streamId} minMultiplier={0} apiBase={apiBase} />
+            <aside className="flex flex-col gap-4 xl:sticky xl:top-24">
+              <div className="rounded-2xl border border-border/70 bg-card/70 p-4 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-foreground">Stream metadata</span>
+                  {streamMeta.highestMultiplier != null && (
+                    <Badge className="border border-[hsl(var(--primary))]/30 bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]">
+                      Peak ×{streamMeta.highestMultiplier.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </Badge>
+                  )}
+                </div>
+                <div className="mt-3 space-y-3">
+                  <InfoChip label="Server hash" value={streamMeta.serverSeedHashed} copyable />
+                  <InfoChip label="Client seed" value={streamMeta.clientSeed} copyable />
+                </div>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  <MetricChip
+                    label="Total bets"
+                    value={streamMeta.totalBets != null ? streamMeta.totalBets.toLocaleString() : '0'}
+                  />
+                  <MetricChip label="Created" value={formatDateTime(streamMeta.createdAt)} />
+                  <MetricChip label="Last seen" value={formatDateTime(streamMeta.lastSeenAt)} />
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-border/70 bg-card/70 p-4 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-foreground">Notes</span>
+                    <span className="text-xs text-muted-foreground">Document observations or follow-ups.</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => setNotesDraft(streamMeta.notes ?? '')} disabled={!notesDirty}>
+                      Reset
+                    </Button>
+                    <Button className="gap-2" onClick={() => onSaveNotes(notesDraft)} disabled={!notesDirty || savingNotes}>
+                      {savingNotes ? 'Saving…' : 'Save'}
+                    </Button>
+                  </div>
+                </div>
+                <Textarea
+                  className="mt-3 h-40 resize-y text-sm"
+                  value={notesDraft}
+                  onChange={(event) => setNotesDraft(event.target.value)}
+                  placeholder="Add observations about this stream…"
+                />
+              </div>
+            </aside>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

@@ -2,6 +2,16 @@ import { forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState } f
 import type { ComponentPropsWithoutRef, KeyboardEvent } from 'react';
 import type { TableComponents, TableVirtuosoHandle } from 'react-virtuoso';
 import { TableVirtuoso } from 'react-virtuoso';
+import { IconColumns, IconX } from '@tabler/icons-react';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import MultiplierDeltaSummary, { MultiplierOption, TrackedHit } from '@/components/MultiplierDeltaSummary';
 import { useBetsStream } from '@/hooks/useBetsStream';
+import { useStreamPreferences } from '@/hooks/useStreamPreferences';
 import { cn } from '@/lib/utils';
 import type { LiveBet } from '@/types/live';
 
@@ -82,12 +93,8 @@ const difficultyTone: Record<LiveBet['difficulty'], string> = {
   expert: 'border-destructive/40 bg-destructive/10 text-destructive',
 };
 
-const STORAGE_PREFIX = 'live-delta-preferences';
-const DENSITY_STORAGE_PREFIX = 'live-bets-density';
 const MULTIPLIER_PRECISION = 2;
 const MAX_RECENT_HITS = 10;
-
-type RowDensity = 'comfortable' | 'compact';
 
 function normalizeMultiplier(value: number) {
   return Number(value.toFixed(MULTIPLIER_PRECISION));
@@ -111,14 +118,23 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
   const [isPinnedToTop, setIsPinnedToTop] = useState(true);
   const [minFilterRaw, setMinFilterRaw] = useState(minMultiplier ? String(minMultiplier) : '');
   const [appliedMin, setAppliedMin] = useState(minMultiplier ?? 0);
-
-  const [trackingEnabled, setTrackingEnabled] = useState(false);
-  const [trackedMultipliers, setTrackedMultipliers] = useState<number[]>([]);
-  const [activeMultiplierKey, setActiveMultiplierKey] = useState<string | null>(null);
-  const [trackingHydrated, setTrackingHydrated] = useState(false);
   const [newTrackedInput, setNewTrackedInput] = useState('');
-  const [density, setDensity] = useState<RowDensity>('comfortable');
-  const [densityHydrated, setDensityHydrated] = useState(false);
+  const preferenceTimer = useRef<number | null>(null);
+  const [preferenceStatus, setPreferenceStatus] = useState<string | null>(null);
+
+  const {
+    preferences,
+    hydrated,
+    setDensity,
+    setColumns,
+    setTracking,
+    addTrackedMultiplier,
+    removeTrackedMultiplier,
+    setActiveMultiplierKey,
+  } = useStreamPreferences(streamId);
+
+  const { density, columns, tracking } = preferences;
+  const { enabled: trackingEnabled, multipliers: trackedMultipliers, activeKey: activeMultiplierKey } = tracking;
 
   useEffect(() => {
     setMinFilterRaw(minMultiplier ? String(minMultiplier) : '');
@@ -140,62 +156,22 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
     return () => window.clearTimeout(timeout);
   }, [minFilterRaw]);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      setTrackingHydrated(true);
-      return;
+  const announcePreference = useCallback((message: string) => {
+    setPreferenceStatus(message);
+    if (preferenceTimer.current) {
+      window.clearTimeout(preferenceTimer.current);
     }
+    preferenceTimer.current = window.setTimeout(() => {
+      setPreferenceStatus(null);
+      preferenceTimer.current = null;
+    }, 2000);
+  }, []);
 
-    setTrackingHydrated(false);
-
-    const storageKey = `${STORAGE_PREFIX}:${streamId}`;
-    try {
-      const raw = window.localStorage.getItem(storageKey);
-      if (!raw) {
-        setTrackingEnabled(false);
-        setTrackedMultipliers([]);
-        setActiveMultiplierKey(null);
-        setTrackingHydrated(true);
-        return;
-      }
-      const parsed = JSON.parse(raw) as {
-        enabled?: boolean;
-        multipliers?: number[];
-        activeKey?: string | null;
-      } | null;
-      const multipliers = Array.isArray(parsed?.multipliers)
-        ? parsed!.multipliers
-            .map((value) => Number(value))
-            .filter((value) => Number.isFinite(value) && value > 0)
-            .map((value) => normalizeMultiplier(value))
-        : [];
-      setTrackingEnabled(Boolean(parsed?.enabled));
-      setTrackedMultipliers(multipliers);
-      setActiveMultiplierKey(parsed?.activeKey && typeof parsed.activeKey === 'string' ? parsed.activeKey : null);
-    } catch (err) {
-      console.warn('Failed to load multiplier tracking preferences', err);
-      setTrackingEnabled(false);
-      setTrackedMultipliers([]);
-      setActiveMultiplierKey(null);
-    } finally {
-      setTrackingHydrated(true);
+  useEffect(() => () => {
+    if (preferenceTimer.current) {
+      window.clearTimeout(preferenceTimer.current);
     }
-  }, [streamId]);
-
-  useEffect(() => {
-    if (!trackingHydrated || typeof window === 'undefined') return;
-    const storageKey = `${STORAGE_PREFIX}:${streamId}`;
-    const payload = {
-      enabled: trackingEnabled,
-      multipliers: trackedMultipliers,
-      activeKey: activeMultiplierKey,
-    };
-    try {
-      window.localStorage.setItem(storageKey, JSON.stringify(payload));
-    } catch (err) {
-      console.warn('Failed to persist multiplier tracking preferences', err);
-    }
-  }, [trackingHydrated, streamId, trackingEnabled, trackedMultipliers, activeMultiplierKey]);
+  }, []);
 
   useEffect(() => {
     if (!trackedMultipliers.length) {
@@ -205,35 +181,7 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
     if (!activeMultiplierKey || !trackedMultipliers.some((value) => multiplierKey(value) === activeMultiplierKey)) {
       setActiveMultiplierKey(multiplierKey(trackedMultipliers[0]));
     }
-  }, [trackedMultipliers, activeMultiplierKey]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      setDensityHydrated(true);
-      return;
-    }
-    const storageKey = `${DENSITY_STORAGE_PREFIX}:${streamId}`;
-    try {
-      const raw = window.localStorage.getItem(storageKey);
-      if (raw === 'compact' || raw === 'comfortable') {
-        setDensity(raw);
-      }
-    } catch (err) {
-      console.warn('Failed to load table density preference', err);
-    } finally {
-      setDensityHydrated(true);
-    }
-  }, [streamId]);
-
-  useEffect(() => {
-    if (!densityHydrated || typeof window === 'undefined') return;
-    const storageKey = `${DENSITY_STORAGE_PREFIX}:${streamId}`;
-    try {
-      window.localStorage.setItem(storageKey, density);
-    } catch (err) {
-      console.warn('Failed to persist table density preference', err);
-    }
-  }, [densityHydrated, density, streamId]);
+  }, [trackedMultipliers, activeMultiplierKey, setActiveMultiplierKey]);
 
   const handleAddTrackedMultiplier = useCallback(() => {
     const trimmed = newTrackedInput.trim();
@@ -242,29 +190,19 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
     if (!Number.isFinite(parsed) || parsed <= 0) {
       return;
     }
-    const normalized = normalizeMultiplier(parsed);
-    const key = multiplierKey(normalized);
-    if (trackedMultipliers.some((value) => multiplierKey(value) === key)) {
-      setNewTrackedInput('');
-      setActiveMultiplierKey((current) => current ?? key);
-      return;
-    }
-    setTrackedMultipliers((prev) => {
-      const next = [...prev, normalized].sort((a, b) => a - b);
-      return next;
-    });
+    addTrackedMultiplier(parsed);
     setNewTrackedInput('');
-    setActiveMultiplierKey((current) => current ?? key);
-  }, [newTrackedInput, trackedMultipliers]);
+    announcePreference(`Tracking ${Number(parsed.toFixed(2)).toFixed(2)}×`);
+  }, [newTrackedInput, addTrackedMultiplier, announcePreference]);
 
   const handleRemoveTrackedMultiplier = useCallback((key: string) => {
-    setTrackedMultipliers((prev) => prev.filter((value) => multiplierKey(value) !== key));
-    setActiveMultiplierKey((current) => (current === key ? null : current));
-  }, []);
+    removeTrackedMultiplier(key);
+    announcePreference('Stopped tracking multiplier');
+  }, [removeTrackedMultiplier, announcePreference]);
 
   const handleSelectMultiplier = useCallback((key: string) => {
     setActiveMultiplierKey(key);
-  }, []);
+  }, [setActiveMultiplierKey]);
 
 const handleTrackedInputKeyDown = useCallback(
   (event: KeyboardEvent<HTMLInputElement>) => {
@@ -300,53 +238,100 @@ const handleTrackedInputKeyDown = useCallback(
         hitsByKey: new Map<string, TrackedHit[]>(),
         hitCounts: new Map<string, number>(),
         trackedKeys: new Set<string>(),
+        warnings: [] as string[],
       };
     }
 
-    const trackedKeys = new Set(trackedMultipliers.map((value) => multiplierKey(value)));
-    const sortedAsc = [...rows].sort((a, b) => a.nonce - b.nonce);
-    const lastNonceByKey = new Map<string, number>();
-    const rowMap = new Map<number, RowDeltaInfo>();
-    const fullHits = new Map<string, TrackedHit[]>();
-    const hitCounts = new Map<string, number>();
+    try {
+      const trackedKeys = new Set(trackedMultipliers.map((value) => multiplierKey(value)));
 
-    for (const row of sortedAsc) {
-      const normalized = normalizeMultiplier(row.round_result);
-      const key = multiplierKey(normalized);
-      if (!trackedKeys.has(key)) {
-        continue;
+      const seenIds = new Set<number>();
+      const dedupedRows = rows.filter((row) => {
+        if (seenIds.has(row.id)) return false;
+        seenIds.add(row.id);
+        return true;
+      });
+      // Pre-filter to tracked multipliers for efficiency
+      const filtered = dedupedRows.filter((r) => trackedKeys.has(multiplierKey(normalizeMultiplier(r.round_result))));
+
+      const sortedAsc = [...filtered].sort((a, b) => {
+        if (a.nonce !== b.nonce) return a.nonce - b.nonce;
+        return a.id - b.id;
+      });
+
+      const lastNonceByKey = new Map<string, number>();
+      const rowMap = new Map<number, RowDeltaInfo>();
+      const fullHits = new Map<string, TrackedHit[]>();
+      const hitCounts = new Map<string, number>();
+      const warnings: string[] = [];
+
+      for (const row of sortedAsc) {
+        const normalized = normalizeMultiplier(row.round_result);
+        const key = multiplierKey(normalized);
+        if (!trackedKeys.has(key)) {
+          continue;
+        }
+
+        const previousNonce = lastNonceByKey.get(key);
+        let delta: number | null = null;
+
+        if (previousNonce != null) {
+          const rawDelta = row.nonce - previousNonce - 1;
+          if (rawDelta < 0) {
+            warnings.push(`Negative delta detected for ${key}× at nonce ${row.nonce}`);
+            delta = null;
+          } else if (rawDelta > 100000) {
+            warnings.push(`Suspiciously large delta (${rawDelta}) for ${key}× at nonce ${row.nonce}`);
+            delta = rawDelta;
+          } else {
+            delta = rawDelta;
+          }
+        }
+
+        lastNonceByKey.set(key, row.nonce);
+
+        const hit: TrackedHit = {
+          rowId: row.id,
+          nonce: row.nonce,
+          multiplier: normalized,
+          delta,
+          at: row.date_time,
+        };
+
+        const list = fullHits.get(key) ?? [];
+        list.push(hit);
+        fullHits.set(key, list);
+        hitCounts.set(key, (hitCounts.get(key) ?? 0) + 1);
+        rowMap.set(row.id, { key, multiplier: normalized, delta });
       }
-      const previousNonce = lastNonceByKey.get(key);
-      const delta = previousNonce != null ? row.nonce - previousNonce - 1 : null;
-      lastNonceByKey.set(key, row.nonce);
 
-      const hit: TrackedHit = {
-        rowId: row.id,
-        nonce: row.nonce,
-        multiplier: normalized,
-        delta,
-        at: row.date_time,
+      const limitedHits = new Map<string, TrackedHit[]>();
+      fullHits.forEach((list, key) => {
+        const limited = list.slice(-MAX_RECENT_HITS).reverse();
+        limitedHits.set(key, limited);
+      });
+
+      if (warnings.length > 0) {
+        console.warn('Delta tracking warnings:', warnings);
+      }
+
+      return {
+        rowDeltaMap: rowMap,
+        hitsByKey: limitedHits,
+        hitCounts,
+        trackedKeys,
+        warnings,
       };
-
-      const list = fullHits.get(key) ?? [];
-      list.push(hit);
-      fullHits.set(key, list);
-      hitCounts.set(key, (hitCounts.get(key) ?? 0) + 1);
-      rowMap.set(row.id, { key, multiplier: normalized, delta });
+    } catch (err) {
+      console.error('Failed to calculate tracking data', err);
+      return {
+        rowDeltaMap: new Map<number, RowDeltaInfo>(),
+        hitsByKey: new Map<string, TrackedHit[]>(),
+        hitCounts: new Map<string, number>(),
+        trackedKeys: new Set<string>(),
+        warnings: ['Failed to calculate deltas'],
+      };
     }
-
-    const limitedHits = new Map<string, TrackedHit[]>();
-    fullHits.forEach((list, key) => {
-      const limited = list.slice(-MAX_RECENT_HITS).reverse();
-      limitedHits.set(key, limited);
-    });
-
-    return {
-      rowDeltaMap: rowMap,
-      hitsByKey: limitedHits,
-      hitCounts,
-      trackedKeys,
-    };
   }, [trackingEnabled, trackedMultipliers, rows]);
 
   const handleJumpToHit = useCallback(
@@ -359,8 +344,11 @@ const handleTrackedInputKeyDown = useCallback(
     [rows],
   );
 
-  const showTrackingSummary = trackingEnabled && trackedMultipliers.length > 0;
+  const showTrackingSummary = hydrated && trackingEnabled && trackedMultipliers.length > 0;
   const showDeltaColumn = showTrackingSummary;
+  const showDateColumn = columns.date;
+  const showDifficultyColumn = columns.difficulty;
+  const showTargetColumn = columns.target;
 
   const multiplierOptions: MultiplierOption[] = trackedMultipliers.map((value) => {
     const key = multiplierKey(value);
@@ -382,8 +370,9 @@ const handleTrackedInputKeyDown = useCallback(
   const cellPadding = density === 'compact' ? 'px-3 py-2' : 'px-4 py-3';
   const cellTextClass = density === 'compact' ? 'text-xs' : 'text-sm';
   const monoTextClass = density === 'compact' ? 'text-xs' : 'text-sm';
-  const secondaryLineClass = density === 'compact' ? 'hidden' : 'block';
-  const tableContainerStyle = { height: 'calc(100vh - 320px)', minHeight: '420px' } as const;
+  const timestampTextClass = density === 'compact' ? 'text-[0.65rem]' : 'text-[0.75rem]';
+  const secondaryLineClass = !showDateColumn && density !== 'compact' ? 'block' : 'hidden';
+  const tableContainerStyle = { height: 'calc(100vh - 280px)', minHeight: '420px' } as const;
 
   const handleEndReached = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -416,26 +405,61 @@ const handleTrackedInputKeyDown = useCallback(
   const fixedHeader = useMemo(
     () => (
       <tr className="sticky top-0 z-20 bg-card/95 uppercase tracking-[0.18em] text-muted-foreground backdrop-blur-sm">
-        <th className={cn(headerPadding, headerTextClass, 'text-left font-semibold text-foreground/80')}>Nonce</th>
-        <th className={cn(headerPadding, headerTextClass, 'text-right font-semibold text-foreground/80')}>Result</th>
-        {showDeltaColumn && (
-          <th className={cn(headerPadding, headerTextClass, 'text-right font-semibold text-foreground/80')}>Δ Nonce</th>
+        <th className={cn(headerPadding, headerTextClass, 'w-[120px] text-left font-semibold text-foreground/80')}>Nonce</th>
+        {showDateColumn && (
+          <th className={cn(headerPadding, headerTextClass, 'w-[180px] text-left font-semibold text-foreground/80')}>Timestamp</th>
         )}
-        <th className={cn(headerPadding, headerTextClass, 'text-right font-semibold text-foreground/80')}>Amount</th>
-        <th className={cn(headerPadding, headerTextClass, 'text-right font-semibold text-foreground/80')}>Payout</th>
-        <th className={cn(headerPadding, headerTextClass, 'hidden xl:table-cell text-left font-semibold text-foreground/80')}>
-          Difficulty
-        </th>
-        <th className={cn(headerPadding, headerTextClass, 'hidden 2xl:table-cell text-right font-semibold text-foreground/80')}>
-          Target
-        </th>
+        <th className={cn(headerPadding, headerTextClass, 'w-[110px] text-right font-semibold text-foreground/80')}>Result</th>
+        {showDeltaColumn && (
+          <th className={cn(headerPadding, headerTextClass, 'w-[110px] text-right font-semibold text-foreground/80')}>Δ Nonce</th>
+        )}
+        <th className={cn(headerPadding, headerTextClass, 'w-[120px] text-right font-semibold text-foreground/80')}>Amount</th>
+        <th className={cn(headerPadding, headerTextClass, 'w-[130px] text-right font-semibold text-foreground/80')}>Payout</th>
+        {showDifficultyColumn && (
+          <th className={cn(headerPadding, headerTextClass, 'w-[140px] text-left font-semibold text-foreground/80')}>Difficulty</th>
+        )}
+        {showTargetColumn && (
+          <th className={cn(headerPadding, headerTextClass, 'w-[140px] text-right font-semibold text-foreground/80')}>Target</th>
+        )}
       </tr>
     ),
-    [headerPadding, headerTextClass, showDeltaColumn],
+    [headerPadding, headerTextClass, showDateColumn, showDeltaColumn, showDifficultyColumn, showTargetColumn],
   );
 
+  const resolveDefaultColumns = () => {
+    const width = typeof window === 'undefined' ? 1920 : window.innerWidth;
+    return {
+      date: width >= 1320,
+      difficulty: width >= 1440,
+      target: width >= 1680,
+    } as const;
+  };
+
+  const handleSetDensity = useCallback((next: typeof density) => {
+    if (next === density) return;
+    setDensity(next);
+    announcePreference(`Density set to ${next === 'compact' ? 'Compact' : 'Comfortable'}`);
+  }, [density, setDensity, announcePreference]);
+
+  const handleSetTrackingEnabled = useCallback((enabled: boolean) => {
+    setTracking({ enabled });
+    announcePreference(enabled ? 'Tracking enabled' : 'Tracking paused');
+  }, [setTracking, announcePreference]);
+
+  const handleToggleColumn = useCallback((key: 'date' | 'difficulty' | 'target', visible: boolean) => {
+    setColumns({ [key]: visible } as any);
+    const label = key === 'date' ? 'Timestamp' : key.charAt(0).toUpperCase() + key.slice(1);
+    announcePreference(`${visible ? 'Shown' : 'Hidden'} ${label}`);
+  }, [setColumns, announcePreference]);
+
+  const handleResetColumns = useCallback(() => {
+    const defaults = resolveDefaultColumns();
+    setColumns({ ...defaults });
+    announcePreference('Column defaults restored');
+  }, [setColumns, announcePreference]);
+
   const filterControl = (
-    <div className="rounded-2xl border border-border bg-card/60 p-4 shadow-sm">
+    <div className="rounded-2xl border border-border/70 bg-card/70 p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span
@@ -480,29 +504,80 @@ const handleTrackedInputKeyDown = useCallback(
           <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background/60 p-1">
             <button
               type="button"
-              onClick={() => setDensity('comfortable')}
+              onClick={() => handleSetDensity('comfortable')}
+              disabled={!hydrated}
               className={cn(
                 'rounded-full px-2 py-1 text-xs font-medium transition',
                 density === 'comfortable'
                   ? 'bg-[hsl(var(--primary))]/20 text-[hsl(var(--primary))]'
                   : 'text-muted-foreground hover:text-foreground',
+                !hydrated && 'opacity-60',
               )}
             >
               Comfortable
             </button>
             <button
               type="button"
-              onClick={() => setDensity('compact')}
+              onClick={() => handleSetDensity('compact')}
+              disabled={!hydrated}
               className={cn(
                 'rounded-full px-2 py-1 text-xs font-medium transition',
                 density === 'compact'
                   ? 'bg-[hsl(var(--primary))]/20 text-[hsl(var(--primary))]'
                   : 'text-muted-foreground hover:text-foreground',
+                !hydrated && 'opacity-60',
               )}
             >
               Compact
             </button>
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-2 border-border/60 bg-background/70 text-xs text-muted-foreground hover:text-foreground"
+                disabled={!hydrated}
+              >
+                <IconColumns size={16} /> Columns
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="text-xs text-muted-foreground/80">Visible columns</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                checked={columns.date}
+                disabled={!hydrated}
+                onCheckedChange={(checked) => handleToggleColumn('date', Boolean(checked))}
+              >
+                Timestamp
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={columns.difficulty}
+                disabled={!hydrated}
+                onCheckedChange={(checked) => handleToggleColumn('difficulty', Boolean(checked))}
+              >
+                Difficulty
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={columns.target}
+                disabled={!hydrated}
+                onCheckedChange={(checked) => handleToggleColumn('target', Boolean(checked))}
+              >
+                Target
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-xs text-muted-foreground/80"
+                onSelect={(event) => {
+                  event.preventDefault();
+                  handleResetColumns();
+                }}
+              >
+                Reset to defaults
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -511,8 +586,8 @@ const handleTrackedInputKeyDown = useCallback(
           <Switch
             id="track-multipliers-toggle"
             checked={trackingEnabled}
-            onCheckedChange={(checked) => setTrackingEnabled(Boolean(checked))}
-            disabled={!trackingHydrated}
+            onCheckedChange={(checked) => handleSetTrackingEnabled(Boolean(checked))}
+            disabled={!hydrated}
           />
           <Label htmlFor="track-multipliers-toggle" className="text-xs font-medium text-muted-foreground">
             Track specific multipliers
@@ -557,16 +632,19 @@ const handleTrackedInputKeyDown = useCallback(
                       )}
                     >
                       <span>{label}</span>
-                      <span
-                        role="button"
-                        aria-label={`Stop tracking ${label}`}
-                        className="cursor-pointer text-muted-foreground/70"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleRemoveTrackedMultiplier(option.key);
-                        }}
-                      >
-                        ×
+                      <span className="flex items-center gap-1 text-muted-foreground/70">
+                        <span>{(option.hitCount ?? 0).toLocaleString()}</span>
+                        <button
+                          type="button"
+                          aria-label={`Stop tracking ${label}`}
+                          className="rounded-full p-0.5 text-muted-foreground/60 transition hover:text-destructive"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleRemoveTrackedMultiplier(option.key);
+                          }}
+                        >
+                          <IconX size={12} />
+                        </button>
                       </span>
                     </button>
                   );
@@ -582,6 +660,11 @@ const handleTrackedInputKeyDown = useCallback(
       {trackingEnabled && appliedMin > 0 && (
         <div className="mt-2 text-xs text-warning-500">
           Deltas include only bets above the current minimum multiplier filter ({appliedMin.toFixed(2)}×).
+        </div>
+      )}
+      {preferenceStatus && (
+        <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[hsl(var(--primary))]/40 bg-[hsl(var(--primary))]/10 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-[hsl(var(--primary))]">
+          {preferenceStatus}
         </div>
       )}
     </div>
@@ -639,29 +722,23 @@ const handleTrackedInputKeyDown = useCallback(
   return (
     <div className="flex flex-col gap-4">
       {filterControl}
-      <div className={cn('grid gap-4', showTrackingSummary ? 'xl:grid-cols-[minmax(0,1fr)_320px]' : '')}>
-        <div className="rounded-2xl border border-border bg-card/80 shadow-sm">
-          <div className="relative">
-            <div className="overflow-hidden" style={tableContainerStyle}>
+      <div className={cn('grid gap-4', showTrackingSummary ? 'xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)]' : '')}>
+        <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card/70">
+          <div className="flex flex-col">
+            <div className="relative" style={tableContainerStyle}>
               <TableVirtuoso
                 ref={virtuosoRef}
                 data={rows}
-                totalCount={rows.length}
                 components={tableComponents}
                 fixedHeaderContent={() => fixedHeader}
-                endReached={handleEndReached}
+                totalCount={rows.length}
                 rangeChanged={handleRangeChange}
-                overscan={200}
-                initialTopMostItemIndex={0}
+                endReached={handleEndReached}
                 itemContent={(index, bet) => {
                   const toneClass = difficultyTone[bet.difficulty as keyof typeof difficultyTone] ?? difficultyTone.medium;
-                  const deltaInfo = showDeltaColumn ? trackingData.rowDeltaMap.get(bet.id) : undefined;
-                  const isTrackedHit = Boolean(deltaInfo);
-                  const deltaDisplay = deltaInfo
-                    ? typeof deltaInfo.delta === 'number'
-                      ? deltaInfo.delta.toLocaleString()
-                      : '—'
-                    : '—';
+                  const deltaInfo = trackingData.rowDeltaMap.get(bet.id) ?? null;
+                  const deltaDisplay = deltaInfo && typeof deltaInfo.delta === 'number' ? deltaInfo.delta.toLocaleString() : '—';
+                  const isTrackedHit = deltaInfo != null && deltaInfo.delta != null;
                   const highlightClass = isTrackedHit ? 'bg-[hsl(var(--primary))]/10' : '';
 
                   return (
@@ -676,6 +753,11 @@ const handleTrackedInputKeyDown = useCallback(
                           </span>
                         </div>
                       </td>
+                      {showDateColumn && (
+                        <td className={cn(cellPadding, highlightClass, 'text-left font-mono text-muted-foreground/80 tabular-nums tracking-tight', timestampTextClass)}>
+                          {formatDate(bet.date_time)}
+                        </td>
+                      )}
                       <td
                         className={cn(
                           cellPadding,
@@ -697,7 +779,7 @@ const handleTrackedInputKeyDown = useCallback(
                           )}
                           title={deltaInfo ? `Gap between ${deltaInfo.multiplier.toFixed(2)}× hits` : undefined}
                         >
-                          {deltaInfo ? deltaDisplay : '—'}
+                          {deltaDisplay}
                         </td>
                       )}
                       <td
@@ -720,21 +802,25 @@ const handleTrackedInputKeyDown = useCallback(
                       >
                         {bet.payout.toFixed(2)}
                       </td>
-                      <td className={cn(cellPadding, 'hidden xl:table-cell', highlightClass)}>
-                        <Badge className={cn('capitalize border px-2 py-0.5 text-[0.65rem] font-medium tracking-wide', toneClass)}>
-                          {bet.difficulty}
-                        </Badge>
-                      </td>
-                      <td
-                        className={cn(
-                          cellPadding,
-                          'hidden 2xl:table-cell text-right font-mono text-muted-foreground tabular-nums tracking-tight',
-                          monoTextClass,
-                          highlightClass,
-                        )}
-                      >
-                        {bet.round_target ?? '--'}
-                      </td>
+                      {showDifficultyColumn && (
+                        <td className={cn(cellPadding, 'text-left', highlightClass)}>
+                          <Badge className={cn('capitalize border px-2 py-0.5 text-[0.65rem] font-medium tracking-wide', toneClass)}>
+                            {bet.difficulty}
+                          </Badge>
+                        </td>
+                      )}
+                      {showTargetColumn && (
+                        <td
+                          className={cn(
+                            cellPadding,
+                            'text-right font-mono text-muted-foreground tabular-nums tracking-tight',
+                            monoTextClass,
+                            highlightClass,
+                          )}
+                        >
+                          {bet.round_target ?? '--'}
+                        </td>
+                      )}
                     </>
                   );
                 }}

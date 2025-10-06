@@ -152,13 +152,26 @@ export default function MultiplierDeltaSummary({
         </div>
 
         {hits.length === 0 ? (
-          <div className="rounded-md border border-dashed border-border/60 bg-card/60 p-3 text-xs text-muted-foreground/80">
-            Waiting for the first hit of {formattedLabel}.
+          <div className="flex flex-col items-center gap-2 rounded-md border border-dashed border-border/60 bg-card/60 p-4 text-center">
+            <div className="rounded-full border border-border/60 bg-muted/40 p-3">
+              <IconTarget size={20} className="text-muted-foreground/60" />
+            </div>
+            <div className="text-xs font-medium text-muted-foreground/80">
+              Waiting for first hit of {formattedLabel}
+            </div>
+            <div className="text-[0.7rem] text-muted-foreground/60">
+              Delta tracking will begin once this multiplier appears in the bet stream
+            </div>
           </div>
         ) : (
           <div className="divide-y divide-border/40 overflow-hidden rounded-md border border-border/60 bg-card/80">
-            {hits.map((hit) => {
-              const deltaDisplay = typeof hit.delta === 'number' ? hit.delta.toLocaleString() : '—';
+            {hits.map((hit, index) => {
+              const isFirstHit = hit.delta === null && index === hits.length - 1;
+              const deltaDisplay = typeof hit.delta === 'number' 
+                ? hit.delta.toLocaleString() 
+                : isFirstHit 
+                  ? 'First' 
+                  : '—';
               return (
                 <button
                   key={hit.rowId}
@@ -171,8 +184,16 @@ export default function MultiplierDeltaSummary({
                       <Badge variant="outline" className="border-[hsl(var(--primary))]/40 text-[hsl(var(--primary))]">
                         Nonce {hit.nonce.toLocaleString()}
                       </Badge>
+                      {isFirstHit && (
+                        <Badge variant="outline" className="border-success-600/40 bg-success-600/10 text-success-600 text-[0.65rem]">
+                          Initial
+                        </Badge>
+                      )}
                     </div>
-                    <div className="text-xs font-medium text-muted-foreground/80">
+                    <div className={cn(
+                      "text-xs font-medium",
+                      isFirstHit ? "text-success-600" : "text-muted-foreground/80"
+                    )}>
                       Δ {deltaDisplay}
                     </div>
                   </div>

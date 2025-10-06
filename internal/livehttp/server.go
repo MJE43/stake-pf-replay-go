@@ -99,7 +99,6 @@ func (s *Server) handleIngest(w http.ResponseWriter, r *http.Request) {
 
 	var p ingestPayload
 	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
 	if err := dec.Decode(&p); err != nil {
 		writeJSON(w, http.StatusUnprocessableEntity, errObj("VALIDATION_ERROR", "invalid JSON", ""))
 		return
