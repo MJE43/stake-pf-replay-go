@@ -9,6 +9,7 @@ Stake PF Replay ships as a Wails desktop app. Root `main.go` wires the desktop s
 - `make -C backend run` / `run-race`: serve the API locally, optionally with the race detector.
 - `make -C backend migrate`: apply SQLite migrations after schema changes.
 - `npm --prefix frontend run dev|build`: iterate on the UI or emit static assets when debugging frontend-only issues.
+- Expose services to remote agents with ngrok—see `docs/ngrok.md` for multi-tunnel configs and cross-OS notes.
 
 ## Coding Style & Naming Conventions
 Run `make -C backend fmt lint` before opening a PR; the repo expects `gofmt` output and passes golangci-lint. Use PascalCase for exported Go symbols, `ErrThing` error sentinels, and keep game implementations table-driven. TypeScript files use 2-space indentation, PascalCase component filenames, and camelCase hooks/state. Keep imports grouped by origin (`react/...`, third-party, then local `./` blocks) and co-locate supporting types in `frontend/src/lib` or `types`.

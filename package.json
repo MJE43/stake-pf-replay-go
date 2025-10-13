@@ -9,9 +9,7 @@
     "verify:constraints:verbose": "node scripts/verify-design-constraints.mjs --verbose"
   },
   "devDependencies": {
-    "glob": "^10.3.10"
-  },
-  "dependencies": {
-    "stake-pf-replay-go": "file:"
+    "glob": "^10.3.10",
+    "shadcn": "^3.4.0"
   }
 }

@@ -56,3 +56,5 @@ temp/
 /frontend/dist
 *.md5
 
+/node_modules
+/build

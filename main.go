@@ -13,10 +13,14 @@ import (
 	"sync"
 
 	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/logger"
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/menu/keys"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	// Existing bindings (backend module)
@@ -41,6 +45,112 @@ var (
 	appCtx   context.Context
 	appCtxMu sync.RWMutex
 )
+
+// buildWindowsOptions configures Windows-specific application settings
+func buildWindowsOptions() *windows.Options {
+	return &windows.Options{
+		// Modern Windows 11 Mica backdrop effect
+		BackdropType: windows.Mica,
+
+		// Theme Settings
+		Theme: windows.SystemDefault,
+
+		// Custom theme colors for light/dark mode
+		CustomTheme: &windows.ThemeSettings{
+			// Dark mode (matches app background)
+			DarkModeTitleBar:  windows.RGB(27, 38, 54),
+			DarkModeTitleText: windows.RGB(226, 232, 240),
+			DarkModeBorder:    windows.RGB(51, 65, 85),
+
+			// Light mode
+			LightModeTitleBar:  windows.RGB(248, 250, 252),
+			LightModeTitleText: windows.RGB(15, 23, 42),
+			LightModeBorder:    windows.RGB(226, 232, 240),
+		},
+
+		// WebView Configuration
+		WebviewIsTransparent: false,
+		WindowIsTranslucent:  false,
+
+		// DPI and Zoom
+		DisablePinchZoom:     false,
+		IsZoomControlEnabled: false,
+		ZoomFactor:           1.0,
+
+		// Window Decorations
+		DisableWindowIcon:                 false,
+		DisableFramelessWindowDecorations: false,
+
+		// Window Class Name
+		WindowClassName: "StakePFReplayWindow",
+
+		// Power Management Callbacks
+		OnSuspend: func() {
+			log.Println("Windows entering low power mode")
+		},
+		OnResume: func() {
+			log.Println("Windows resuming from low power mode")
+		},
+	}
+}
+
+// buildMacOptions configures macOS-specific application settings
+func buildMacOptions() *mac.Options {
+	// Load icon for About dialog
+	iconData, err := assets.ReadFile("frontend/dist/assets/logo.png")
+	var aboutIcon []byte
+	if err == nil {
+		aboutIcon = iconData
+	}
+
+	return &mac.Options{
+		// Title Bar Configuration
+		TitleBar: &mac.TitleBar{
+			TitlebarAppearsTransparent: false,
+			HideTitle:                  false,
+			HideTitleBar:               false,
+			FullSizeContent:            false,
+			UseToolbar:                 false,
+			HideToolbarSeparator:       true,
+		},
+
+		// Appearance - Follow system theme
+		WebviewIsTransparent: false,
+		WindowIsTranslucent:  false,
+
+		// About Dialog
+		About: &mac.AboutInfo{
+			Title: "Stake PF Replay",
+			Message: "A privacy-focused desktop application for analyzing provable fairness in Stake.com games.\n\n" +
+				"© 2024-2025 Michael Eisner\n" +
+				"Built with Wails\n\n" +
+				"This application processes all data locally and never transmits server seeds over the network.",
+			Icon: aboutIcon,
+		},
+	}
+}
+
+// buildLinuxOptions configures Linux-specific application settings
+func buildLinuxOptions() *linux.Options {
+	// Load icon for window manager
+	iconData, err := assets.ReadFile("frontend/dist/assets/logo.png")
+	var windowIcon []byte
+	if err == nil {
+		windowIcon = iconData
+	}
+
+	return &linux.Options{
+		// Window Icon
+		Icon: windowIcon,
+
+		// WebView Configuration
+		WindowIsTranslucent: false,
+		WebviewGpuPolicy:    linux.WebviewGpuPolicyAlways,
+
+		// Program Name for window managers
+		ProgramName: "stake-pf-replay",
+	}
+}
 
 func main() {
 	log.Printf("Starting Stake PF Replay (Go %s)...", runtime.Version())
@@ -82,18 +192,78 @@ func main() {
 	}
 
 	if err := wails.Run(&options.App{
+		// Window Configuration
 		Title:            "Stake PF Replay",
 		Width:            1280,
 		Height:           800,
-		AssetServer:      &assetserver.Options{Assets: assets},
-		OnStartup:        startup,
-		Menu:             buildAppMenu(),
-		Bind:             []interface{}{app, liveMod},
-		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
+		MinWidth:         1024,
+		MinHeight:        768,
+		MaxWidth:         2560,
+		MaxHeight:        1440,
+		WindowStartState: options.Normal,
+		Frameless:        false,
+		DisableResize:    false,
+		Fullscreen:       false,
+		StartHidden:      false,
+		HideWindowOnClose: false,
+		AlwaysOnTop:      false,
+		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 255},
+
+		// Asset Server
+		AssetServer: &assetserver.Options{
+			Assets: assets,
+		},
+
+		// Application Lifecycle
+		OnStartup:     startup,
+		OnBeforeClose: beforeClose,
 		OnDomReady: func(ctx context.Context) {
 			log.Println("DOM is ready")
 		},
-		OnBeforeClose: beforeClose,
+		OnShutdown: func(ctx context.Context) {
+			log.Println("Application shutdown complete")
+		},
+
+		// Menu
+		Menu: buildAppMenu(),
+
+		// Bindings
+		Bind: []interface{}{app, liveMod},
+
+		// Logging
+		LogLevel:           logger.INFO,
+		LogLevelProduction: logger.ERROR,
+
+		// User Experience
+		EnableDefaultContextMenu:         false,
+		EnableFraudulentWebsiteDetection: false,
+
+		// Error Handling
+		ErrorFormatter: func(err error) any {
+			if err == nil {
+				return nil
+			}
+			return err.Error()
+		},
+
+		// Single Instance Lock - prevents multiple app instances
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId: "c9f3d4e5-8a2b-4c6d-9e1f-stake-pf-replay",
+			OnSecondInstanceLaunch: func(data options.SecondInstanceData) {
+				log.Printf("Second instance launch prevented. Args: %v", data.Args)
+			},
+		},
+
+		// Drag and Drop Configuration
+		DragAndDrop: &options.DragAndDrop{
+			EnableFileDrop:     false, // Disable for security - app doesn't need file drops
+			DisableWebViewDrop: true,
+		},
+
+		// Platform-Specific Options
+		Windows: buildWindowsOptions(),
+		Mac:     buildMacOptions(),
+		Linux:   buildLinuxOptions(),
 	}); err != nil {
 		log.Printf("Error running Wails app: %v", err)
 		fmt.Printf("Error: %v\n", err)

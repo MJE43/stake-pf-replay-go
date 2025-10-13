@@ -120,8 +120,9 @@ compiled before packaging.
 
 ## Utilities
 
-- `wails-dev.sh` – helper script for running `wails dev` under a virtual framebuffer (useful on headless/WSL).
+- `scripts/wails-dev.sh` – helper script for running `wails dev` under a virtual framebuffer (useful on headless/WSL).
 - `AGENTS.md` – contributor guide covering structure, commands, conventions, and PR process.
+- `docs/ngrok.md` – tunnel the backend/UI/ingest services with ngrok for remote demos and AI agent access.
 
 ## Contributing Guidelines
 
