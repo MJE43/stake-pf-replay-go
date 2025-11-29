@@ -2,7 +2,7 @@ import { forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState } f
 import type { ComponentPropsWithoutRef, KeyboardEvent } from 'react';
 import type { TableComponents, TableVirtuosoHandle } from 'react-virtuoso';
 import { TableVirtuoso } from 'react-virtuoso';
-import { IconColumns, IconX } from '@tabler/icons-react';
+import { IconColumns, IconX, IconBell, IconBellOff } from '@tabler/icons-react';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -21,8 +21,11 @@ import { Switch } from '@/components/ui/switch';
 import MultiplierDeltaSummary, { MultiplierOption, TrackedHit } from '@/components/MultiplierDeltaSummary';
 import { useBetsStream } from '@/hooks/useBetsStream';
 import { useStreamPreferences } from '@/hooks/useStreamPreferences';
+import { useLiveAlerts } from '@/hooks/useLiveAlerts';
 import { cn } from '@/lib/utils';
 import type { LiveBet } from '@/types/live';
+import { LiveSessionStats } from './LiveSessionStats';
+import { LivePnLChart } from './LivePnLChart';
 
 const Table = forwardRef<HTMLTableElement, ComponentPropsWithoutRef<'table'>>(
   ({ style, className, ...props }, ref) => (
@@ -121,6 +124,9 @@ const LiveBetsTableComponent = ({ streamId, minMultiplier, apiBase }: LiveBetsTa
   const [newTrackedInput, setNewTrackedInput] = useState('');
   const preferenceTimer = useRef<number | null>(null);
   const [preferenceStatus, setPreferenceStatus] = useState<string | null>(null);
+  const [alertsEnabled, setAlertsEnabled] = useState(true);
+
+  const { checkAlerts } = useLiveAlerts();
 
   const {
     preferences,
@@ -214,6 +220,12 @@ const handleTrackedInputKeyDown = useCallback(
     [handleAddTrackedMultiplier],
   );
 
+  const handleNewRows = useCallback((newRows: LiveBet[]) => {
+    if (alertsEnabled) {
+        checkAlerts(newRows);
+    }
+  }, [alertsEnabled, checkAlerts]);
+
   const {
     rows,
     pendingCount,
@@ -227,7 +239,15 @@ const handleTrackedInputKeyDown = useCallback(
     isStreaming,
     refetch,
     data,
-  } = useBetsStream({ streamId, minMultiplier: appliedMin, apiBase, pageSize: 250, pollMs: 1500, order: 'desc' });
+  } = useBetsStream({ 
+    streamId, 
+    minMultiplier: appliedMin, 
+    apiBase, 
+    pageSize: 250, 
+    pollMs: 1500, 
+    order: 'desc',
+    onNewRows: handleNewRows 
+});
 
   const totalKnown = data?.pages?.[0]?.total ?? null;
 
@@ -372,7 +392,7 @@ const handleTrackedInputKeyDown = useCallback(
   const monoTextClass = density === 'compact' ? 'text-xs' : 'text-sm';
   const timestampTextClass = density === 'compact' ? 'text-[0.65rem]' : 'text-[0.75rem]';
   const secondaryLineClass = !showDateColumn && density !== 'compact' ? 'block' : 'hidden';
-  const tableContainerStyle = { height: 'calc(100vh - 280px)', minHeight: '420px' } as const;
+  const tableContainerStyle = { height: 'calc(100vh - 380px)', minHeight: '420px' } as const;
 
   const handleEndReached = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -490,6 +510,18 @@ const handleTrackedInputKeyDown = useCallback(
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                "h-8 gap-2 border-border/60 bg-background/70 text-xs",
+                alertsEnabled ? "text-foreground" : "text-muted-foreground"
+              )}
+              onClick={() => setAlertsEnabled(!alertsEnabled)}
+              disabled={!hydrated}
+            >
+                {alertsEnabled ? <IconBell size={16} /> : <IconBellOff size={16} />}
+            </Button>
           <Label htmlFor="min-multiplier" className="text-xs uppercase tracking-wider text-muted-foreground">
             Min ×
           </Label>
@@ -670,6 +702,13 @@ const handleTrackedInputKeyDown = useCallback(
     </div>
   );
 
+  const dashboardHeader = (
+    <div className="mb-6 flex flex-col gap-6">
+        <LiveSessionStats bets={rows} />
+        <LivePnLChart bets={rows} />
+    </div>
+  );
+
   if (isInitialLoading) {
     return (
       <div className="flex h-72 items-center justify-center rounded-lg border border-border bg-card">
@@ -697,6 +736,7 @@ const handleTrackedInputKeyDown = useCallback(
   if (!rows.length) {
     return (
       <div className="flex flex-col gap-4">
+        {dashboardHeader}
         {filterControl}
         <div className={cn('grid gap-4', showTrackingSummary ? 'xl:grid-cols-[minmax(0,1fr)_320px]' : '')}>
           <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-border bg-card/70 p-8 text-sm text-muted-foreground">
@@ -721,6 +761,7 @@ const handleTrackedInputKeyDown = useCallback(
 
   return (
     <div className="flex flex-col gap-4">
+      {dashboardHeader}
       {filterControl}
       <div className={cn('grid gap-4', showTrackingSummary ? 'xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)]' : '')}>
         <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card/70">
@@ -816,7 +857,7 @@ const handleTrackedInputKeyDown = useCallback(
                             'text-right font-mono text-muted-foreground tabular-nums tracking-tight',
                             monoTextClass,
                             highlightClass,
-                          )}
+                            )}
                         >
                           {bet.round_target ?? '--'}
                         </td>

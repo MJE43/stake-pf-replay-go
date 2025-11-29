@@ -7,18 +7,16 @@ import {
   IconKey,
   IconTrash,
 } from '@tabler/icons-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { toast } from '@/components/ui/use-toast';
@@ -61,18 +59,18 @@ function CopyButton({ value, label }: CopyButtonProps) {
         <TooltipTrigger asChild>
           <Button
             aria-label={`Copy ${label}`}
-            variant={copied ? 'default' : 'outline'}
+            variant="ghost"
             size="icon"
             className={cn(
-              'h-9 w-9 border border-[hsl(var(--primary))]/40 text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]/10',
-              copied && 'bg-emerald-500 text-white hover:bg-emerald-500/90',
+              'h-7 w-7 opacity-60 hover:opacity-100 hover:bg-primary/10 hover:text-primary',
+              copied && 'bg-emerald-500/20 text-emerald-500 opacity-100',
             )}
             onClick={handleCopy}
           >
-            {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+            {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
           </Button>
         </TooltipTrigger>
-        <TooltipContent>{copied ? 'Copied' : `Copy ${label}`}</TooltipContent>
+        <TooltipContent side="left">{copied ? 'Copied' : `Copy ${label}`}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
@@ -133,101 +131,109 @@ export default function StreamInfoCard(props: {
     [summary.lastSeenAt],
   );
 
-  const stats = useMemo(
-    () => [
-      { label: 'Created', value: created },
-      { label: 'Last seen', value: lastSeen },
-      {
-        label: 'Total bets',
-        value: summary.totalBets != null ? summary.totalBets.toLocaleString() : '--',
-      },
-      {
-        label: 'Highest ×',
-        value:
-          summary.highestMultiplier != null ? summary.highestMultiplier.toLocaleString() : '--',
-      },
-    ],
-    [created, lastSeen, summary.totalBets, summary.highestMultiplier],
-  );
-
   return (
-    <Card className="w-full border border-border bg-card shadow-sm">
-      <CardHeader className="flex flex-col gap-3 pb-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--primary))]/15 text-[hsl(var(--primary))]">
-              <IconHash size={18} />
-            </span>
-            <div className="flex flex-col">
-              <CardTitle className="text-lg">Stream Information</CardTitle>
-              <CardDescription>Overview, exports, and notes</CardDescription>
+    <div className="flex flex-col gap-4">
+        <div className="rounded-xl border border-white/5 bg-card/40 p-5 shadow-sm backdrop-blur-md">
+            <div className="flex items-start justify-between gap-4 mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20">
+                        <IconHash size={20} />
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-sm font-bold text-foreground/90">Stream Info</span>
+                        <span className="text-xs text-muted-foreground font-mono tracking-tight opacity-80">{summary.id}</span>
+                    </div>
+                </div>
+                
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                         <Button variant="outline" size="sm" className="h-8 border-white/10 bg-white/5 text-xs hover:bg-white/10">
+                            Actions
+                         </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={onExportCsv}>
+                            <IconDownload size={14} className="mr-2" /> Export CSV
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={onDeleteStream} className="text-destructive focus:text-destructive">
+                            <IconTrash size={14} className="mr-2" /> Delete Stream
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                 </DropdownMenu>
             </div>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" className="gap-2" onClick={onExportCsv}>
-              <IconDownload size={16} />
-              Export CSV
-            </Button>
-            <Button
-              variant="destructive"
-              className="gap-2"
-              disabled={isDeletingStream}
-              onClick={onDeleteStream}
-            >
-              <IconTrash size={16} />
-              {isDeletingStream ? 'Deleting...' : 'Delete Stream'}
-            </Button>
-          </div>
+            <div className="space-y-4">
+                <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span className="uppercase tracking-wider font-semibold">Server Seed Hash</span>
+                    </div>
+                    <div className="flex items-center gap-2 rounded-md border border-white/5 bg-black/20 p-2 pl-3">
+                         <IconKey size={14} className="text-muted-foreground/50 shrink-0" />
+                         <code className="flex-1 truncate text-xs font-mono text-foreground/80">{summary.serverSeedHashed || '--'}</code>
+                         {summary.serverSeedHashed && <CopyButton value={summary.serverSeedHashed} label="Server Seed" />}
+                    </div>
+                </div>
+
+                <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span className="uppercase tracking-wider font-semibold">Client Seed</span>
+                    </div>
+                    <div className="flex items-center gap-2 rounded-md border border-white/5 bg-black/20 p-2 pl-3">
+                         <IconKey size={14} className="text-muted-foreground/50 shrink-0" />
+                         <code className="flex-1 truncate text-xs font-mono text-foreground/80">{summary.clientSeed || '--'}</code>
+                         {summary.clientSeed && <CopyButton value={summary.clientSeed} label="Client Seed" />}
+                    </div>
+                </div>
+            </div>
+            
+            <div className="mt-6 grid grid-cols-2 gap-3">
+                <div className="rounded-lg bg-white/5 p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Total Bets</div>
+                    <div className="text-lg font-bold font-mono">{summary.totalBets?.toLocaleString() ?? '--'}</div>
+                </div>
+                 <div className="rounded-lg bg-white/5 p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Peak Multiplier</div>
+                    <div className="text-lg font-bold font-mono text-primary">{summary.highestMultiplier?.toLocaleString() ?? '--'}×</div>
+                </div>
+            </div>
+            
+             <div className="mt-4 flex justify-between text-[10px] text-muted-foreground border-t border-white/5 pt-3">
+                <span>Created: {created}</span>
+                <span>Last seen: {lastSeen}</span>
+            </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-lg border border-border bg-secondary/50 p-4">
-            <Label className="mb-1 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-              <IconKey size={14} /> Server Seed Hash
-            </Label>
-            <div className="flex items-start justify-between gap-3">
-              <span className="line-clamp-2 break-all text-sm font-medium text-foreground/80">
-                {summary.serverSeedHashed || '--'}
-              </span>
-              {summary.serverSeedHashed && <CopyButton value={summary.serverSeedHashed} label="Server seed" />}
-            </div>
-          </div>
-          <div className="rounded-lg border border-border bg-secondary/50 p-4">
-            <Label className="mb-1 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-              <IconKey size={14} /> Client Seed
-            </Label>
-            <div className="flex items-start justify-between gap-3">
-              <span className="line-clamp-2 break-all text-sm font-medium text-foreground/80">
-                {summary.clientSeed || '--'}
-              </span>
-              {summary.clientSeed && <CopyButton value={summary.clientSeed} label="Client seed" />}
-            </div>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="grid gap-6">
-        <div className="grid gap-4 rounded-lg border border-border bg-secondary/40 p-4 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => (
-            <div key={stat.label} className="flex flex-col gap-1">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">{stat.label}</span>
-              <span className="font-mono text-sm text-foreground">{stat.value}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold">Notes</span>
-              <span className="text-xs text-muted-foreground">Document findings, reminders, or next actions.</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Badge variant="secondary" className="bg-[hsl(var(--primary))]/15 text-[hsl(var(--primary))]">
-                {notesDirty ? 'Unsaved changes' : editing ? 'Editing' : 'Read-only'}
-              </Badge>
-            </div>
+      <div className="rounded-xl border border-white/5 bg-card/40 p-5 shadow-sm backdrop-blur-md flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold text-foreground/90">Field Notes</span>
+             <div className="flex gap-2">
+                {notesDirty && (
+                     <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 px-2 text-[10px]" 
+                        onClick={() => {
+                            setNotes(summary.notes ?? '');
+                            setEditing(false);
+                        }}
+                    >
+                        Reset
+                    </Button>
+                )}
+                <Button 
+                    variant={notesDirty ? "default" : "secondary"}
+                    size="sm" 
+                    className="h-6 px-3 text-[10px]"
+                    onClick={() => {
+                        onSaveNotes(notes);
+                        setEditing(false);
+                    }}
+                    disabled={!notesDirty || isSavingNotes}
+                >
+                    {isSavingNotes ? 'Saving...' : 'Save'}
+                </Button>
+             </div>
           </div>
           <Textarea
             value={notes}
@@ -235,41 +241,11 @@ export default function StreamInfoCard(props: {
               if (!editing) setEditing(true);
               setNotes(event.target.value);
             }}
-            rows={6}
-            className="resize-y font-mono text-sm"
+            rows={8}
+            className="resize-none border-white/10 bg-black/20 font-mono text-xs text-foreground/90 focus-visible:ring-primary/30"
             placeholder="Add observations about this stream..."
           />
-        </div>
-      </CardContent>
-
-      <CardFooter className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-secondary/60 py-4">
-        <div className="text-xs text-muted-foreground">
-          <p className="font-medium">Stream ID</p>
-          <p className="font-mono">{summary.id}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              setNotes(summary.notes ?? '');
-              setEditing(false);
-            }}
-            disabled={!notesDirty}
-          >
-            Reset
-          </Button>
-          <Button
-            onClick={() => {
-              onSaveNotes(notes);
-              setEditing(false);
-            }}
-            disabled={!notesDirty}
-            className="gap-2"
-          >
-            {isSavingNotes ? 'Saving...' : 'Save Notes'}
-          </Button>
-        </div>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -14,6 +14,7 @@ export interface UseBetsStreamOptions {
   pollMs?: number;
   order?: 'asc' | 'desc';
   apiBase?: string;
+  onNewRows?: (rows: LiveBet[]) => void;
 }
 
 type InfinitePages = {
@@ -87,6 +88,7 @@ export function useBetsStream({
   pollMs = 1500,
   order = 'desc',
   apiBase,
+  onNewRows,
 }: UseBetsStreamOptions) {
   const queryClient = useQueryClient();
   const pendingRef = useRef<LiveBet[]>([]);
@@ -213,6 +215,9 @@ export function useBetsStream({
           return b.id - a.id;
         });
         updateLastKnownId(normalized);
+        if (onNewRows) {
+          onNewRows(normalized);
+        }
         lastKnownIdRef.current = Math.max(lastKnownIdRef.current, lastId);
         pendingRef.current = mergeRows(pendingRef.current, normalized, order);
         setBufferVersion((version) => version + 1);

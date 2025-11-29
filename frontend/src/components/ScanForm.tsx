@@ -120,21 +120,23 @@ const getModelBindings = () => {
 
 function SectionHeader({ icon, title, description }: { icon: ReactNode; title: string; description?: string }) {
   return (
-    <div className="flex items-center gap-2 text-sm font-semibold text-foreground/85">
-      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[hsl(var(--primary))]/12 text-[hsl(var(--primary))]">
+    <div className="flex items-center gap-3 text-sm font-semibold text-foreground/90">
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 text-primary ring-1 ring-white/10">
         {icon}
       </span>
-      <span>{title}</span>
-      {description && <span className="text-xs font-normal text-muted-foreground">{description}</span>}
+      <div className="flex flex-col">
+        <span className="font-bold">{title}</span>
+        {description && <span className="text-xs font-normal text-muted-foreground">{description}</span>}
+      </div>
     </div>
   );
 }
 
 function SummaryChip({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/20 px-3 py-1.5">
-      <span className="text-xs uppercase text-muted-foreground/80">{label}</span>
-      <span className="font-mono text-sm text-foreground">{value}</span>
+    <div className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/5 px-3 py-1.5 backdrop-blur-sm">
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80">{label}</span>
+      <span className="font-mono text-xs font-medium text-foreground">{value}</span>
     </div>
   );
 }
@@ -532,14 +534,14 @@ function StickyActionsBar({
   onReset: () => void;
 }) {
   return (
-    <div className="sticky bottom-0 left-0 right-0 mt-8 border-t border-border/70 bg-background/95 px-4 py-4 backdrop-blur supports-[backdrop-filter]:backdrop-blur md:px-0">
+    <div className="sticky bottom-0 left-0 right-0 mt-8 border-t border-white/5 bg-background/80 px-4 py-4 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 md:px-0">
       <div className="flex flex-wrap justify-end gap-3">
-        <Button type="button" variant="outline" onClick={onReset} disabled={isSubmitting}>
+        <Button type="button" variant="outline" onClick={onReset} disabled={isSubmitting} className="border-white/10 bg-white/5 hover:bg-white/10">
           <IconRefresh size={16} aria-hidden /> Reset
         </Button>
-        <Button type="submit" className="gap-2" aria-busy={isSubmitting} disabled={isSubmitting}>
+        <Button type="submit" className="gap-2 bg-gradient-to-r from-primary to-cyan-500 hover:from-primary/90 hover:to-cyan-400 shadow-lg shadow-primary/20" aria-busy={isSubmitting} disabled={isSubmitting}>
           <IconRepeat size={16} className={isSubmitting ? 'animate-spin' : undefined} aria-hidden />
-          {isSubmitting ? 'Starting scan…' : 'Start scan'}
+          {isSubmitting ? 'Starting scan…' : 'Start Scan'}
         </Button>
       </div>
     </div>
@@ -739,7 +741,7 @@ export function ScanForm() {
     <TooltipProvider>
       <Form {...form}>
         <form onSubmit={handleSubmit(onSubmit)} className="relative space-y-10">
-          <Card className="border border-border shadow-[var(--shadow-sm)]">
+          <Card className="border border-white/5 bg-card/40 shadow-xl backdrop-blur-md">
             <CardHeader className="space-y-4">
               <div>
                 <CardTitle className="flex items-center gap-2 text-xl">

@@ -7,10 +7,10 @@ import {
   IconShield,
   IconCpu,
   IconMenu2,
+  IconSettings,
 } from '@tabler/icons-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { MiniNavRail } from '@/components/MiniNavRail';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { MiniNavRail } from './MiniNavRail';
 
 interface LayoutProps {
   children: ReactNode;
@@ -43,7 +44,7 @@ const navItems = [
   },
   {
     icon: IconBroadcast,
-    label: 'Live Streams',
+    label: 'Live Dashboard',
     description: 'Monitor live betting streams',
     path: '/live',
     hotkey: 'Alt+3',
@@ -55,33 +56,36 @@ export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground transition-colors">
+    <div className="flex min-h-screen bg-background text-foreground font-sans transition-colors selection:bg-primary/20">
       <MiniNavRail items={navItems} />
 
-      <div className="flex min-h-screen flex-1 flex-col">
-        <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
-          <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:h-20">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))] shadow-[var(--shadow-sm)]">
-                <IconChartBar size={20} />
+      <div className="flex min-h-screen flex-1 flex-col relative">
+        <header className="sticky top-0 z-40 border-b border-white/5 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
+          <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between gap-4 px-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary ring-1 ring-white/10 shadow-lg shadow-primary/5">
+                <IconChartBar size={22} />
               </div>
               <div className="flex flex-col">
-                <span className="tracking-[var(--tracking-normal)] text-base font-semibold md:text-lg">
+                <span className="text-base font-bold tracking-tight text-foreground/90">
                   Stake PF Replay
                 </span>
-                <span className="text-sm text-muted-foreground">Provable Fairness Analysis Tool</span>
+                <span className="text-xs font-medium text-muted-foreground">Provable Fairness Analysis</span>
               </div>
             </div>
 
-            <div className="hidden items-center gap-2 sm:flex">
-              <Badge className="gap-1 border border-[hsl(var(--accent))]/40 bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))]">
-                <IconShield size={12} />
-                Local Only
-              </Badge>
-              <Badge className="gap-1 border border-[hsl(var(--primary))]/40 bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]">
-                <IconCpu size={12} />
-                High Performance
-              </Badge>
+            <div className="hidden items-center gap-3 sm:flex">
+               <div className="flex items-center gap-2 mr-4">
+                <Badge variant="outline" className="gap-1.5 border-white/5 bg-white/5 py-1 pl-2 pr-2.5 text-xs font-medium text-muted-foreground/80 hover:bg-white/10 transition-colors">
+                    <IconShield size={12} className="text-emerald-400" />
+                    Local Secure
+                </Badge>
+                <Badge variant="outline" className="gap-1.5 border-white/5 bg-white/5 py-1 pl-2 pr-2.5 text-xs font-medium text-muted-foreground/80 hover:bg-white/10 transition-colors">
+                    <IconCpu size={12} className="text-blue-400" />
+                    High Perf
+                </Badge>
+               </div>
+               <div className="h-4 w-px bg-white/10 mx-1" />
               <ThemeToggle />
             </div>
 
@@ -89,11 +93,11 @@ export function Layout({ children }: LayoutProps) {
               <ThemeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" aria-label="Open navigation" className="border-border">
-                    <IconMenu2 size={18} />
+                  <Button variant="ghost" size="icon" aria-label="Open navigation">
+                    <IconMenu2 size={20} />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 border-border bg-card text-foreground">
+                <DropdownMenuContent align="end" className="w-56 border-white/10 bg-card/95 backdrop-blur-xl">
                   {navItems.map((item) => {
                     const active =
                       location.pathname === item.path ||
@@ -102,8 +106,8 @@ export function Layout({ children }: LayoutProps) {
                       <DropdownMenuItem
                         key={item.path}
                         className={cn(
-                          'flex items-center gap-2 focus:bg-[hsl(var(--primary))]/15 focus:text-[hsl(var(--primary))]',
-                          active && 'bg-[hsl(var(--primary))]/15 text-[hsl(var(--primary))]',
+                          'flex items-center gap-2 focus:bg-primary/10 focus:text-primary',
+                          active && 'bg-primary/10 text-primary',
                         )}
                         onSelect={() => navigate(item.path)}
                       >
@@ -118,8 +122,13 @@ export function Layout({ children }: LayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 pb-10">
-          <div className="mx-auto w-full max-w-6xl px-4 py-6 lg:px-6">{children}</div>
+        <main className="flex-1 relative">
+            {/* Subtle background gradient for depth */}
+            <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-background to-background opacity-50 pointer-events-none" />
+            
+            <div className="mx-auto w-full max-w-[1600px] p-6 lg:p-8 animate-in fade-in zoom-in-95 duration-300">
+                {children}
+            </div>
         </main>
       </div>
     </div>
