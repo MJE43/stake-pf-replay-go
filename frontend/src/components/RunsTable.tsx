@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { IconArrowRight, IconFilter, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { bindings, store } from '@wails/go/models';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface RunsTableProps {
   data: bindings.RunsList;
@@ -39,15 +39,12 @@ function formatTimeAgo(iso: string) {
 
 function getStatus(run: store.Run) {
   if (run.timed_out) {
-    return { label: 'Timeout', tone: 'border-amber-500/40 bg-amber-500/10 text-amber-400' };
+    return { label: 'Timeout', color: 'text-amber-400', border: 'border-amber-500/30', bg: 'bg-amber-500/10' };
   }
   if (run.hit_count > 0) {
-    return { label: 'Complete', tone: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' };
+    return { label: 'Complete', color: 'text-primary', border: 'border-primary/30', bg: 'bg-primary/10' };
   }
-  return {
-    label: 'Pending',
-    tone: 'border-primary/40 bg-primary/10 text-primary',
-  };
+  return { label: 'No Hits', color: 'text-muted-foreground', border: 'border-border', bg: 'bg-muted/30' };
 }
 
 export function RunsTable({ data, query, onQueryChange }: RunsTableProps) {
@@ -69,14 +66,15 @@ export function RunsTable({ data, query, onQueryChange }: RunsTableProps) {
 
   return (
     <div className="flex flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 px-4 py-3">
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
         <div className="flex items-center gap-3">
-          <IconFilter size={14} className="text-muted-foreground/60" />
-          <span className="text-xs text-muted-foreground">Filter:</span>
+          <IconFilter size={14} className="text-muted-foreground" />
+          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Filter:</span>
           <select
             value={query.game ?? ''}
             onChange={handleGameFilter}
-            className="h-8 rounded-lg border border-white/10 bg-white/5 px-3 text-xs text-foreground focus:border-primary focus:ring-1 focus:ring-primary/30 focus:outline-none transition-colors"
+            className="h-8 border border-border bg-background px-3 font-mono text-xs text-foreground transition-colors focus:border-primary focus:outline-none"
           >
             {GAME_OPTIONS.map((option) => (
               <option key={option.label} value={option.value ?? ''} className="bg-card text-foreground">
@@ -85,93 +83,106 @@ export function RunsTable({ data, query, onQueryChange }: RunsTableProps) {
             ))}
           </select>
         </div>
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          Page {query.page} of {pageTotal}
-        </div>
+        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          Page {query.page} / {pageTotal}
+        </span>
       </div>
 
+      {/* Table */}
       <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead className="bg-white/[0.02] text-[10px] uppercase tracking-wider text-muted-foreground/80">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/30 text-left">
             <tr>
-              <th className="w-[100px] px-4 py-3 text-left font-semibold">Run ID</th>
-              <th className="w-[140px] px-4 py-3 text-left font-semibold">Created</th>
-              <th className="w-[90px] px-4 py-3 text-left font-semibold">Game</th>
-              <th className="w-[180px] px-4 py-3 text-left font-semibold">Nonce Range</th>
-              <th className="w-[100px] px-4 py-3 text-right font-semibold">Hits</th>
-              <th className="w-[120px] px-4 py-3 text-left font-semibold">Progress</th>
-              <th className="w-[100px] px-4 py-3 text-left font-semibold">Status</th>
-              <th className="w-[60px] px-4 py-3" />
+              <th className="whitespace-nowrap px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Run ID
+              </th>
+              <th className="whitespace-nowrap px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Created
+              </th>
+              <th className="whitespace-nowrap px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Game
+              </th>
+              <th className="whitespace-nowrap px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Nonce Range
+              </th>
+              <th className="whitespace-nowrap px-4 py-3 text-right font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Hits
+              </th>
+              <th className="whitespace-nowrap px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Progress
+              </th>
+              <th className="whitespace-nowrap px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Status
+              </th>
+              <th className="w-12 px-4 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
-            {runs.map((run) => {
+          <tbody className="divide-y divide-border/50">
+            {runs.map((run, index) => {
               const status = getStatus(run);
               const range = run.nonce_end - run.nonce_start;
               const progress = range > 0 ? Math.min(100, (run.total_evaluated / range) * 100) : 0;
+
               return (
-                <tr 
-                  key={run.id} 
-                  className="group transition-colors hover:bg-white/[0.02] cursor-pointer"
+                <tr
+                  key={run.id}
+                  className="data-row group cursor-pointer transition-colors hover:bg-muted/30"
                   onClick={() => navigate(`/runs/${run.id}`)}
+                  style={{ animationDelay: `${index * 30}ms` }}
                 >
-                  <td className="px-4 py-3">
-                    <code className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-[11px] text-foreground/70">
+                  <td className="whitespace-nowrap px-4 py-3">
+                    <code className="border border-border bg-muted/30 px-1.5 py-0.5 font-mono text-[10px]">
                       {run.id.slice(0, 8)}
                     </code>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="whitespace-nowrap px-4 py-3">
                     <div className="flex flex-col">
-                      <span className="text-xs font-medium text-foreground/80">
-                        {new Date(run.created_at).toLocaleDateString()}
-                      </span>
+                      <span className="text-xs text-foreground">{new Date(run.created_at).toLocaleDateString()}</span>
                       <span className="text-[10px] text-muted-foreground">{formatTimeAgo(run.created_at)}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
-                    <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary text-[10px] uppercase font-semibold">
-                      {run.game}
-                    </Badge>
+                  <td className="whitespace-nowrap px-4 py-3">
+                    <span className="badge-terminal">{run.game.toUpperCase()}</span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="whitespace-nowrap px-4 py-3">
                     <div className="flex flex-col">
-                      <span className="font-mono text-xs text-foreground/80">
+                      <span className="font-mono text-xs text-foreground">
                         {run.nonce_start.toLocaleString()} → {run.nonce_end.toLocaleString()}
                       </span>
-                      <span className="text-[10px] text-muted-foreground">{range.toLocaleString()} nonces</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">{range.toLocaleString()} nonces</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <span className={`font-mono text-sm font-bold ${run.hit_count > 0 ? 'text-emerald-400' : 'text-muted-foreground'}`}>
+                  <td className="whitespace-nowrap px-4 py-3 text-right">
+                    <span className={cn('font-mono text-sm font-bold', run.hit_count > 0 ? 'text-hit hit-glow' : 'text-muted-foreground')}>
                       {run.hit_count.toLocaleString()}
                     </span>
                     {run.total_evaluated > 0 && (
-                      <div className="text-[10px] text-muted-foreground">
+                      <div className="font-mono text-[10px] text-muted-foreground">
                         {((run.hit_count / run.total_evaluated) * 100).toFixed(3)}%
                       </div>
                     )}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-1.5">
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+                  <td className="whitespace-nowrap px-4 py-3">
+                    <div className="flex flex-col gap-1">
+                      <div className="h-1.5 w-24 overflow-hidden border border-border bg-muted/30">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-primary to-cyan-400 transition-all"
+                          className="h-full bg-primary transition-all"
                           style={{ width: `${progress.toFixed(1)}%` }}
                         />
                       </div>
-                      <span className="text-[10px] text-muted-foreground">{progress.toFixed(1)}%</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">{progress.toFixed(1)}%</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${status.tone}`}>
+                  <td className="whitespace-nowrap px-4 py-3">
+                    <span className={cn('border px-2 py-0.5 font-mono text-[10px] uppercase', status.border, status.bg, status.color)}>
                       {status.label}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="whitespace-nowrap px-4 py-3 text-right">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:bg-primary/10"
+                      className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
                       onClick={(e) => {
                         e.stopPropagation();
                         navigate(`/runs/${run.id}`);
@@ -187,9 +198,11 @@ export function RunsTable({ data, query, onQueryChange }: RunsTableProps) {
         </table>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 px-4 py-3">
-        <span className="text-[11px] text-muted-foreground">
-          Showing <span className="font-medium text-foreground">{startIndex}</span> - <span className="font-medium text-foreground">{endIndex}</span> of {data.totalCount ?? 0}
+      {/* Pagination */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3">
+        <span className="font-mono text-[10px] text-muted-foreground">
+          Showing <span className="text-foreground">{startIndex}</span> - <span className="text-foreground">{endIndex}</span> of{' '}
+          {data.totalCount ?? 0}
         </span>
         <div className="flex items-center gap-1">
           <Button

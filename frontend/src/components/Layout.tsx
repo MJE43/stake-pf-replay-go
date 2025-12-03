@@ -1,18 +1,14 @@
 import { ReactNode } from 'react';
 import {
   IconBroadcast,
-  IconChartBar,
   IconHistory,
   IconScan,
-  IconShield,
-  IconCpu,
   IconMenu2,
-  IconSettings,
+  IconTerminal,
 } from '@tabler/icons-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -37,14 +33,14 @@ const navItems = [
   },
   {
     icon: IconHistory,
-    label: 'Scan History',
+    label: 'History',
     description: 'View previous scan results',
     path: '/runs',
     hotkey: 'Alt+2',
   },
   {
     icon: IconBroadcast,
-    label: 'Live Dashboard',
+    label: 'Live',
     description: 'Monitor live betting streams',
     path: '/live',
     hotkey: 'Alt+3',
@@ -55,81 +51,108 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Get current page title
+  const currentNav = navItems.find(
+    (item) =>
+      location.pathname === item.path ||
+      (item.path !== '/' && location.pathname.startsWith(item.path))
+  );
+  const pageTitle = currentNav?.label ?? 'Dashboard';
+
   return (
-    <div className="flex min-h-screen bg-background text-foreground font-sans transition-colors selection:bg-primary/20">
+    <div className="flex min-h-screen bg-background text-foreground font-sans">
+      {/* Left nav rail */}
       <MiniNavRail items={navItems} />
 
+      {/* Main content area */}
       <div className="flex min-h-screen flex-1 flex-col relative">
-        <header className="sticky top-0 z-40 border-b border-white/5 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
-          <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between gap-4 px-6">
+        {/* Atmospheric background */}
+        <div className="pointer-events-none absolute inset-0 -z-10 noise" />
+        <div className="pointer-events-none absolute inset-0 -z-10 grid-bg opacity-30" />
+
+        {/* Header */}
+        <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
+          <div className="mx-auto flex h-14 w-full max-w-[1400px] items-center justify-between gap-4 px-6">
+            {/* Left: Branding + Current location */}
             <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary ring-1 ring-white/10 shadow-lg shadow-primary/5">
-                <IconChartBar size={22} />
+              {/* Mobile menu */}
+              <div className="md:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9">
+                      <IconMenu2 size={18} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                    {navItems.map((item) => {
+                      const active =
+                        location.pathname === item.path ||
+                        (item.path !== '/' && location.pathname.startsWith(item.path));
+                      return (
+                        <DropdownMenuItem
+                          key={item.path}
+                          className={cn('flex items-center gap-3', active && 'bg-primary/10 text-primary')}
+                          onSelect={() => navigate(item.path)}
+                        >
+                          <item.icon size={16} />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">{item.label}</span>
+                            <span className="text-xs text-muted-foreground">{item.description}</span>
+                          </div>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-              <div className="flex flex-col">
-                <span className="text-base font-bold tracking-tight text-foreground/90">
-                  Stake PF Replay
-                </span>
-                <span className="text-xs font-medium text-muted-foreground">Provable Fairness Analysis</span>
+
+              {/* Title section */}
+              <div className="flex items-center gap-3">
+                <div className="hidden items-center gap-1.5 sm:flex">
+                  <IconTerminal size={16} className="text-primary" />
+                  <span className="font-display text-[11px] uppercase tracking-widest text-muted-foreground">
+                    PF Replay
+                  </span>
+                </div>
+                <span className="hidden text-muted-foreground/30 sm:block">/</span>
+                <h1 className="font-display text-sm uppercase tracking-wider text-foreground">{pageTitle}</h1>
               </div>
             </div>
 
-            <div className="hidden items-center gap-3 sm:flex">
-               <div className="flex items-center gap-2 mr-4">
-                <Badge variant="outline" className="gap-1.5 border-white/5 bg-white/5 py-1 pl-2 pr-2.5 text-xs font-medium text-muted-foreground/80 hover:bg-white/10 transition-colors">
-                    <IconShield size={12} className="text-emerald-400" />
-                    Local Secure
-                </Badge>
-                <Badge variant="outline" className="gap-1.5 border-white/5 bg-white/5 py-1 pl-2 pr-2.5 text-xs font-medium text-muted-foreground/80 hover:bg-white/10 transition-colors">
-                    <IconCpu size={12} className="text-blue-400" />
-                    High Perf
-                </Badge>
-               </div>
-               <div className="h-4 w-px bg-white/10 mx-1" />
-              <ThemeToggle />
-            </div>
+            {/* Right: Status + Theme */}
+            <div className="flex items-center gap-3">
+              {/* Status badges - hidden on mobile */}
+              <div className="hidden items-center gap-2 sm:flex">
+                <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+                  <span className="status-dot online" />
+                  <span>Local</span>
+                </div>
+                <div className="h-4 w-px bg-border" />
+              </div>
 
-            <div className="flex items-center gap-2 sm:hidden">
               <ThemeToggle />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="Open navigation">
-                    <IconMenu2 size={20} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 border-white/10 bg-card/95 backdrop-blur-xl">
-                  {navItems.map((item) => {
-                    const active =
-                      location.pathname === item.path ||
-                      (item.path !== '/' && location.pathname.startsWith(item.path));
-                    return (
-                      <DropdownMenuItem
-                        key={item.path}
-                        className={cn(
-                          'flex items-center gap-2 focus:bg-primary/10 focus:text-primary',
-                          active && 'bg-primary/10 text-primary',
-                        )}
-                        onSelect={() => navigate(item.path)}
-                      >
-                        <item.icon size={16} />
-                        <span>{item.label}</span>
-                      </DropdownMenuItem>
-                    );
-                  })}
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 relative">
-            {/* Subtle background gradient for depth */}
-            <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-background to-background opacity-50 pointer-events-none" />
-            
-            <div className="mx-auto w-full max-w-[1600px] p-6 lg:p-8 animate-in fade-in zoom-in-95 duration-300">
-                {children}
-            </div>
+        {/* Main content */}
+        <main className="flex-1">
+          <div className="mx-auto w-full max-w-[1400px] p-6 lg:p-8">
+            <div className="animate-fade-in">{children}</div>
+          </div>
         </main>
+
+        {/* Footer */}
+        <footer className="border-t border-border bg-background/50">
+          <div className="mx-auto flex h-10 w-full max-w-[1400px] items-center justify-between px-6">
+            <span className="font-mono text-[10px] text-muted-foreground">
+              Stake PF Replay • Provable Fairness Analysis
+            </span>
+            <span className="font-mono text-[10px] text-muted-foreground">
+              v1.0.0
+            </span>
+          </div>
+        </footer>
       </div>
     </div>
   );

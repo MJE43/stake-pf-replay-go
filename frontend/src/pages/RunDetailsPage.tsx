@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  IconAlertCircle,
+  IconAlertTriangle,
   IconArrowLeft,
   IconCheck,
   IconClock,
@@ -11,11 +11,10 @@ import {
 import { GetRun, GetSeedRuns } from '@wails/go/bindings/App';
 import { bindings, store } from '@wails/go/models';
 import { RunSummary, HitsTable, SeedRunWorkspace } from '@/components';
-import { Alert } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { waitForWailsBinding } from '@/lib/wails';
+import { cn } from '@/lib/utils';
 
 export function RunDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -30,9 +29,7 @@ export function RunDetailsPage() {
   const refreshGroup = useCallback(
     async (runId?: string) => {
       const targetId = runId ?? id;
-      if (!targetId) {
-        return;
-      }
+      if (!targetId) return;
 
       try {
         setGroupLoading(true);
@@ -47,7 +44,7 @@ export function RunDetailsPage() {
         setGroupLoading(false);
       }
     },
-    [id],
+    [id]
   );
 
   useEffect(() => {
@@ -79,69 +76,76 @@ export function RunDetailsPage() {
     if (!run) return null;
     if (run.timed_out) {
       return (
-        <Badge className="gap-1 border border-amber-400/60 bg-amber-500/15 text-amber-200">
+        <div className="flex items-center gap-1.5 border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest text-amber-400">
           <IconClock size={12} />
-          <span>Timed Out</span>
-        </Badge>
+          Timed Out
+        </div>
       );
     }
     if (run.hit_count > 0) {
       return (
-        <Badge className="gap-1 border border-emerald-500/40 bg-emerald-500/15 text-emerald-200">
+        <div className="flex items-center gap-1.5 border border-primary/30 bg-primary/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest text-primary">
           <IconCheck size={12} />
-          <span>Completed</span>
-        </Badge>
+          Completed
+        </div>
       );
     }
     return (
-      <Badge className="gap-1 border border-border bg-secondary/40 text-muted-foreground">
+      <div className="flex items-center gap-1.5 border border-border bg-muted/30 px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
         <IconX size={12} />
-        <span>No Hits</span>
-      </Badge>
+        No Hits
+      </div>
     );
   }, [run]);
 
+  // Loading state
   if (loading) {
     return (
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <Button variant="ghost" className="w-fit gap-2 text-muted-foreground" disabled>
           <IconArrowLeft size={16} />
-          Back to scan history
+          Back to history
         </Button>
-        <div className="rounded-none border border-border bg-card p-8 shadow-[var(--shadow-sm)]">
-          <div className="flex items-center gap-3 text-[hsl(var(--primary))]">
+        <div className="card-terminal p-8">
+          <div className="flex items-center gap-3 text-primary">
             <IconLoader2 className="animate-spin" size={20} />
-            <p className="text-sm text-muted-foreground">Loading run details...</p>
+            <p className="font-mono text-sm text-muted-foreground">Loading run details...</p>
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <Skeleton className="h-32 rounded-lg" />
-            <Skeleton className="h-32 rounded-lg" />
+            <Skeleton className="h-32" />
+            <Skeleton className="h-32" />
           </div>
         </div>
       </div>
     );
   }
 
+  // Error state
   if (error || !run) {
     return (
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
         <Button
           variant="ghost"
           className="w-fit gap-2 text-muted-foreground hover:text-foreground"
           onClick={() => navigate('/runs')}
         >
           <IconArrowLeft size={16} />
-          Back to scan history
+          Back to history
         </Button>
-        <Alert variant="destructive" icon={<IconAlertCircle size={20} />} title="Error loading run">
-          {error ?? 'Run not found'}
-        </Alert>
+        <div className="border border-destructive/50 bg-destructive/10 p-6">
+          <div className="flex items-center gap-2 text-destructive">
+            <IconAlertTriangle size={18} />
+            <span className="font-display text-sm uppercase tracking-wider">Error loading run</span>
+          </div>
+          <p className="mt-2 text-sm text-destructive/80">{error ?? 'Run not found'}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button
           variant="ghost"
@@ -149,17 +153,23 @@ export function RunDetailsPage() {
           onClick={() => navigate('/runs')}
         >
           <IconArrowLeft size={16} />
-          Back to scan history
+          Back to history
         </Button>
         {statusBadge}
       </div>
 
+      {/* Group error */}
       {groupError && (
-        <Alert variant="destructive" icon={<IconAlertCircle size={18} />} title="Related runs unavailable">
-          {groupError}
-        </Alert>
+        <div className="flex items-start gap-3 border border-destructive/50 bg-destructive/10 p-4">
+          <IconAlertTriangle size={18} className="shrink-0 text-destructive" />
+          <div>
+            <p className="font-mono text-sm font-semibold text-destructive">Related runs unavailable</p>
+            <p className="mt-1 text-xs text-destructive/80">{groupError}</p>
+          </div>
+        </div>
       )}
 
+      {/* Seed Run Workspace */}
       {seedGroup && run && (
         <SeedRunWorkspace
           currentRun={run}
@@ -167,20 +177,18 @@ export function RunDetailsPage() {
           groupLoading={groupLoading}
           refreshGroup={refreshGroup}
           onRunSelected={(runId) => {
-            if (runId !== run.id) {
-              navigate(`/runs/${runId}`);
-            }
+            if (runId !== run.id) navigate(`/runs/${runId}`);
           }}
           onRunCreated={(runId) => {
-            if (runId !== run.id) {
-              navigate(`/runs/${runId}`);
-            }
+            if (runId !== run.id) navigate(`/runs/${runId}`);
           }}
         />
       )}
 
+      {/* Run Summary */}
       <RunSummary run={run} />
 
+      {/* Hits Table */}
       <HitsTable runId={run.id} />
     </div>
   );

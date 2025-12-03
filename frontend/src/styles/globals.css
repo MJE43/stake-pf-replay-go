@@ -2,79 +2,102 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * DESIGN SYSTEM: "The Verification Chamber"
+ * A crypto-terminal aesthetic for provable fairness analysis
+ *
+ * Core principles:
+ * - High contrast, high readability for data-dense views
+ * - Electric accents that feel technical and precise
+ * - Brutalist layouts with sharp edges
+ * - Atmospheric backgrounds that create depth
+ */
+
 @layer base {
   :root {
-    --background: 222 47% 98%;
-    --foreground: 217 33% 17%;
-    
-    --card: 0 0% 100%;
-    --card-foreground: 217 33% 17%;
-    
-    --popover: 0 0% 100%;
-    --popover-foreground: 217 33% 17%;
-    
-    --primary: 210 100% 50%; /* Brighter blue */
-    --primary-foreground: 210 40% 98%;
-    
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222 47% 11.2%;
-    
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215 16% 47%;
-    
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222 47% 11.2%;
-    
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Light mode - Crisp paper-like with electric accents */
+    --background: 60 10% 97%;
+    --foreground: 60 5% 8%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 222 84% 4.9%;
-    
-    --radius: 0.75rem;
+    --card: 60 10% 100%;
+    --card-foreground: 60 5% 8%;
 
-    /* Custom vars */
-    --sidebar: 0 0% 100%;
-    --sidebar-foreground: 217 33% 17%;
-    
-    --tracking-normal: 0em;
-    
-    --font-sans: "Outfit", "Fira Sans", -apple-system, system-ui, sans-serif;
+    --popover: 60 10% 100%;
+    --popover-foreground: 60 5% 8%;
+
+    /* Electric lime - distinctive primary */
+    --primary: 75 100% 45%;
+    --primary-foreground: 60 5% 8%;
+
+    --secondary: 60 5% 92%;
+    --secondary-foreground: 60 5% 8%;
+
+    --muted: 60 5% 94%;
+    --muted-foreground: 60 5% 45%;
+
+    --accent: 60 5% 94%;
+    --accent-foreground: 60 5% 8%;
+
+    /* Hot magenta for destructive/alerts */
+    --destructive: 340 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 60 5% 85%;
+    --input: 60 5% 90%;
+    --ring: 75 100% 45%;
+
+    --radius: 2px;
+
+    /* Custom colors */
+    --sidebar: 60 10% 97%;
+    --sidebar-foreground: 60 5% 8%;
+    --glow: 75 100% 50%;
+    --hit: 45 100% 50%;
+    --copper: 30 50% 60%;
+
+    /* Typography */
+    --font-display: "Syncopate", sans-serif;
+    --font-sans: "DM Sans", -apple-system, sans-serif;
+    --font-mono: "JetBrains Mono", "Fira Code", monospace;
   }
 
   .dark {
-    /* Deep Space / Glass Theme */
-    --background: 222 47% 8%; /* #0b111e - Deep blue-black */
-    --foreground: 210 40% 98%;
-    
-    --card: 220 40% 11%; /* #111725 */
-    --card-foreground: 210 40% 98%;
-    
-    --popover: 220 40% 11%;
-    --popover-foreground: 210 40% 98%;
-    
-    --primary: 199 89% 48%; /* #0ea5e9 - Cyan/Blue */
-    --primary-foreground: 210 40% 98%;
-    
-    --secondary: 217 33% 15%;
-    --secondary-foreground: 210 40% 98%;
-    
-    --muted: 217 33% 15%;
-    --muted-foreground: 215 20% 65%;
-    
-    --accent: 217 33% 18%;
-    --accent-foreground: 210 40% 98%;
-    
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 0 86% 97%;
-    
-    --border: 217 33% 18%;
-    --input: 217 33% 18%;
-    --ring: 212.7 26.8% 83.9%;
-    
-    --sidebar: 222 47% 9%;
-    --sidebar-foreground: 210 40% 98%;
+    /* Deep void black with warm undertones */
+    --background: 30 10% 3%;
+    --foreground: 45 20% 95%;
+
+    --card: 30 10% 6%;
+    --card-foreground: 45 20% 95%;
+
+    --popover: 30 10% 6%;
+    --popover-foreground: 45 20% 95%;
+
+    /* Electric lime - glows in the dark */
+    --primary: 75 100% 50%;
+    --primary-foreground: 30 10% 3%;
+
+    --secondary: 30 10% 12%;
+    --secondary-foreground: 45 20% 95%;
+
+    --muted: 30 10% 15%;
+    --muted-foreground: 45 10% 55%;
+
+    --accent: 30 15% 18%;
+    --accent-foreground: 45 20% 95%;
+
+    /* Hot magenta for destructive/alerts */
+    --destructive: 340 100% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 10% 18%;
+    --input: 30 10% 15%;
+    --ring: 75 100% 50%;
+
+    --sidebar: 30 10% 4%;
+    --sidebar-foreground: 45 20% 95%;
+    --glow: 75 100% 55%;
+    --hit: 45 100% 55%;
+    --copper: 30 60% 55%;
   }
 }
 
@@ -82,54 +105,335 @@
   * {
     @apply border-border;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+  }
+
+  /* Text selection */
+  ::selection {
+    @apply bg-primary/30 text-foreground;
+  }
+
+  /* Headings use display font */
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    @apply tracking-wider uppercase;
+  }
+
+  /* Code and data use mono */
+  code, pre, kbd, .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  /* Focus states */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-primary/50 ring-offset-2 ring-offset-background;
   }
 }
+
+/* ============================================
+   UTILITIES
+   ============================================ */
 
 @layer utilities {
-  .glass {
-    @apply bg-background/70 backdrop-blur-xl border-white/5 supports-[backdrop-filter]:bg-background/60;
+  /* Terminal-style glow effect */
+  .glow {
+    text-shadow: 0 0 20px hsl(var(--glow) / 0.5), 0 0 40px hsl(var(--glow) / 0.3);
   }
-  
-  .glass-card {
-    @apply bg-card/60 backdrop-blur-lg border-white/5 shadow-lg;
+
+  .glow-sm {
+    text-shadow: 0 0 10px hsl(var(--glow) / 0.4);
   }
-  
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60;
+
+  /* Box glow */
+  .box-glow {
+    box-shadow: 0 0 30px hsl(var(--glow) / 0.15), 0 0 60px hsl(var(--glow) / 0.1);
   }
-  
-  .text-gradient-primary {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-cyan-300;
+
+  /* Hit highlight glow (gold/amber) */
+  .hit-glow {
+    text-shadow: 0 0 15px hsl(var(--hit) / 0.6), 0 0 30px hsl(var(--hit) / 0.4);
+  }
+
+  /* Grid background pattern */
+  .grid-bg {
+    background-image:
+      linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* Scanline effect for cards/sections */
+  .scanlines {
+    position: relative;
+  }
+  .scanlines::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      hsl(var(--foreground) / 0.015) 2px,
+      hsl(var(--foreground) / 0.015) 4px
+    );
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .scanlines:hover::after {
+    opacity: 1;
+  }
+
+  /* Noise texture overlay */
+  .noise {
+    position: relative;
+  }
+  .noise::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.02;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+  }
+
+  /* CRT vignette effect */
+  .vignette {
+    position: relative;
+  }
+  .vignette::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 50%, hsl(var(--background) / 0.4) 100%);
+    pointer-events: none;
+  }
+
+  /* Data highlight - used for important numbers */
+  .data-highlight {
+    @apply font-mono font-semibold text-primary;
+  }
+
+  /* Copper accent text */
+  .text-copper {
+    color: hsl(var(--copper));
+  }
+
+  /* Terminal cursor blink */
+  .cursor-blink::after {
+    content: "▊";
+    @apply text-primary animate-pulse;
   }
 }
 
-/* Animations */
-.fade-in {
-  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
+/* ============================================
+   ANIMATIONS
+   ============================================ */
 
-@keyframes fadeIn {
+/* Stagger children fade-in */
+@keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.98);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
-/* Scrollbar refinement */
+.animate-fade-in {
+  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Stagger delay utilities */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* Pulse glow animation */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px hsl(var(--glow) / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 25px hsl(var(--glow) / 0.5), 0 0 40px hsl(var(--glow) / 0.2);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* Scan line sweep animation */
+@keyframes scanSweep {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.animate-scan {
+  animation: scanSweep 3s ease-in-out infinite;
+}
+
+/* Count-up animation for numbers */
+@keyframes countPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+.animate-count {
+  animation: countPulse 0.3s ease-out;
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
+
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  background: hsl(var(--background));
 }
+
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/40 transition-colors;
+  background: hsl(var(--muted-foreground) / 0.3);
+  border: 2px solid hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* ============================================
+   COMPONENT OVERRIDES
+   ============================================ */
+
+/* Sharp-edged cards - no rounded corners */
+.card-sharp {
+  @apply border bg-card;
+  border-radius: var(--radius);
+}
+
+/* Terminal card style */
+.card-terminal {
+  @apply border border-border bg-card relative overflow-hidden;
+  border-radius: var(--radius);
+}
+.card-terminal::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent);
+}
+
+/* Active indicator bar */
+.active-bar {
+  position: relative;
+}
+.active-bar::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 10px hsl(var(--glow) / 0.5);
+}
+
+/* Status indicators */
+.status-dot {
+  @apply w-2 h-2 rounded-full;
+}
+.status-dot.online {
+  @apply bg-primary;
+  box-shadow: 0 0 8px hsl(var(--glow));
+}
+.status-dot.offline {
+  @apply bg-destructive;
+  box-shadow: 0 0 8px hsl(var(--destructive));
+}
+.status-dot.pending {
+  @apply bg-hit animate-pulse;
+  box-shadow: 0 0 8px hsl(var(--hit));
+}
+
+/* Data table rows */
+.data-row {
+  @apply border-b border-border/50 transition-colors;
+}
+.data-row:hover {
+  @apply bg-muted/50;
+}
+.data-row:last-child {
+  @apply border-b-0;
+}
+
+/* Input with terminal style */
+.input-terminal {
+  @apply bg-background border-border font-mono text-sm;
+  caret-color: hsl(var(--primary));
+}
+.input-terminal:focus {
+  @apply border-primary;
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.3), 0 0 15px hsl(var(--glow) / 0.1);
+}
+
+/* Button variants */
+.btn-terminal {
+  @apply inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold uppercase tracking-wider;
+  @apply bg-transparent border border-primary text-primary;
+  @apply transition-all duration-200;
+  border-radius: var(--radius);
+}
+.btn-terminal:hover {
+  @apply bg-primary text-primary-foreground;
+  box-shadow: 0 0 20px hsl(var(--glow) / 0.3);
+}
+
+/* Badge terminal style */
+.badge-terminal {
+  @apply inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest;
+  @apply border border-primary/50 bg-primary/10 text-primary;
+  border-radius: var(--radius);
+}
+
+/* Hit badge (gold/amber) */
+.badge-hit {
+  @apply inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest;
+  @apply border border-hit/50 bg-hit/10;
+  color: hsl(var(--hit));
+  border-radius: var(--radius);
 }

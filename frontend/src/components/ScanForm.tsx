@@ -5,28 +5,21 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import type { z } from 'zod';
 import {
-  IconAlertCircle,
+  IconAlertTriangle,
   IconChevronDown,
-  IconDice,
-  IconDownload,
-  IconGauge,
   IconHash,
-  IconInfoCircle,
   IconKey,
-  IconNumbers,
+  IconLoader2,
+  IconPlayerPlay,
   IconRefresh,
-  IconRepeat,
+  IconSettings,
   IconTarget,
 } from '@tabler/icons-react';
 import { scanFormSchema, validateGameParams } from '@/lib/validation';
 import { callWithRetry, waitForWailsBinding } from '@/lib/wails';
 import type { games } from '@wails/go/models';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Alert } from '@/components/ui/alert';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 import {
   Form,
@@ -46,6 +39,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CopyableField } from '@/components/ui/copyable-field';
+import { cn } from '@/lib/utils';
 
 interface GameInfo {
   id: string;
@@ -70,10 +64,10 @@ const DEFAULT_VALUES: ScanFormValues = {
 };
 
 const TARGET_OPERATORS = [
-  { value: 'ge', label: '>=' },
+  { value: 'ge', label: '≥' },
   { value: 'gt', label: '>' },
   { value: 'eq', label: '=' },
-  { value: 'le', label: '<=' },
+  { value: 'le', label: '≤' },
   { value: 'lt', label: '<' },
 ] as const;
 
@@ -83,64 +77,42 @@ type NoncePreset = {
 };
 
 const NONCE_PRESETS: NoncePreset[] = [
-  {
-    label: '0 → 1M',
-    apply: () => ({ start: 0, end: 1_000_000 }),
-  },
-  {
-    label: 'Last 100K',
-    apply: (_, currentEnd) => {
-      const end = Number.isFinite(currentEnd) ? Math.max(0, currentEnd) : 100_000;
-      return { start: Math.max(0, end - 100_000), end };
-    },
-  },
-  {
-    label: 'Default 0 → 1K',
-    apply: () => ({ start: DEFAULT_VALUES.nonceStart, end: DEFAULT_VALUES.nonceEnd }),
-  },
+  { label: '1M', apply: () => ({ start: 0, end: 1_000_000 }) },
+  { label: '500K', apply: () => ({ start: 0, end: 500_000 }) },
+  { label: '100K', apply: () => ({ start: 0, end: 100_000 }) },
+  { label: '10K', apply: () => ({ start: 0, end: 10_000 }) },
 ];
 
-// Lazy-load Wails bindings to keep the initial bundle smaller.
+// Lazy-load Wails bindings
 let appBindingsPromise: Promise<typeof import('@wails/go/bindings/App')> | null = null;
 let modelBindingsPromise: Promise<typeof import('@wails/go/models')> | null = null;
 
 const getAppBindings = () => {
-  if (!appBindingsPromise) {
-    appBindingsPromise = import('@wails/go/bindings/App');
-  }
+  if (!appBindingsPromise) appBindingsPromise = import('@wails/go/bindings/App');
   return appBindingsPromise;
 };
 
 const getModelBindings = () => {
-  if (!modelBindingsPromise) {
-    modelBindingsPromise = import('@wails/go/models');
-  }
+  if (!modelBindingsPromise) modelBindingsPromise = import('@wails/go/models');
   return modelBindingsPromise;
 };
 
-function SectionHeader({ icon, title, description }: { icon: ReactNode; title: string; description?: string }) {
+// Section header component
+function SectionHeader({ icon, label, sublabel }: { icon: ReactNode; label: string; sublabel?: string }) {
   return (
-    <div className="flex items-center gap-3 text-sm font-semibold text-foreground/90">
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 text-primary ring-1 ring-white/10">
+    <div className="flex items-center gap-3 border-b border-border pb-3">
+      <span className="flex h-8 w-8 items-center justify-center border border-primary/30 bg-primary/5 text-primary">
         {icon}
       </span>
-      <div className="flex flex-col">
-        <span className="font-bold">{title}</span>
-        {description && <span className="text-xs font-normal text-muted-foreground">{description}</span>}
+      <div>
+        <span className="font-display text-xs uppercase tracking-wider text-foreground">{label}</span>
+        {sublabel && <p className="text-xs text-muted-foreground">{sublabel}</p>}
       </div>
     </div>
   );
 }
 
-function SummaryChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/5 px-3 py-1.5 backdrop-blur-sm">
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80">{label}</span>
-      <span className="font-mono text-xs font-medium text-foreground">{value}</span>
-    </div>
-  );
-}
-
+// Game selector combobox
 function GameComboboxField({
   field,
   availableGames,
@@ -154,8 +126,8 @@ function GameComboboxField({
   const selectedGame = availableGames.find((game) => game.id === field.value);
 
   return (
-    <FormItem className="space-y-3">
-      <FormLabel>Game</FormLabel>
+    <FormItem>
+      <FormLabel className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Game</FormLabel>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <FormControl>
@@ -164,31 +136,37 @@ function GameComboboxField({
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-full justify-between text-left"
+              className={cn(
+                'w-full justify-between border-border bg-background font-mono text-sm',
+                !selectedGame && 'text-muted-foreground'
+              )}
               disabled={loading}
             >
               {selectedGame ? (
-                <span className="flex flex-col">
-                  <span className="text-sm font-medium">{selectedGame.name}</span>
-                  <span className="text-xs text-muted-foreground">Metric: {selectedGame.metric_label}</span>
+                <span className="flex items-center gap-2">
+                  <span className="text-foreground">{selectedGame.name}</span>
+                  <span className="text-muted-foreground">→ {selectedGame.metric_label}</span>
                 </span>
               ) : loading ? (
-                'Loading games…'
+                <span className="flex items-center gap-2">
+                  <IconLoader2 size={14} className="animate-spin" />
+                  Loading games...
+                </span>
               ) : (
-                'Select a game'
+                'Select game...'
               )}
-              <IconChevronDown size={16} className="text-muted-foreground" aria-hidden />
+              <IconChevronDown size={14} className="text-muted-foreground" />
             </Button>
           </FormControl>
         </PopoverTrigger>
         <PopoverContent className="p-0" align="start">
           <Command>
-            <CommandInput placeholder="Search games…" />
+            <CommandInput placeholder="Search games..." className="font-mono" />
             <CommandList>
               {loading ? (
                 <div className="space-y-2 p-3">
-                  {Array.from({ length: 3 }).map((_, index) => (
-                    <Skeleton key={index} className="h-8 w-full" />
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-8 w-full" />
                   ))}
                 </div>
               ) : (
@@ -203,11 +181,10 @@ function GameComboboxField({
                           field.onChange(game.id);
                           setOpen(false);
                         }}
+                        className="font-mono text-sm"
                       >
-                        <div className="flex flex-col">
-                          <span className="font-medium">{game.name}</span>
-                          <span className="text-xs text-muted-foreground">{game.metric_label}</span>
-                        </div>
+                        <span className="text-foreground">{game.name}</span>
+                        <span className="ml-2 text-muted-foreground">→ {game.metric_label}</span>
                       </CommandItem>
                     ))}
                   </CommandGroup>
@@ -229,21 +206,17 @@ function useMetricLabel(gameId: string | undefined, games: GameInfo[]) {
   }, [gameId, games]);
 }
 
+// Game-specific parameter forms
 function DiceParams({ metricLabel }: { metricLabel: string | null }) {
-  const label = metricLabel ?? 'target';
   return (
-    <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,240px)]">
+    <div className="grid gap-4 md:grid-cols-2">
       <FormField
         name="params.target"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="flex items-center justify-between">
-              Target
-              <Badge variant="outline" className="font-mono text-[11px] text-muted-foreground">
-                {label}
-              </Badge>
+            <FormLabel className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+              Target {metricLabel && <span className="text-primary">({metricLabel})</span>}
             </FormLabel>
-            <FormDescription>Precision up to two decimals.</FormDescription>
             <div className="space-y-3">
               <Slider
                 min={0}
@@ -251,6 +224,7 @@ function DiceParams({ metricLabel }: { metricLabel: string | null }) {
                 step={0.01}
                 value={[field.value ?? 50]}
                 onValueChange={(value) => field.onChange(value[0])}
+                className="py-2"
               />
               <FormControl>
                 <Input
@@ -258,9 +232,9 @@ function DiceParams({ metricLabel }: { metricLabel: string | null }) {
                   min={0}
                   max={99.99}
                   step={0.01}
-                  className="font-mono"
+                  className="input-terminal"
                   value={field.value ?? ''}
-                  onChange={(event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value))}
+                  onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
                 />
               </FormControl>
             </div>
@@ -271,21 +245,16 @@ function DiceParams({ metricLabel }: { metricLabel: string | null }) {
       <FormField
         name="params.condition"
         render={({ field }) => (
-          <FormItem className="space-y-3">
-            <FormLabel>Condition</FormLabel>
-            <FormDescription>Match the Over/Under choice.</FormDescription>
+          <FormItem>
+            <FormLabel className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Condition</FormLabel>
             <ToggleGroup
               type="single"
               value={(field.value as string) ?? 'over'}
               onValueChange={(value) => value && field.onChange(value)}
-              className="w-full"
+              className="grid grid-cols-2"
             >
-              <ToggleGroupItem value="over" className="flex-1">
-                Over
-              </ToggleGroupItem>
-              <ToggleGroupItem value="under" className="flex-1">
-                Under
-              </ToggleGroupItem>
+              <ToggleGroupItem value="over" className="font-mono text-sm">OVER</ToggleGroupItem>
+              <ToggleGroupItem value="under" className="font-mono text-sm">UNDER</ToggleGroupItem>
             </ToggleGroup>
             <FormMessage />
           </FormItem>
@@ -300,27 +269,30 @@ function LimboParams() {
     <FormField
       name="params.houseEdge"
       render={({ field }) => (
-        <FormItem className="space-y-3">
-          <FormLabel>House edge</FormLabel>
-          <FormDescription>Typical edge is 0.99.</FormDescription>
-          <Slider
-            min={0.01}
-            max={1}
-            step={0.01}
-            value={[field.value ?? 0.99]}
-            onValueChange={(value) => field.onChange(Number(value[0].toFixed(2)))}
-          />
-          <FormControl>
-            <Input
-              type="number"
+        <FormItem>
+          <FormLabel className="font-mono text-xs uppercase tracking-wider text-muted-foreground">House Edge</FormLabel>
+          <FormDescription>Standard: 0.99</FormDescription>
+          <div className="flex items-center gap-4">
+            <Slider
               min={0.01}
               max={1}
               step={0.01}
-              className="max-w-[160px] font-mono"
-              value={field.value ?? ''}
-              onChange={(event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value))}
+              value={[field.value ?? 0.99]}
+              onValueChange={(value) => field.onChange(Number(value[0].toFixed(2)))}
+              className="flex-1"
             />
-          </FormControl>
+            <FormControl>
+              <Input
+                type="number"
+                min={0.01}
+                max={1}
+                step={0.01}
+                className="input-terminal w-24"
+                value={field.value ?? ''}
+                onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+              />
+            </FormControl>
+          </div>
           <FormMessage />
         </FormItem>
       )}
@@ -329,34 +301,38 @@ function LimboParams() {
 }
 
 function PumpParams() {
-  const options = [
-    { value: 'easy', label: 'Easy', description: '1 POP token' },
-    { value: 'medium', label: 'Medium', description: '3 POP tokens' },
-    { value: 'hard', label: 'Hard', description: '5 POP tokens' },
-    { value: 'expert', label: 'Expert', description: '10 POP tokens' },
+  const difficulties = [
+    { value: 'easy', label: 'EASY', tokens: '1 POP' },
+    { value: 'medium', label: 'MED', tokens: '3 POP' },
+    { value: 'hard', label: 'HARD', tokens: '5 POP' },
+    { value: 'expert', label: 'EXPERT', tokens: '10 POP' },
   ];
 
   return (
     <FormField
       name="params.difficulty"
       render={({ field }) => (
-        <FormItem className="space-y-3">
-          <FormLabel>Difficulty</FormLabel>
-          <FormDescription>Select the POP buy-in.</FormDescription>
+        <FormItem>
+          <FormLabel className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Difficulty</FormLabel>
           <RadioGroup
             value={(field.value as string) ?? 'expert'}
             onValueChange={field.onChange}
-            className="grid gap-2 md:grid-cols-2"
+            className="grid grid-cols-2 gap-2"
           >
-            {options.map((option) => (
+            {difficulties.map((d) => (
               <label
-                key={option.value}
-                className={`flex cursor-pointer items-start gap-3 rounded-lg border border-input bg-background px-3 py-2 text-left text-sm shadow-sm transition hover:border-[hsl(var(--primary))] focus-within:ring-2 focus-within:ring-[hsl(var(--primary))] focus-within:ring-offset-2 ${field.value === option.value ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))]/5' : ''}`}
+                key={d.value}
+                className={cn(
+                  'flex cursor-pointer items-center gap-3 border p-3 text-left transition-all',
+                  field.value === d.value
+                    ? 'border-primary bg-primary/5 text-foreground'
+                    : 'border-border bg-background text-muted-foreground hover:border-muted-foreground'
+                )}
               >
-                <RadioGroupItem value={option.value} className="mt-1" />
+                <RadioGroupItem value={d.value} />
                 <div>
-                  <div className="font-medium">{option.label}</div>
-                  <div className="text-xs text-muted-foreground">{option.description}</div>
+                  <div className="font-mono text-sm font-semibold">{d.label}</div>
+                  <div className="font-mono text-[10px] text-muted-foreground">{d.tokens}</div>
                 </div>
               </label>
             ))}
@@ -369,31 +345,22 @@ function PumpParams() {
 }
 
 function PlinkoParams() {
-  const presetRows = [8, 10, 12, 14, 16];
-
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <FormField
         name="params.risk"
         render={({ field }) => (
-          <FormItem className="space-y-3">
-            <FormLabel>Risk</FormLabel>
-            <FormDescription>Higher risk increases volatility.</FormDescription>
+          <FormItem>
+            <FormLabel className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Risk</FormLabel>
             <ToggleGroup
               type="single"
               value={(field.value as string) ?? 'medium'}
               onValueChange={(value) => value && field.onChange(value)}
-              className="w-full"
+              className="grid grid-cols-3"
             >
-              <ToggleGroupItem value="low" className="flex-1">
-                Low
-              </ToggleGroupItem>
-              <ToggleGroupItem value="medium" className="flex-1">
-                Medium
-              </ToggleGroupItem>
-              <ToggleGroupItem value="high" className="flex-1">
-                High
-              </ToggleGroupItem>
+              <ToggleGroupItem value="low" className="font-mono text-xs">LOW</ToggleGroupItem>
+              <ToggleGroupItem value="medium" className="font-mono text-xs">MED</ToggleGroupItem>
+              <ToggleGroupItem value="high" className="font-mono text-xs">HIGH</ToggleGroupItem>
             </ToggleGroup>
             <FormMessage />
           </FormItem>
@@ -402,29 +369,32 @@ function PlinkoParams() {
       <FormField
         name="params.rows"
         render={({ field }) => (
-          <FormItem className="space-y-3">
-            <FormLabel>Rows</FormLabel>
-            <FormDescription>Choose between 8 and 16 rows.</FormDescription>
-            <Slider
-              min={8}
-              max={16}
-              step={1}
-              value={[field.value ?? 16]}
-              onValueChange={(value) => field.onChange(value[0])}
-            />
-            <div className="flex flex-wrap gap-2">
-              {presetRows.map((rows) => (
-                <Button
-                  key={rows}
-                  type="button"
-                  size="sm"
-                  variant={field.value === rows ? 'default' : 'outline'}
-                  onClick={() => field.onChange(rows)}
-                  className="h-8 px-3 text-xs"
-                >
-                  {rows} rows
-                </Button>
-              ))}
+          <FormItem>
+            <FormLabel className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+              Rows <span className="text-primary">{field.value ?? 16}</span>
+            </FormLabel>
+            <div className="space-y-3">
+              <Slider
+                min={8}
+                max={16}
+                step={1}
+                value={[field.value ?? 16]}
+                onValueChange={(value) => field.onChange(value[0])}
+              />
+              <div className="flex gap-1">
+                {[8, 10, 12, 14, 16].map((rows) => (
+                  <Button
+                    key={rows}
+                    type="button"
+                    size="sm"
+                    variant={field.value === rows ? 'default' : 'outline'}
+                    className="h-7 flex-1 font-mono text-xs"
+                    onClick={() => field.onChange(rows)}
+                  >
+                    {rows}
+                  </Button>
+                ))}
+              </div>
             </div>
             <FormMessage />
           </FormItem>
@@ -438,7 +408,12 @@ function GameParams({ gameId, games }: { gameId?: string; games: GameInfo[] }) {
   const metricLabel = useMetricLabel(gameId, games);
 
   if (!gameId) {
-    return <p className="text-sm text-muted-foreground">Select a game to configure parameters.</p>;
+    return (
+      <div className="flex items-center gap-2 border border-dashed border-border p-4 text-sm text-muted-foreground">
+        <IconSettings size={16} />
+        Select a game to configure parameters
+      </div>
+    );
   }
 
   switch (gameId) {
@@ -450,43 +425,47 @@ function GameParams({ gameId, games }: { gameId?: string; games: GameInfo[] }) {
       return <PumpParams />;
     case 'plinko':
       return <PlinkoParams />;
-    case 'roulette':
-      return <p className="text-sm text-muted-foreground">Roulette does not require extra parameters.</p>;
     default:
-      return <p className="text-sm text-muted-foreground">No additional parameters required.</p>;
+      return (
+        <div className="border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+          No additional parameters required for this game.
+        </div>
+      );
   }
 }
 
+// Advanced constraints panel
 function AdvancedPanel() {
   const [open, setOpen] = useState(false);
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border border-border/70 bg-muted/20">
+    <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger asChild>
         <button
           type="button"
-          className="flex w-full items-center justify-between gap-2 rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground transition hover:text-foreground"
+          className="flex w-full items-center justify-between border border-border bg-muted/30 px-4 py-3 text-sm transition-colors hover:bg-muted/50"
         >
-          <span className="flex items-center gap-2">
-            <IconGauge size={16} aria-hidden /> Advanced constraints
+          <span className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            <IconSettings size={14} />
+            Advanced Constraints
           </span>
-          {open ? <IconChevronDown size={16} className="rotate-180 transition-transform" aria-hidden /> : <IconChevronDown size={16} aria-hidden />}
+          <IconChevronDown size={14} className={cn('transition-transform', open && 'rotate-180')} />
         </button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="border-t border-border/70 px-4 py-4">
-        <div className="grid gap-4 md:grid-cols-2">
+      <CollapsibleContent>
+        <div className="grid gap-4 border border-t-0 border-border bg-background p-4 md:grid-cols-2">
           <FormField
             name="limit"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Hit limit</FormLabel>
-                <FormDescription>Stops scanning after N matches. Default 1000.</FormDescription>
+                <FormLabel className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Hit Limit</FormLabel>
+                <FormDescription>Stop after N matches (default: 1000)</FormDescription>
                 <FormControl>
                   <Input
                     type="number"
-                    className="font-mono"
+                    className="input-terminal"
                     value={field.value ?? ''}
-                    onChange={(event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value))}
+                    onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
                   />
                 </FormControl>
                 <FormMessage />
@@ -497,22 +476,14 @@ function AdvancedPanel() {
             name="timeoutMs"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="flex items-center gap-1">
-                  Timeout (ms)
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="cursor-help text-muted-foreground">?</span>
-                    </TooltipTrigger>
-                    <TooltipContent>Controls worker patience. Lower values surface errors faster.</TooltipContent>
-                  </Tooltip>
-                </FormLabel>
-                <FormDescription>Shorter timeouts can interrupt long scans.</FormDescription>
+                <FormLabel className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Timeout (ms)</FormLabel>
+                <FormDescription>Cancel long scans after this duration</FormDescription>
                 <FormControl>
                   <Input
                     type="number"
-                    className="font-mono"
+                    className="input-terminal"
                     value={field.value ?? ''}
-                    onChange={(event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value))}
+                    onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
                   />
                 </FormControl>
                 <FormMessage />
@@ -520,40 +491,17 @@ function AdvancedPanel() {
             )}
           />
         </div>
-        <p className="mt-4 text-xs text-muted-foreground">Tweaking these values changes performance characteristics.</p>
       </CollapsibleContent>
     </Collapsible>
   );
 }
 
-function StickyActionsBar({
-  isSubmitting,
-  onReset,
-}: {
-  isSubmitting: boolean;
-  onReset: () => void;
-}) {
-  return (
-    <div className="sticky bottom-0 left-0 right-0 mt-8 border-t border-white/5 bg-background/80 px-4 py-4 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 md:px-0">
-      <div className="flex flex-wrap justify-end gap-3">
-        <Button type="button" variant="outline" onClick={onReset} disabled={isSubmitting} className="border-white/10 bg-white/5 hover:bg-white/10">
-          <IconRefresh size={16} aria-hidden /> Reset
-        </Button>
-        <Button type="submit" className="gap-2 bg-gradient-to-r from-primary to-cyan-500 hover:from-primary/90 hover:to-cyan-400 shadow-lg shadow-primary/20" aria-busy={isSubmitting} disabled={isSubmitting}>
-          <IconRepeat size={16} className={isSubmitting ? 'animate-spin' : undefined} aria-hidden />
-          {isSubmitting ? 'Starting scan…' : 'Start Scan'}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
+// Main form component
 export function ScanForm() {
   const navigate = useNavigate();
   const [availableGames, setAvailableGames] = useState<GameInfo[]>([]);
   const [loadingGames, setLoadingGames] = useState(false);
   const [hashPreview, setHashPreview] = useState('');
-  const [showHashPreview, setShowHashPreview] = useState(false);
   const [hashLoading, setHashLoading] = useState(false);
   const gameLoadAttempts = useRef(0);
   const gameRetryTimer = useRef<number | null>(null);
@@ -573,8 +521,8 @@ export function ScanForm() {
   const nonceEnd = watch('nonceEnd');
   const targetOp = watch('targetOp');
   const targetVal = watch('targetVal');
-  const limit = watch('limit');
 
+  // Load games
   useEffect(() => {
     const loadGames = async () => {
       try {
@@ -583,9 +531,7 @@ export function ScanForm() {
         await waitForWailsBinding(['go', 'bindings', 'App', 'GetGames'], { timeoutMs: 10_000 });
         const { GetGames } = await getAppBindings();
         const gameSpecs = await callWithRetry(() => GetGames(), 5, 250);
-        if (!Array.isArray(gameSpecs)) {
-          throw new Error('Unexpected GetGames response');
-        }
+        if (!Array.isArray(gameSpecs)) throw new Error('Unexpected GetGames response');
         const gameInfos: GameInfo[] = gameSpecs.map((spec: games.GameSpec) => ({
           id: spec.id,
           name: spec.name,
@@ -600,7 +546,7 @@ export function ScanForm() {
       } catch (error) {
         console.error('Failed to load games:', error);
         if (!gameErrorShown.current) {
-          toast.error('Failed to load available games, retrying…');
+          toast.error('Failed to load games, retrying...');
           gameErrorShown.current = true;
         }
         if (gameLoadAttempts.current < 6) {
@@ -613,12 +559,11 @@ export function ScanForm() {
 
     loadGames();
     return () => {
-      if (gameRetryTimer.current !== null) {
-        window.clearTimeout(gameRetryTimer.current);
-      }
+      if (gameRetryTimer.current !== null) window.clearTimeout(gameRetryTimer.current);
     };
   }, []);
 
+  // Set default params when game changes
   useEffect(() => {
     if (!watchedGame) return;
     clearErrors('params');
@@ -642,55 +587,34 @@ export function ScanForm() {
     }
   }, [watchedGame, clearErrors, setValue]);
 
-  const nonceSliderValue = useMemo(() => {
-    const safeStart = Number.isFinite(nonceStart) ? Number(nonceStart) : 0;
-    const safeEnd = Number.isFinite(nonceEnd) ? Number(nonceEnd) : safeStart;
-    const startValue = Math.min(safeStart, safeEnd);
-    const endValue = Math.max(safeStart, safeEnd);
-    return [startValue, endValue] as [number, number];
+  const nonceCount = useMemo(() => {
+    const start = Number.isFinite(nonceStart) ? Number(nonceStart) : 0;
+    const end = Number.isFinite(nonceEnd) ? Number(nonceEnd) : 0;
+    return Math.max(0, end - start);
   }, [nonceStart, nonceEnd]);
-
-  const nonceSliderMax = useMemo(() => {
-    const [, end] = nonceSliderValue;
-    return Math.max(end + 1, 1_000_000);
-  }, [nonceSliderValue]);
-
-  const nonceCount = Math.max(0, nonceSliderValue[1] - nonceSliderValue[0]);
-
-  const handleNonceSliderChange = useCallback(
-    (value: number[]) => {
-      if (value.length < 2) return;
-      const [startValue, endValue] = value as [number, number];
-      form.setValue('nonceStart', Math.min(startValue, endValue), { shouldDirty: true });
-      form.setValue('nonceEnd', Math.max(startValue, endValue), { shouldDirty: true });
-    },
-    [form],
-  );
 
   const handleNoncePreset = useCallback(
     (preset: NoncePreset) => {
       const values = preset.apply(nonceStart ?? 0, nonceEnd ?? 0);
-      form.setValue('nonceStart', values.start, { shouldDirty: true });
-      form.setValue('nonceEnd', values.end, { shouldDirty: true });
+      setValue('nonceStart', values.start, { shouldDirty: true });
+      setValue('nonceEnd', values.end, { shouldDirty: true });
     },
-    [form, nonceStart, nonceEnd],
+    [setValue, nonceStart, nonceEnd]
   );
 
   const handleHashPreview = useCallback(async () => {
     if (!watchedServerSeed.trim()) {
-      toast.error('Please enter a server seed first');
+      toast.error('Enter a server seed first');
       return;
     }
-
     setHashLoading(true);
     try {
       const { HashServerSeed } = await getAppBindings();
       const hash = await HashServerSeed(watchedServerSeed);
       setHashPreview(hash);
-      setShowHashPreview(true);
     } catch (error) {
       console.error('Failed to hash server seed:', error);
-      toast.error('Failed to generate server seed hash');
+      toast.error('Failed to generate hash');
     } finally {
       setHashLoading(false);
     }
@@ -704,10 +628,7 @@ export function ScanForm() {
 
       const scanRequest = {
         Game: data.game,
-        Seeds: {
-          Server: data.serverSeed,
-          Client: data.clientSeed,
-        },
+        Seeds: { Server: data.serverSeed, Client: data.clientSeed },
         NonceStart: data.nonceStart,
         NonceEnd: data.nonceEnd,
         Params: validatedParams,
@@ -720,7 +641,7 @@ export function ScanForm() {
 
       const [{ StartScan }, { bindings }] = await Promise.all([getAppBindings(), getModelBindings()]);
       const result = await StartScan(bindings.ScanRequest.createFrom(scanRequest));
-      toast.success(`Scan started. Run ID: ${result.RunID}`);
+      toast.success(`Scan started: ${result.RunID}`);
       navigate(`/runs/${result.RunID}`);
     } catch (error: any) {
       console.error('Scan failed:', error);
@@ -740,278 +661,282 @@ export function ScanForm() {
   return (
     <TooltipProvider>
       <Form {...form}>
-        <form onSubmit={handleSubmit(onSubmit)} className="relative space-y-10">
-          <Card className="border border-white/5 bg-card/40 shadow-xl backdrop-blur-md">
-            <CardHeader className="space-y-4">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-xl">
-                  <IconRepeat size={20} className="text-[hsl(var(--primary))]" aria-hidden />
-                  Build a scan
-                </CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Configure seeds, pick a game, and fine-tune the target to replay a provably fair run.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <SummaryChip label="Game" value={availableGames.find((g) => g.id === watchedGame)?.name ?? '—'} />
-                <SummaryChip label="Range" value={`${nonceCount.toLocaleString()} nonces`} />
-                <SummaryChip
-                  label="Target"
-                  value={`${targetOp ?? '—'} ${typeof targetVal === 'number' && Number.isFinite(targetVal) ? targetVal.toString() : '—'}`}
-                />
-                <SummaryChip
-                  label="Limit"
-                  value={typeof limit === 'number' && Number.isFinite(limit) ? limit.toLocaleString() : '—'}
-                />
-              </div>
-              {showHashPreview && hashPreview && (
-                <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
-                  <CopyableField value={hashPreview} label="Server hash" className="flex-1" />
-                  <Badge variant="outline" className="text-xs text-muted-foreground">
-                    Generated from current server seed
-                  </Badge>
-                </div>
-              )}
-            </CardHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* Scan configuration summary bar */}
+          <div className="flex flex-wrap items-center gap-3 border border-border bg-muted/30 px-4 py-3">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">CONFIG</span>
+            <span className="h-4 w-px bg-border" />
+            <span className="font-mono text-xs text-foreground">
+              {availableGames.find((g) => g.id === watchedGame)?.name ?? '—'}
+            </span>
+            <span className="text-muted-foreground">•</span>
+            <span className="font-mono text-xs text-primary">{nonceCount.toLocaleString()} nonces</span>
+            <span className="text-muted-foreground">•</span>
+            <span className="font-mono text-xs text-foreground">
+              {TARGET_OPERATORS.find((o) => o.value === targetOp)?.label ?? '—'} {targetVal?.toLocaleString() ?? '—'}
+            </span>
+          </div>
 
-            <CardContent className="space-y-10">
-              <section className="space-y-4">
-                <SectionHeader icon={<IconKey size={16} />} title="Seeds" description="Enter the server and client seeds" />
-                <div className="grid gap-6 md:grid-cols-2">
-                  <FormField
-                    name="serverSeed"
-                    render={({ field }) => (
-                      <FormItem className="space-y-3">
-                        <FormLabel>Server seed</FormLabel>
-                        <div className="flex items-center gap-2">
-                          <FormControl>
-                            <Input
-                              placeholder="Enter server seed"
-                              value={field.value ?? ''}
-                              onChange={field.onChange}
-                            />
-                          </FormControl>
+          {/* Seeds section */}
+          <section className="space-y-4">
+            <SectionHeader icon={<IconKey size={16} />} label="Seeds" sublabel="Enter the server and client seeds" />
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                name="serverSeed"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Server Seed</FormLabel>
+                    <div className="flex gap-2">
+                      <FormControl>
+                        <Input
+                          placeholder="Enter server seed..."
+                          className="input-terminal flex-1"
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
                           <Button
                             type="button"
                             variant="outline"
                             size="icon"
                             onClick={handleHashPreview}
                             disabled={hashLoading}
-                            aria-label="Generate server hash preview"
+                            className="shrink-0"
                           >
-                            {hashLoading ? <IconDownload size={16} className="animate-spin" aria-hidden /> : <IconHash size={16} aria-hidden />}
+                            {hashLoading ? <IconLoader2 size={14} className="animate-spin" /> : <IconHash size={14} />}
                           </Button>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    name="clientSeed"
-                    render={({ field }) => (
-                      <FormItem className="space-y-3">
-                        <FormLabel>Client seed</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter client seed" value={field.value ?? ''} onChange={field.onChange} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormItem>
-                  <FormLabel>Optional notes</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Describe the scan purpose or link to a ticket" rows={4} disabled className="resize-none opacity-60" />
-                  </FormControl>
-                  <FormDescription>UI only for now — notes are not persisted.</FormDescription>
-                </FormItem>
-              </section>
-
-              <section className="space-y-4">
-                <SectionHeader icon={<IconDice size={16} />} title="Game" description="Choose the game and tweak parameters" />
-                <FormField
-                  name="game"
-                  render={({ field }) => (
-                    <GameComboboxField field={field} availableGames={availableGames} loading={loadingGames} />
-                  )}
-                />
-                {watchedGame && (
-                  <div className="space-y-3 rounded-lg border border-[hsl(var(--primary))]/30 bg-[hsl(var(--primary))]/8 p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-[hsl(var(--primary))]">
-                      <IconInfoCircle size={16} aria-hidden />
-                      {availableGames.find((g) => g.id === watchedGame)?.name ?? 'Selected game'} parameters
+                        </TooltipTrigger>
+                        <TooltipContent>Generate SHA-256 hash</TooltipContent>
+                      </Tooltip>
                     </div>
-                    <GameParams gameId={watchedGame} games={availableGames} />
-                  </div>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </section>
+              />
+              <FormField
+                name="clientSeed"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Client Seed</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter client seed..."
+                        className="input-terminal"
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-              <section className="space-y-4">
-                <SectionHeader icon={<IconNumbers size={16} />} title="Nonce range" description="Define which bets to evaluate" />
-                <div className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <FormField
-                      name="nonceStart"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Start</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              className="font-mono"
-                              value={field.value ?? ''}
-                              onChange={(event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value))}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      name="nonceEnd"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>End</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              className="font-mono"
-                              value={field.value ?? ''}
-                              onChange={(event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value))}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div className="space-y-3">
-                    <Slider
-                      min={0}
-                      max={nonceSliderMax}
-                      step={1}
-                      value={nonceSliderValue}
-                      onValueChange={handleNonceSliderChange}
-                    />
-                    <div aria-live="polite" className="text-xs text-muted-foreground">
-                      Evaluating {nonceCount.toLocaleString()} nonces
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {NONCE_PRESETS.map((preset) => (
-                        <Tooltip key={preset.label}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="h-8 px-3 text-xs"
-                              onClick={() => handleNoncePreset(preset)}
-                            >
-                              {preset.label}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Apply preset range {preset.label}.</TooltipContent>
-                        </Tooltip>
+            {/* Hash preview */}
+            {hashPreview && (
+              <div className="border border-primary/30 bg-primary/5 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-primary">SHA-256 Hash</span>
+                  <CopyableField value={hashPreview} className="flex-1" />
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* Game section */}
+          <section className="space-y-4">
+            <SectionHeader icon={<IconTarget size={16} />} label="Game" sublabel="Choose the game and configure parameters" />
+            <FormField
+              name="game"
+              render={({ field }) => <GameComboboxField field={field} availableGames={availableGames} loading={loadingGames} />}
+            />
+            {watchedGame && (
+              <div className="border border-primary/20 bg-primary/5 p-4">
+                <GameParams gameId={watchedGame} games={availableGames} />
+              </div>
+            )}
+          </section>
+
+          {/* Nonce range section */}
+          <section className="space-y-4">
+            <SectionHeader icon={<IconHash size={16} />} label="Nonce Range" sublabel="Define which bets to evaluate" />
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                name="nonceStart"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Start</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        className="input-terminal"
+                        value={field.value ?? ''}
+                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                name="nonceEnd"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-mono text-xs uppercase tracking-wider text-muted-foreground">End</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        className="input-terminal"
+                        value={field.value ?? ''}
+                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-xs text-muted-foreground">
+                Evaluating <span className="text-primary">{nonceCount.toLocaleString()}</span> nonces
+              </span>
+              <div className="flex gap-1">
+                {NONCE_PRESETS.map((preset) => (
+                  <Button
+                    key={preset.label}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 font-mono text-[10px] uppercase"
+                    onClick={() => handleNoncePreset(preset)}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Target section */}
+          <section className="space-y-4">
+            <SectionHeader icon={<IconTarget size={16} />} label="Target" sublabel="Define success criteria" />
+            <div className="grid gap-4 md:grid-cols-[1fr_200px]">
+              <FormField
+                name="targetVal"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Value</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.0001"
+                        className="input-terminal"
+                        value={field.value ?? ''}
+                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                name="targetOp"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Operator</FormLabel>
+                    <ToggleGroup
+                      type="single"
+                      value={field.value}
+                      onValueChange={(value) => value && field.onChange(value)}
+                      className="grid grid-cols-5"
+                    >
+                      {TARGET_OPERATORS.map((op) => (
+                        <ToggleGroupItem key={op.value} value={op.value} className="font-mono text-sm">
+                          {op.label}
+                        </ToggleGroupItem>
                       ))}
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section className="space-y-4">
-                <SectionHeader icon={<IconTarget size={16} />} title="Target" description="Define success criteria" />
-                <div className="grid gap-4 md:grid-cols-[240px_minmax(0,1fr)]">
-                  <FormField
-                    name="targetOp"
-                    render={({ field }) => (
-                      <FormItem className="space-y-3">
-                        <FormLabel>Operator</FormLabel>
-                        <FormDescription>Select the comparison operator.</FormDescription>
-                        <ToggleGroup
-                          type="single"
-                          value={field.value}
-                          onValueChange={(value) => value && field.onChange(value)}
-                          className="w-full"
-                        >
-                          {TARGET_OPERATORS.map((option) => (
-                            <ToggleGroupItem key={option.value} value={option.value} className="flex-1">
-                              {option.label}
-                            </ToggleGroupItem>
-                          ))}
-                        </ToggleGroup>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    name="targetVal"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Value</FormLabel>
-                        <FormDescription>Provide the metric threshold.</FormDescription>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.0001"
-                            className="font-mono"
-                            value={field.value ?? ''}
-                            onChange={(event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  name="tolerance"
-                  render={({ field }) => (
-                    <FormItem className="w-full md:w-[320px]">
-                      <FormLabel>Tolerance</FormLabel>
-                      <FormDescription>Higher tolerance widens the acceptable band.</FormDescription>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.0001"
-                          className="font-mono"
-                          value={field.value ?? ''}
-                          onChange={(event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </section>
-
-              <section className="space-y-4">
-                <SectionHeader icon={<IconGauge size={16} />} title="Constraints" description="Optional fine-tuning" />
-                <AdvancedPanel />
-              </section>
-
-              {validationErrors.length > 0 && (
-                <Alert variant="destructive" icon={<IconAlertCircle size={18} />} title="Please fix the following errors">
-                  <ul className="list-disc pl-5 text-sm">
-                    {validationErrors.map(([fieldName, error]) => (
-                      <li key={fieldName}>
-                        <span className="font-medium">{fieldName}:</span> {error?.message as string}
-                      </li>
-                    ))}
-                  </ul>
-                </Alert>
+                    </ToggleGroup>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              name="tolerance"
+              render={({ field }) => (
+                <FormItem className="max-w-xs">
+                  <FormLabel className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Tolerance</FormLabel>
+                  <FormDescription>Float comparison tolerance (default: 0)</FormDescription>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.0001"
+                      className="input-terminal"
+                      value={field.value ?? ''}
+                      onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-            </CardContent>
-          </Card>
+            />
+          </section>
 
-          <StickyActionsBar
-            isSubmitting={isSubmitting}
-            onReset={() => {
-              reset(DEFAULT_VALUES);
-              setHashPreview('');
-              setShowHashPreview(false);
-            }}
-          />
+          {/* Advanced constraints */}
+          <AdvancedPanel />
+
+          {/* Validation errors */}
+          {validationErrors.length > 0 && (
+            <div className="border border-destructive/50 bg-destructive/10 p-4">
+              <div className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-wider text-destructive">
+                <IconAlertTriangle size={14} />
+                Validation Errors
+              </div>
+              <ul className="mt-2 space-y-1">
+                {validationErrors.map(([fieldName, error]) => (
+                  <li key={fieldName} className="font-mono text-xs text-destructive/80">
+                    <span className="text-destructive">{fieldName}:</span> {error?.message as string}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-3 border-t border-border pt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                reset(DEFAULT_VALUES);
+                setHashPreview('');
+              }}
+              disabled={isSubmitting}
+              className="gap-2"
+            >
+              <IconRefresh size={14} />
+              Reset
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="btn-terminal gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <IconLoader2 size={14} className="animate-spin" />
+                  Starting...
+                </>
+              ) : (
+                <>
+                  <IconPlayerPlay size={14} />
+                  Start Scan
+                </>
+              )}
+            </Button>
+          </div>
         </form>
       </Form>
     </TooltipProvider>

@@ -24,7 +24,6 @@ import { scanFormSchema, validateGameParams } from '@/lib/validation';
 import { callWithRetry, waitForWailsBinding } from '@/lib/wails';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
 import { toast } from '@/components/ui/use-toast';
@@ -142,12 +141,14 @@ function useMetricLabel(gameId: string | undefined, games: GameInfo[]) {
 
 function SectionHeader({ icon, title, description }: { icon: ReactNode; title: string; description?: string }) {
   return (
-    <div className="flex items-center gap-2 text-sm font-semibold text-foreground/85">
-      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[hsl(var(--primary))]/12 text-[hsl(var(--primary))]">
+    <div className="flex items-center gap-3 border-b border-border pb-3">
+      <span className="flex h-8 w-8 items-center justify-center border border-primary/30 bg-primary/5 text-primary">
         {icon}
       </span>
-      <span>{title}</span>
-      {description && <span className="text-xs font-normal text-muted-foreground">{description}</span>}
+      <div>
+        <span className="font-display text-xs uppercase tracking-wider text-foreground">{title}</span>
+        {description && <p className="text-xs font-normal text-muted-foreground">{description}</p>}
+      </div>
     </div>
   );
 }
@@ -925,13 +926,17 @@ export function SeedRunWorkspace({
 
   return (
     <TooltipProvider>
-      <Card className="border border-border bg-card shadow-[var(--shadow-sm)]">
-        <CardHeader className="space-y-4 pb-4">
+      <div className="card-terminal">
+        <div className="space-y-4 border-b border-border px-6 py-4">
           <div className="flex items-center justify-between gap-4">
-            <CardTitle className="flex items-center gap-2 text-lg text-foreground">
-              <IconRepeat size={18} className="text-[hsl(var(--primary))]" aria-hidden />
-              Seed run workspace
-            </CardTitle>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center border border-primary/30 bg-primary/10 text-primary">
+                <IconRepeat size={18} />
+              </div>
+              <h2 className="font-display text-sm uppercase tracking-wider text-foreground">
+                Seed Run Workspace
+              </h2>
+            </div>
             <Button
               type="button"
               variant="ghost"
@@ -971,10 +976,10 @@ export function SeedRunWorkspace({
           {!isExpanded && (
             <p className="text-xs text-muted-foreground">Expand to build scans, tweak advanced constraints, and start new runs.</p>
           )}
-        </CardHeader>
-        <CardContent
+        </div>
+        <div
           id={contentId}
-          className={cn('space-y-8', !isExpanded && 'hidden')}
+          className={cn('space-y-8 p-6', !isExpanded && 'hidden')}
           aria-hidden={!isExpanded}
         >
           {fetchError && (
@@ -1176,8 +1181,8 @@ export function SeedRunWorkspace({
               />
             </form>
           </Form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </TooltipProvider>
   );
 }

@@ -1,8 +1,7 @@
 import { type ComponentType, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { IconCpu, IconShield, type IconProps } from '@tabler/icons-react';
+import { type IconProps } from '@tabler/icons-react';
 
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
@@ -49,8 +48,19 @@ export function MiniNavRail({ items }: MiniNavRailProps) {
 
   return (
     <TooltipProvider>
-      <aside className="sticky top-0 z-40 hidden h-[100dvh] w-[var(--rail-width,60px)] shrink-0 border-r border-border/70 bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))] md:flex md:flex-col md:items-center md:justify-between">
-        <nav className="flex flex-col items-center gap-2 py-5">
+      <aside className="sticky top-0 z-40 hidden h-[100dvh] w-16 shrink-0 flex-col border-r border-border bg-sidebar md:flex">
+        {/* Logo area */}
+        <div className="flex h-16 items-center justify-center border-b border-border">
+          <div className="relative flex h-9 w-9 items-center justify-center">
+            {/* Terminal bracket logo */}
+            <span className="font-mono text-lg font-bold text-primary glow-sm">[</span>
+            <span className="font-mono text-lg font-bold text-foreground">P</span>
+            <span className="font-mono text-lg font-bold text-primary glow-sm">]</span>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex flex-1 flex-col items-center gap-1 py-4">
           {items.map((item, index) => {
             const active =
               location.pathname === item.path ||
@@ -64,68 +74,70 @@ export function MiniNavRail({ items }: MiniNavRailProps) {
                     type="button"
                     aria-label={item.label}
                     className={cn(
-                      'group relative flex h-12 w-12 items-center justify-center rounded-lg border border-transparent text-[hsl(var(--sidebar-foreground))]/75 transition-colors hover:text-[hsl(var(--primary))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--sidebar))]',
-                      active &&
-                        'border-[hsl(var(--primary))]/50 bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]',
+                      'group relative flex h-11 w-11 items-center justify-center transition-all duration-200',
+                      active
+                        ? 'text-primary'
+                        : 'text-muted-foreground hover:text-foreground'
                     )}
                     onClick={() => navigate(item.path)}
                   >
+                    {/* Active indicator */}
+                    {active && (
+                      <span className="absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 bg-primary shadow-glow" />
+                    )}
+
+                    {/* Icon container */}
                     <span
                       className={cn(
-                        'pointer-events-none absolute left-1 top-2 bottom-2 w-1 rounded-full bg-[hsl(var(--primary))] opacity-0 transition-opacity',
-                        active && 'opacity-100',
-                        !active && 'group-hover:opacity-40',
+                        'flex h-9 w-9 items-center justify-center border transition-all duration-200',
+                        active
+                          ? 'border-primary/50 bg-primary/10 shadow-glow'
+                          : 'border-transparent bg-transparent group-hover:border-border group-hover:bg-muted/50'
                       )}
-                    />
-                    <item.icon size={18} strokeWidth={1.9} />
+                      style={{ borderRadius: 'var(--radius)' }}
+                    >
+                      <item.icon size={18} strokeWidth={1.8} />
+                    </span>
+
+                    {/* Badge */}
                     {item.badge ? (
-                      <span className="absolute right-1 top-1 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[hsl(var(--accent))] px-1 text-[10px] font-semibold text-[hsl(var(--accent-foreground))]">
+                      <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-sm bg-hit px-1 text-[9px] font-bold text-background">
                         {item.badge}
                       </span>
                     ) : null}
-                    <span className="sr-only">Shortcut {shortcut}</span>
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-medium">{item.label}</span>
-                    {item.description ? (
-                      <span className="max-w-[18rem] text-xs text-muted-foreground">
-                        {item.description}
-                      </span>
-                    ) : null}
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground/80">
-                      {shortcut}
-                    </span>
-                  </div>
+                <TooltipContent side="right" className="flex flex-col gap-1">
+                  <span className="font-display text-xs uppercase tracking-wider">{item.label}</span>
+                  {item.description && (
+                    <span className="max-w-[200px] text-xs text-muted-foreground">{item.description}</span>
+                  )}
+                  <span className="mt-1 font-mono text-[10px] text-muted-foreground">{shortcut}</span>
                 </TooltipContent>
               </Tooltip>
             );
           })}
         </nav>
 
-        <div className="flex flex-col items-center gap-3 pb-4">
+        {/* Footer status */}
+        <div className="flex flex-col items-center gap-3 border-t border-border py-4">
+          {/* Status indicator */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex h-9 w-9 items-center justify-center rounded-md border border-transparent bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))]/70 transition-colors hover:border-[hsl(var(--accent))]/40 hover:text-[hsl(var(--accent))]">
-                <IconShield size={16} strokeWidth={1.8} />
-                <span className="sr-only">Local only runtime</span>
+              <div className="flex h-9 w-9 items-center justify-center">
+                <span className="status-dot online" />
               </div>
             </TooltipTrigger>
-            <TooltipContent side="right">Local only – your seeds stay on this device.</TooltipContent>
+            <TooltipContent side="right">
+              <span className="text-xs">System operational</span>
+            </TooltipContent>
           </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex h-9 w-9 items-center justify-center rounded-md border border-transparent bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))]/70 transition-colors hover:border-[hsl(var(--primary))]/40 hover:text-[hsl(var(--primary))]">
-                <IconCpu size={16} strokeWidth={1.8} />
-                <span className="sr-only">High performance mode</span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="right">High performance mode is enabled.</TooltipContent>
-          </Tooltip>
-
-          <ThemeToggle />
+          {/* Version indicator */}
+          <div className="flex flex-col items-center">
+            <span className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground">VER</span>
+            <span className="font-mono text-[10px] text-primary">1.0</span>
+          </div>
         </div>
       </aside>
     </TooltipProvider>

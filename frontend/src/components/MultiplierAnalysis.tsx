@@ -1,7 +1,5 @@
 import { useMemo } from 'react';
 import {
-  Area,
-  AreaChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -23,12 +21,8 @@ interface MultiplierStreamProps {
 
 export function MultiplierStream({ bets, targetMultiplier, className }: MultiplierStreamProps) {
   const data = useMemo(() => {
-    // Sort bets by nonce ascending for the chart
     const sorted = [...bets].sort((a, b) => a.nonce - b.nonce);
-    
-    // Take last 100 for the stream view
     const recent = sorted.slice(-100);
-    
     return recent.map((bet) => ({
       nonce: bet.nonce,
       multiplier: bet.round_result,
@@ -38,13 +32,12 @@ export function MultiplierStream({ bets, targetMultiplier, className }: Multipli
 
   const stats = useMemo(() => {
     if (!data.length) return null;
-    
-    const hits = data.filter(d => d.isHit);
-    const lastHitIndex = data.findLastIndex(d => d.isHit);
+
+    const hits = data.filter((d) => d.isHit);
+    const lastHitIndex = data.findLastIndex((d) => d.isHit);
     const sinceLastHit = lastHitIndex >= 0 ? data.length - 1 - lastHitIndex : data.length;
-    
-    // Calculate average gap between hits
-    const hitIndices = data.map((d, i) => d.isHit ? i : -1).filter(i => i >= 0);
+
+    const hitIndices = data.map((d, i) => (d.isHit ? i : -1)).filter((i) => i >= 0);
     let avgGap = 0;
     if (hitIndices.length > 1) {
       const gaps = hitIndices.slice(1).map((idx, i) => idx - hitIndices[i]);
@@ -55,79 +48,78 @@ export function MultiplierStream({ bets, targetMultiplier, className }: Multipli
       totalHits: hits.length,
       sinceLastHit,
       avgGap: Math.round(avgGap),
-      hitRate: (hits.length / data.length * 100).toFixed(1),
+      hitRate: ((hits.length / data.length) * 100).toFixed(1),
     };
   }, [data]);
 
   const maxMultiplier = useMemo(() => {
     if (!data.length) return targetMultiplier;
-    return Math.max(...data.map(d => d.multiplier), targetMultiplier);
+    return Math.max(...data.map((d) => d.multiplier), targetMultiplier);
   }, [data, targetMultiplier]);
 
   return (
-    <div className={cn("rounded-xl border border-white/5 bg-card/40 backdrop-blur-md overflow-hidden", className)}>
-      {/* Header with key stats */}
-      <div className="border-b border-white/5 px-4 py-3">
+    <div className={cn('card-terminal overflow-hidden', className)}>
+      {/* Header */}
+      <div className="border-b border-border px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/10 text-amber-400 ring-1 ring-amber-500/20">
-              <IconTrendingUp size={18} />
+            <div className="flex h-8 w-8 items-center justify-center border border-hit/30 bg-hit/10 text-hit">
+              <IconTrendingUp size={16} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-foreground">Multiplier Stream</h3>
-              <p className="text-[10px] text-muted-foreground">Last {data.length} results • Target: {targetMultiplier}×</p>
+              <h3 className="font-display text-xs uppercase tracking-wider text-foreground">Multiplier Stream</h3>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                Last {data.length} • Target: {targetMultiplier}×
+              </p>
             </div>
           </div>
-          
+
           {stats && (
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Since Last Hit</div>
-                <div className={cn(
-                  "text-xl font-bold font-mono",
-                  stats.sinceLastHit > stats.avgGap * 1.5 ? "text-amber-400" : "text-foreground"
-                )}>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Since Last</div>
+                <div
+                  className={cn(
+                    'font-mono text-xl font-bold',
+                    stats.sinceLastHit > stats.avgGap * 1.5 ? 'text-hit hit-glow' : 'text-foreground'
+                  )}
+                >
                   {stats.sinceLastHit}
                 </div>
               </div>
-              <div className="h-8 w-px bg-white/10" />
+              <div className="h-8 w-px bg-border" />
               <div className="text-right">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Avg Gap</div>
-                <div className="text-xl font-bold font-mono text-muted-foreground">{stats.avgGap || '—'}</div>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Avg Gap</div>
+                <div className="font-mono text-xl font-bold text-muted-foreground">{stats.avgGap || '—'}</div>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Visual Stream - Bar chart showing multipliers */}
+      {/* Chart */}
       <div className="px-4 py-4">
         <div className="h-[140px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} barCategoryGap={1}>
-              <XAxis 
-                dataKey="nonce" 
-                tick={false}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis 
+              <XAxis dataKey="nonce" tick={false} axisLine={false} tickLine={false} />
+              <YAxis
                 domain={[0, Math.min(maxMultiplier * 1.1, 1000)]}
-                tick={{ fontSize: 9, fill: 'var(--muted-foreground)' }}
+                tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
                 tickLine={false}
                 axisLine={false}
                 width={30}
-                tickFormatter={(val: number) => val >= 100 ? `${Math.round(val)}` : val.toFixed(1)}
+                tickFormatter={(val: number) => (val >= 100 ? `${Math.round(val)}` : val.toFixed(1))}
               />
-              <ReferenceLine y={targetMultiplier} stroke="rgba(251, 191, 36, 0.5)" strokeDasharray="3 3" />
+              <ReferenceLine y={targetMultiplier} stroke="hsl(var(--hit) / 0.5)" strokeDasharray="3 3" />
               <Tooltip
                 content={({ active, payload }: any) => {
                   if (active && payload && payload.length) {
                     const d = payload[0].payload;
                     return (
-                      <div className="rounded-lg border border-white/10 bg-popover/95 p-2 shadow-xl backdrop-blur-md">
-                        <p className="text-[10px] text-muted-foreground">Nonce #{d.nonce}</p>
-                        <p className={cn("text-sm font-bold font-mono", d.isHit ? "text-amber-400" : "text-foreground")}>
+                      <div className="border border-border bg-popover p-2 shadow-lg">
+                        <p className="font-mono text-[10px] text-muted-foreground">Nonce #{d.nonce}</p>
+                        <p className={cn('font-mono text-sm font-bold', d.isHit ? 'text-hit' : 'text-foreground')}>
                           {d.multiplier.toFixed(2)}×
                         </p>
                       </div>
@@ -136,12 +128,9 @@ export function MultiplierStream({ bets, targetMultiplier, className }: Multipli
                   return null;
                 }}
               />
-              <Bar dataKey="multiplier" radius={[2, 2, 0, 0]}>
+              <Bar dataKey="multiplier" radius={[1, 1, 0, 0]}>
                 {data.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={entry.isHit ? 'rgb(251, 191, 36)' : 'rgba(255, 255, 255, 0.15)'}
-                  />
+                  <Cell key={`cell-${index}`} fill={entry.isHit ? 'hsl(var(--hit))' : 'hsl(var(--muted))'}/>
                 ))}
               </Bar>
             </BarChart>
@@ -149,20 +138,20 @@ export function MultiplierStream({ bets, targetMultiplier, className }: Multipli
         </div>
       </div>
 
-      {/* Quick Stats Footer */}
+      {/* Footer Stats */}
       {stats && (
-        <div className="grid grid-cols-3 gap-px bg-white/5">
-          <div className="bg-card/60 px-4 py-3 text-center">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Hits</div>
-            <div className="text-lg font-bold text-amber-400">{stats.totalHits}</div>
+        <div className="grid grid-cols-3 gap-px border-t border-border bg-border">
+          <div className="bg-card px-4 py-3 text-center">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Hits</div>
+            <div className="font-mono text-lg font-bold text-hit">{stats.totalHits}</div>
           </div>
-          <div className="bg-card/60 px-4 py-3 text-center">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Hit Rate</div>
-            <div className="text-lg font-bold text-foreground">{stats.hitRate}%</div>
+          <div className="bg-card px-4 py-3 text-center">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Hit Rate</div>
+            <div className="font-mono text-lg font-bold text-foreground">{stats.hitRate}%</div>
           </div>
-          <div className="bg-card/60 px-4 py-3 text-center">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Target</div>
-            <div className="text-lg font-bold text-primary">{targetMultiplier}×</div>
+          <div className="bg-card px-4 py-3 text-center">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Target</div>
+            <div className="font-mono text-lg font-bold text-primary glow-sm">{targetMultiplier}×</div>
           </div>
         </div>
       )}
@@ -179,8 +168,8 @@ interface GapAnalysisProps {
 export function GapAnalysis({ bets, targetMultiplier, className }: GapAnalysisProps) {
   const analysis = useMemo(() => {
     const sorted = [...bets].sort((a, b) => a.nonce - b.nonce);
-    const hits = sorted.filter(b => b.round_result >= targetMultiplier);
-    
+    const hits = sorted.filter((b) => b.round_result >= targetMultiplier);
+
     if (hits.length < 2) {
       return { gaps: [], avgGap: 0, maxGap: 0, minGap: 0, currentStreak: sorted.length };
     }
@@ -195,7 +184,7 @@ export function GapAnalysis({ bets, targetMultiplier, className }: GapAnalysisPr
     const currentStreak = lastBetNonce - lastHitNonce;
 
     return {
-      gaps: gaps.slice(-20), // Last 20 gaps for display
+      gaps: gaps.slice(-20),
       avgGap: Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length),
       maxGap: Math.max(...gaps),
       minGap: Math.min(...gaps),
@@ -206,75 +195,70 @@ export function GapAnalysis({ bets, targetMultiplier, className }: GapAnalysisPr
   const heatLevel = useMemo(() => {
     if (!analysis.avgGap) return 0;
     const ratio = analysis.currentStreak / analysis.avgGap;
-    if (ratio >= 1.5) return 3; // HOT
-    if (ratio >= 1.0) return 2; // WARM
-    if (ratio >= 0.5) return 1; // COOL
-    return 0; // COLD
+    if (ratio >= 1.5) return 3;
+    if (ratio >= 1.0) return 2;
+    if (ratio >= 0.5) return 1;
+    return 0;
   }, [analysis]);
 
   const heatConfig = [
-    { label: 'Cold', color: 'text-blue-400', bg: 'bg-blue-500/20', ring: 'ring-blue-500/30' },
-    { label: 'Cool', color: 'text-cyan-400', bg: 'bg-cyan-500/20', ring: 'ring-cyan-500/30' },
-    { label: 'Warm', color: 'text-orange-400', bg: 'bg-orange-500/20', ring: 'ring-orange-500/30' },
-    { label: 'Hot', color: 'text-red-400', bg: 'bg-red-500/20', ring: 'ring-red-500/30', pulse: true },
+    { label: 'Cold', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30' },
+    { label: 'Cool', color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/30' },
+    { label: 'Warm', color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/30' },
+    { label: 'Hot', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30', pulse: true },
   ][heatLevel];
 
   return (
-    <div className={cn("rounded-xl border border-white/5 bg-card/40 backdrop-blur-md", className)}>
-      <div className="border-b border-white/5 px-4 py-3">
+    <div className={cn('card-terminal', className)}>
+      <div className="border-b border-border px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg ring-1", heatConfig.bg, heatConfig.ring, heatConfig.color)}>
-              <IconFlame size={18} className={heatConfig.pulse ? 'animate-pulse' : ''} />
+            <div className={cn('flex h-8 w-8 items-center justify-center border', heatConfig.border, heatConfig.bg, heatConfig.color)}>
+              <IconFlame size={16} className={heatConfig.pulse ? 'animate-pulse' : ''} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-foreground">Gap Analysis</h3>
-              <p className="text-[10px] text-muted-foreground">Predicting next {targetMultiplier}× occurrence</p>
+              <h3 className="font-display text-xs uppercase tracking-wider text-foreground">Gap Analysis</h3>
+              <p className="font-mono text-[10px] text-muted-foreground">Predicting next {targetMultiplier}×</p>
             </div>
           </div>
-          <div className={cn("rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider", heatConfig.bg, heatConfig.color)}>
-            {heatConfig.label}
-          </div>
+          <span className={cn('font-mono text-[10px] uppercase tracking-widest', heatConfig.color)}>{heatConfig.label}</span>
         </div>
       </div>
 
-      <div className="p-4 space-y-4">
-        {/* Current Streak Indicator */}
-        <div className="relative">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-muted-foreground">Current Streak</span>
-            <span className="text-xs text-muted-foreground">Avg: {analysis.avgGap}</span>
+      <div className="space-y-4 p-4">
+        {/* Current Streak Progress */}
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Current Streak</span>
+            <span className="font-mono text-[10px] text-muted-foreground">Avg: {analysis.avgGap}</span>
           </div>
-          <div className="h-3 w-full rounded-full bg-white/5 overflow-hidden">
-            <div 
+          <div className="h-2 w-full overflow-hidden border border-border bg-muted/30">
+            <div
               className={cn(
-                "h-full rounded-full transition-all duration-500",
-                heatLevel >= 2 ? "bg-gradient-to-r from-orange-500 to-red-500" : "bg-gradient-to-r from-blue-500 to-cyan-500"
+                'h-full transition-all duration-500',
+                heatLevel >= 2 ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-primary to-cyan-400'
               )}
               style={{ width: `${Math.min((analysis.currentStreak / (analysis.avgGap * 2)) * 100, 100)}%` }}
             />
           </div>
-          <div className="flex items-center justify-between mt-1">
-            <span className={cn("text-2xl font-bold font-mono", heatConfig.color)}>{analysis.currentStreak}</span>
-            <span className="text-xs text-muted-foreground">/ {analysis.avgGap * 2} max expected</span>
+          <div className="mt-1 flex items-center justify-between">
+            <span className={cn('font-mono text-2xl font-bold', heatConfig.color)}>{analysis.currentStreak}</span>
+            <span className="font-mono text-[10px] text-muted-foreground">/ {analysis.avgGap * 2} max expected</span>
           </div>
         </div>
 
-        {/* Gap History Mini Chart */}
+        {/* Gap History */}
         {analysis.gaps.length > 0 && (
           <div>
-            <div className="text-xs text-muted-foreground mb-2">Recent Gap History</div>
-            <div className="flex items-end gap-0.5 h-12">
+            <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Gap History</div>
+            <div className="flex h-12 items-end gap-0.5">
               {analysis.gaps.map((gap, i) => {
                 const height = Math.min((gap / analysis.maxGap) * 100, 100);
                 const isRecent = i >= analysis.gaps.length - 3;
                 return (
                   <div
                     key={i}
-                    className={cn(
-                      "flex-1 rounded-t transition-all",
-                      isRecent ? "bg-primary" : "bg-white/20"
-                    )}
+                    className={cn('flex-1 transition-all', isRecent ? 'bg-primary' : 'bg-muted')}
                     style={{ height: `${Math.max(height, 10)}%` }}
                     title={`Gap: ${gap}`}
                   />
@@ -286,17 +270,17 @@ export function GapAnalysis({ bets, targetMultiplier, className }: GapAnalysisPr
 
         {/* Stats Grid */}
         <div className="grid grid-cols-3 gap-2">
-          <div className="rounded-lg bg-white/5 p-2 text-center">
-            <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Min</div>
-            <div className="text-sm font-bold font-mono text-foreground">{analysis.minGap || '—'}</div>
+          <div className="bg-muted/30 p-2 text-center">
+            <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Min</div>
+            <div className="font-mono text-sm font-bold text-foreground">{analysis.minGap || '—'}</div>
           </div>
-          <div className="rounded-lg bg-white/5 p-2 text-center">
-            <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Avg</div>
-            <div className="text-sm font-bold font-mono text-foreground">{analysis.avgGap || '—'}</div>
+          <div className="bg-muted/30 p-2 text-center">
+            <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Avg</div>
+            <div className="font-mono text-sm font-bold text-foreground">{analysis.avgGap || '—'}</div>
           </div>
-          <div className="rounded-lg bg-white/5 p-2 text-center">
-            <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Max</div>
-            <div className="text-sm font-bold font-mono text-foreground">{analysis.maxGap || '—'}</div>
+          <div className="bg-muted/30 p-2 text-center">
+            <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Max</div>
+            <div className="font-mono text-sm font-bold text-foreground">{analysis.maxGap || '—'}</div>
           </div>
         </div>
       </div>
@@ -313,38 +297,40 @@ interface RecentHitsProps {
 export function RecentHits({ bets, targetMultiplier, className }: RecentHitsProps) {
   const hits = useMemo(() => {
     return bets
-      .filter(b => b.round_result >= targetMultiplier)
+      .filter((b) => b.round_result >= targetMultiplier)
       .sort((a, b) => b.nonce - a.nonce)
       .slice(0, 10);
   }, [bets, targetMultiplier]);
 
   return (
-    <div className={cn("rounded-xl border border-white/5 bg-card/40 backdrop-blur-md", className)}>
-      <div className="border-b border-white/5 px-4 py-3">
+    <div className={cn('card-terminal', className)}>
+      <div className="border-b border-border px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/20 to-green-500/10 text-emerald-400 ring-1 ring-emerald-500/20">
-            <IconTarget size={18} />
+          <div className="flex h-8 w-8 items-center justify-center border border-primary/30 bg-primary/10 text-primary">
+            <IconTarget size={16} />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-foreground">Recent Hits</h3>
-            <p className="text-[10px] text-muted-foreground">Last {hits.length} times ≥ {targetMultiplier}×</p>
+            <h3 className="font-display text-xs uppercase tracking-wider text-foreground">Recent Hits</h3>
+            <p className="font-mono text-[10px] text-muted-foreground">
+              Last {hits.length} times ≥ {targetMultiplier}×
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="divide-y divide-white/5">
+      <div className="divide-y divide-border">
         {hits.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+          <div className="px-4 py-8 text-center font-mono text-sm text-muted-foreground">
             No hits above {targetMultiplier}× yet
           </div>
         ) : (
           hits.map((hit, i) => (
-            <div key={hit.id} className="flex items-center justify-between px-4 py-2 hover:bg-white/[0.02] transition-colors">
+            <div key={hit.id} className="data-row flex items-center justify-between px-4 py-2">
               <div className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground w-4">{i + 1}</span>
+                <span className="w-4 font-mono text-xs text-muted-foreground">{i + 1}</span>
                 <span className="font-mono text-sm text-foreground">#{hit.nonce.toLocaleString()}</span>
               </div>
-              <span className="font-mono text-sm font-bold text-amber-400">{hit.round_result.toFixed(2)}×</span>
+              <span className="font-mono text-sm font-bold text-hit hit-glow">{hit.round_result.toFixed(2)}×</span>
             </div>
           ))
         )}

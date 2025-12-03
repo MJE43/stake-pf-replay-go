@@ -1,13 +1,6 @@
 import { store } from '@wails/go/models';
-import {
-  IconClock,
-  IconTarget,
-  IconHash,
-  IconDice,
-  IconTrendingUp,
-} from '@tabler/icons-react';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { IconClock, IconTarget, IconHash, IconDice, IconTrendingUp } from '@tabler/icons-react';
+import { cn } from '@/lib/utils';
 
 interface RunSummaryProps {
   run: store.Run;
@@ -30,127 +23,125 @@ export function RunSummary({ run }: RunSummaryProps) {
   };
 
   return (
-    <Card className="border border-border bg-card shadow-[var(--shadow-sm)]">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg text-foreground">
-          <IconTrendingUp size={20} className="text-[hsl(var(--primary))]" />
-          Scan Summary
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <section className="grid gap-6 md:grid-cols-2">
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Scan Parameters</h3>
-            <div className="flex items-center gap-2 text-sm text-foreground/80">
-              <IconDice size={16} className="text-[hsl(var(--primary))]" />
-              <span className="font-medium">Game:</span>
-              <Badge className="border border-[hsl(var(--primary))]/40 bg-[hsl(var(--primary))]/15 uppercase text-[hsl(var(--primary))]">
-                {run.game}
-              </Badge>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-foreground/80">
-              <IconHash size={16} className="text-[hsl(var(--primary))]" />
-              <span className="font-medium">Server Seed Hash:</span>
-              <span className="font-mono text-xs text-muted-foreground">{run.server_seed_hash.substring(0, 16)}...</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-foreground/80">
-              <span className="font-medium">Client Seed:</span>
-              <span className="font-mono text-xs text-muted-foreground">{run.client_seed}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-foreground/80">
-              <span className="font-medium">Nonce Range:</span>
-              <span>
-                {run.nonce_start.toLocaleString()} - {run.nonce_end.toLocaleString()}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-foreground/80">
-              <IconTarget size={16} className="text-[hsl(var(--primary))]" />
-              <span className="font-medium">Target:</span>
-              <span>
-                {run.target_op} {run.target_val} (±{run.tolerance})
-              </span>
-            </div>
-            {Object.keys(parsedParams).length > 0 && (
-              <div className="text-sm text-foreground/80">
-                <span className="font-medium">Game Parameters:</span>{' '}
-                <span className="font-mono text-xs text-muted-foreground">
-                  {JSON.stringify(parsedParams)}
-                </span>
-              </div>
-            )}
+    <div className="card-terminal">
+      {/* Header */}
+      <div className="border-b border-border px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center border border-primary/30 bg-primary/10 text-primary">
+            <IconTrendingUp size={20} />
           </div>
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Execution Metadata</h3>
-            <div className="flex items-center gap-2 text-sm text-foreground/80">
-              <IconClock size={16} className="text-[hsl(var(--primary))]" />
-              <span className="font-medium">Created:</span>
-              <span>{createdDate}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-foreground/80">
-              <span className="font-medium">Engine Version:</span>
-              <Badge variant="outline" className="border-border text-muted-foreground">
-                {run.engine_version}
-              </Badge>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-foreground/80">
-              <span className="font-medium">Status:</span>
-              <Badge
-                className={
-                  run.timed_out
-                    ? 'border border-amber-400/60 bg-amber-500/15 text-amber-200'
-                    : 'border border-emerald-500/40 bg-emerald-500/15 text-emerald-200'
-                }
-              >
-                {run.timed_out ? 'Timed Out' : 'Completed'}
-              </Badge>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-foreground/80">
-              <span className="font-medium">Hit Limit:</span>
-              <span>{run.hit_limit.toLocaleString()}</span>
-            </div>
+          <div>
+            <h2 className="font-display text-sm uppercase tracking-wider text-foreground">Scan Summary</h2>
+            <p className="text-xs text-muted-foreground">Run ID: {run.id}</p>
           </div>
-        </section>
+        </div>
+      </div>
 
-        <section className="space-y-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Statistics</h3>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="Total Evaluated"
-              value={run.total_evaluated.toLocaleString()}
-              tone="text-[hsl(var(--primary))]"
-            />
-            <StatCard label="Hits Found" value={run.hit_count.toLocaleString()} tone="text-emerald-200" />
-            <StatCard label="Hit Rate" value={`${hitRate.toFixed(4)}%`} tone="text-amber-200" />
-            <StatCard
-              label="Summary Count"
-              value={run.summary_count ? run.summary_count.toLocaleString() : 'N/A'}
-              tone="text-[hsl(var(--chart-2))]"
-            />
+      {/* Content */}
+      <div className="space-y-6 p-6">
+        {/* Parameters & Metadata Grid */}
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Scan Parameters */}
+          <div className="space-y-3">
+            <h3 className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Scan Parameters</h3>
+            <div className="space-y-2">
+              <DataRow icon={<IconDice size={14} />} label="Game">
+                <span className="badge-terminal">{run.game.toUpperCase()}</span>
+              </DataRow>
+              <DataRow icon={<IconHash size={14} />} label="Server Hash">
+                <code className="font-mono text-xs text-muted-foreground">{run.server_seed_hash.substring(0, 16)}...</code>
+              </DataRow>
+              <DataRow label="Client Seed">
+                <code className="font-mono text-xs text-foreground">{run.client_seed}</code>
+              </DataRow>
+              <DataRow label="Nonce Range">
+                <span className="font-mono text-xs">
+                  {run.nonce_start.toLocaleString()} → {run.nonce_end.toLocaleString()}
+                </span>
+              </DataRow>
+              <DataRow icon={<IconTarget size={14} />} label="Target">
+                <span className="font-mono text-xs">
+                  {run.target_op} <span className="text-hit">{run.target_val}</span> ±{run.tolerance}
+                </span>
+              </DataRow>
+              {Object.keys(parsedParams).length > 0 && (
+                <DataRow label="Game Params">
+                  <code className="font-mono text-[10px] text-muted-foreground">{JSON.stringify(parsedParams)}</code>
+                </DataRow>
+              )}
+            </div>
           </div>
+
+          {/* Execution Metadata */}
+          <div className="space-y-3">
+            <h3 className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Execution Metadata</h3>
+            <div className="space-y-2">
+              <DataRow icon={<IconClock size={14} />} label="Created">
+                <span className="text-xs">{createdDate}</span>
+              </DataRow>
+              <DataRow label="Engine Version">
+                <code className="border border-border bg-muted/30 px-2 py-0.5 font-mono text-[10px]">{run.engine_version}</code>
+              </DataRow>
+              <DataRow label="Status">
+                {run.timed_out ? (
+                  <span className="border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] uppercase text-amber-400">Timed Out</span>
+                ) : (
+                  <span className="border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] uppercase text-primary">Completed</span>
+                )}
+              </DataRow>
+              <DataRow label="Hit Limit">
+                <span className="font-mono text-xs">{run.hit_limit.toLocaleString()}</span>
+              </DataRow>
+            </div>
+          </div>
+        </div>
+
+        {/* Statistics */}
+        <div className="space-y-4">
+          <h3 className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Statistics</h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard label="Total Evaluated" value={run.total_evaluated.toLocaleString()} color="text-primary" />
+            <StatCard label="Hits Found" value={run.hit_count.toLocaleString()} color="text-hit" />
+            <StatCard label="Hit Rate" value={`${hitRate.toFixed(4)}%`} color="text-copper" />
+            <StatCard label="Summary Count" value={run.summary_count ? run.summary_count.toLocaleString() : 'N/A'} color="text-blue-400" />
+          </div>
+
           {(run.summary_min !== undefined || run.summary_max !== undefined || run.summary_sum !== undefined) && (
-            <div className="grid gap-4 sm:grid-cols-3">
-              <StatCard label="Min Metric" value={formatNumber(run.summary_min)} tone="text-destructive" />
-              <StatCard label="Max Metric" value={formatNumber(run.summary_max)} tone="text-teal-200" />
-              <StatCard label="Sum Metric" value={formatNumber(run.summary_sum)} tone="text-[hsl(var(--primary))]" />
+            <div className="grid gap-3 sm:grid-cols-3">
+              <StatCard label="Min Metric" value={formatNumber(run.summary_min)} color="text-destructive" />
+              <StatCard label="Max Metric" value={formatNumber(run.summary_max)} color="text-primary" />
+              <StatCard label="Sum Metric" value={formatNumber(run.summary_sum)} color="text-foreground" />
             </div>
           )}
-        </section>
-      </CardContent>
-    </Card>
+        </div>
+      </div>
+    </div>
   );
 }
 
-type StatCardProps = {
+function DataRow({
+  icon,
+  label,
+  children,
+}: {
+  icon?: React.ReactNode;
   label: string;
-  value: string;
-  tone: string;
-};
-
-function StatCard({ label, value, tone }: StatCardProps) {
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex flex-col items-center gap-1 rounded-none border border-border bg-secondary/60 p-4 text-center shadow-[var(--shadow-xs)]">
-      <span className={`text-xl font-semibold ${tone}`}>{value}</span>
-      <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
+    <div className="flex items-center gap-2 text-sm">
+      {icon && <span className="text-primary">{icon}</span>}
+      <span className="text-muted-foreground">{label}:</span>
+      {children}
+    </div>
+  );
+}
+
+function StatCard({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className="flex flex-col items-center gap-1 border border-border bg-muted/20 p-4 text-center">
+      <span className={cn('font-mono text-xl font-bold', color)}>{value}</span>
+      <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{label}</span>
     </div>
   );
 }
