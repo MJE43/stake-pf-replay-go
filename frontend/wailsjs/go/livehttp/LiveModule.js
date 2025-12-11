@@ -22,8 +22,20 @@ export function GetBetsPage(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['livehttp']['LiveModule']['GetBetsPage'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function GetRecentRounds(arg1, arg2) {
+  return window['go']['livehttp']['LiveModule']['GetRecentRounds'](arg1, arg2);
+}
+
+export function GetRoundsPage(arg1, arg2, arg3, arg4) {
+  return window['go']['livehttp']['LiveModule']['GetRoundsPage'](arg1, arg2, arg3, arg4);
+}
+
 export function GetStream(arg1) {
   return window['go']['livehttp']['LiveModule']['GetStream'](arg1);
+}
+
+export function GetStreamWithRounds(arg1, arg2) {
+  return window['go']['livehttp']['LiveModule']['GetStreamWithRounds'](arg1, arg2);
 }
 
 export function IngestInfo() {
@@ -44,6 +56,10 @@ export function Startup(arg1) {
 
 export function Tail(arg1, arg2, arg3) {
   return window['go']['livehttp']['LiveModule']['Tail'](arg1, arg2, arg3);
+}
+
+export function TailRounds(arg1, arg2, arg3) {
+  return window['go']['livehttp']['LiveModule']['TailRounds'](arg1, arg2, arg3);
 }
 
 export function UpdateNotes(arg1, arg2) {

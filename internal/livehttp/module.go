@@ -182,6 +182,78 @@ func (m *LiveModule) EmitManualTick(streamID string) {
 	runtime.EventsEmit(m.ctx, "live:newrows:"+streamID, map[string]any{"manual": true})
 }
 
-// **Next file suggestion:** wire the module into your Wails app lifecycle so it starts automatically.
-// I’ll provide `cmd/app/main.go` (or adjust your existing `main.go`) to construct `LiveModule`,
-// call `Startup` in `OnStartup`, `Shutdown` in `OnShutdown`, and bind the module so the frontend can call its methods.
+// ------------- Round-related methods (heartbeat data) -------------
+
+// RoundsPage is a convenience wrapper for paginated rounds.
+type RoundsPage struct {
+	Rows  []livestore.LiveRound `json:"rows"`
+	Total int64                 `json:"total"`
+}
+
+// GetRecentRounds returns the most recent N rounds for a stream (for pattern visualization).
+func (m *LiveModule) GetRecentRounds(streamID string, limit int) ([]livestore.LiveRound, error) {
+	id, err := uuid.Parse(streamID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid stream id: %w", err)
+	}
+	return m.store.GetRecentRounds(m.ctx, id, limit)
+}
+
+// GetRoundsPage returns paginated rounds with optional min_result filter.
+func (m *LiveModule) GetRoundsPage(streamID string, minResult float64, limit int, offset int) (RoundsPage, error) {
+	id, err := uuid.Parse(streamID)
+	if err != nil {
+		return RoundsPage{}, fmt.Errorf("invalid stream id: %w", err)
+	}
+	rows, total, err := m.store.ListRounds(m.ctx, id, minResult, limit, offset)
+	if err != nil {
+		return RoundsPage{}, err
+	}
+	return RoundsPage{Rows: rows, Total: total}, nil
+}
+
+// TailRoundsResponse contains rounds since a given nonce.
+type TailRoundsResponse struct {
+	Rows      []livestore.LiveRound `json:"rows"`
+	LastNonce int64                 `json:"lastNonce"`
+}
+
+// TailRounds returns rounds with nonce > sinceNonce for live updates.
+func (m *LiveModule) TailRounds(streamID string, sinceNonce int64, limit int) (TailRoundsResponse, error) {
+	id, err := uuid.Parse(streamID)
+	if err != nil {
+		return TailRoundsResponse{}, fmt.Errorf("invalid stream id: %w", err)
+	}
+	rows, err := m.store.TailRounds(m.ctx, id, sinceNonce, limit)
+	if err != nil {
+		return TailRoundsResponse{}, err
+	}
+	lastNonce := sinceNonce
+	if len(rows) > 0 {
+		lastNonce = rows[len(rows)-1].Nonce
+	}
+	return TailRoundsResponse{Rows: rows, LastNonce: lastNonce}, nil
+}
+
+// StreamWithRounds combines stream metadata with recent rounds in one call.
+type StreamWithRounds struct {
+	Stream livestore.LiveStream  `json:"stream"`
+	Rounds []livestore.LiveRound `json:"rounds"`
+}
+
+// GetStreamWithRounds returns stream details plus recent rounds for initial dashboard load.
+func (m *LiveModule) GetStreamWithRounds(streamID string, roundsLimit int) (StreamWithRounds, error) {
+	id, err := uuid.Parse(streamID)
+	if err != nil {
+		return StreamWithRounds{}, fmt.Errorf("invalid stream id: %w", err)
+	}
+	stream, err := m.store.GetStream(m.ctx, id)
+	if err != nil {
+		return StreamWithRounds{}, err
+	}
+	rounds, err := m.store.GetRecentRounds(m.ctx, id, roundsLimit)
+	if err != nil {
+		return StreamWithRounds{}, err
+	}
+	return StreamWithRounds{Stream: stream, Rounds: rounds}, nil
+}

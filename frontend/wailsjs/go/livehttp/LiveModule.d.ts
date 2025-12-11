@@ -14,7 +14,13 @@ export function GetBets(arg1:string,arg2:number,arg3:string,arg4:number,arg5:num
 
 export function GetBetsPage(arg1:string,arg2:number,arg3:string,arg4:number,arg5:number):Promise<livehttp.BetsPage>;
 
+export function GetRecentRounds(arg1:string,arg2:number):Promise<Array<livestore.LiveRound>>;
+
+export function GetRoundsPage(arg1:string,arg2:number,arg3:number,arg4:number):Promise<livehttp.RoundsPage>;
+
 export function GetStream(arg1:string):Promise<livestore.LiveStream>;
+
+export function GetStreamWithRounds(arg1:string,arg2:number):Promise<livehttp.StreamWithRounds>;
 
 export function IngestInfo():Promise<livehttp.IngestInfo>;
 
@@ -25,5 +31,7 @@ export function Shutdown(arg1:context.Context):Promise<void>;
 export function Startup(arg1:context.Context):Promise<void>;
 
 export function Tail(arg1:string,arg2:number,arg3:number):Promise<livehttp.TailResponse>;
+
+export function TailRounds(arg1:string,arg2:number,arg3:number):Promise<livehttp.TailRoundsResponse>;
 
 export function UpdateNotes(arg1:string,arg2:string):Promise<void>;

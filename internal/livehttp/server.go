@@ -103,29 +103,85 @@ func (s *Server) handleIngest(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnprocessableEntity, errObj("VALIDATION_ERROR", "invalid JSON", ""))
 		return
 	}
-	// basic validation and normalization
-	if p.ID == "" || p.ServerSeedHashed == "" || p.ClientSeed == "" {
-		writeJSON(w, http.StatusUnprocessableEntity, errObj("VALIDATION_ERROR", "id, serverSeedHashed, and clientSeed are required", "id/serverSeedHashed/clientSeed"))
+
+	// Determine message type (default to "bet" for backwards compatibility)
+	msgType := strings.ToLower(p.Type)
+	if msgType == "" {
+		msgType = "bet"
+	}
+
+	// Common validation for both types
+	if p.ServerSeedHashed == "" || p.ClientSeed == "" {
+		writeJSON(w, http.StatusUnprocessableEntity, errObj("VALIDATION_ERROR", "serverSeedHashed and clientSeed are required", "serverSeedHashed/clientSeed"))
 		return
 	}
 	if p.Nonce <= 0 {
 		writeJSON(w, http.StatusUnprocessableEntity, errObj("VALIDATION_ERROR", "nonce must be >= 1", "nonce"))
 		return
 	}
-	if p.Difficulty == "" {
-		writeJSON(w, http.StatusUnprocessableEntity, errObj("VALIDATION_ERROR", "difficulty is required", "difficulty"))
-		return
-	}
-	// Parse dateTime; if missing/invalid, use received time
-	parsedDT := parseISOTimeOrNow(p.DateTime)
+
+	ctx := r.Context()
 
 	// Find or create stream
-	ctx := r.Context()
 	streamID, err := s.store.FindOrCreateStream(ctx, p.ServerSeedHashed, p.ClientSeed)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, errObj("SERVER_ERROR", "failed to upsert stream", ""))
 		return
 	}
+
+	switch msgType {
+	case "heartbeat":
+		s.handleHeartbeat(w, ctx, streamID, p)
+	case "bet":
+		s.handleBet(w, ctx, streamID, p)
+	default:
+		writeJSON(w, http.StatusUnprocessableEntity, errObj("VALIDATION_ERROR", "invalid type, must be 'bet' or 'heartbeat'", "type"))
+	}
+}
+
+// handleHeartbeat processes a heartbeat message (nonce + round result only).
+func (s *Server) handleHeartbeat(w http.ResponseWriter, ctx context.Context, streamID uuid.UUID, p ingestPayload) {
+	nonce := int64(p.Nonce)
+
+	// Update last observed nonce on stream
+	if err := s.store.UpdateLastObservedNonce(ctx, streamID, nonce); err != nil {
+		writeJSON(w, http.StatusInternalServerError, errObj("SERVER_ERROR", "failed to update nonce", ""))
+		return
+	}
+
+	// Store round result for pattern analysis
+	if err := s.store.InsertRound(ctx, streamID, nonce, p.RoundResult); err != nil {
+		// Log but don't fail - the nonce update is more important
+		fmt.Printf("[livehttp] warning: failed to insert round: %v\n", err)
+	}
+
+	// Emit tick event for UI to update streak counters
+	runtime.EventsEmit(s.wailsCtx, "live:tick:"+streamID.String(), map[string]any{
+		"nonce":       nonce,
+		"roundResult": p.RoundResult,
+	})
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"streamId": streamID.String(),
+		"accepted": true,
+		"type":     "heartbeat",
+	})
+}
+
+// handleBet processes a bet message (full bet details).
+func (s *Server) handleBet(w http.ResponseWriter, ctx context.Context, streamID uuid.UUID, p ingestPayload) {
+	// Additional validation for bet messages
+	if p.ID == "" {
+		writeJSON(w, http.StatusUnprocessableEntity, errObj("VALIDATION_ERROR", "id is required for bet messages", "id"))
+		return
+	}
+	if p.Difficulty == "" {
+		writeJSON(w, http.StatusUnprocessableEntity, errObj("VALIDATION_ERROR", "difficulty is required for bet messages", "difficulty"))
+		return
+	}
+
+	// Parse dateTime; if missing/invalid, use received time
+	parsedDT := parseISOTimeOrNow(p.DateTime)
 
 	// Build bet
 	bet := livestore.LiveBet{
@@ -151,16 +207,21 @@ func (s *Server) handleIngest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Also update last observed nonce (bets are observations too)
+	_ = s.store.UpdateLastObservedNonce(ctx, streamID, int64(p.Nonce))
+
 	// Emit event for UI if accepted
 	if res.Accepted {
 		runtime.EventsEmit(s.wailsCtx, "live:newrows:"+streamID.String(), map[string]any{
-			"lastID": "unknown", // client will call /tail with its known lastID
+			"nonce":       p.Nonce,
+			"roundResult": p.RoundResult,
 		})
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"streamId": streamID.String(),
 		"accepted": res.Accepted,
+		"type":     "bet",
 	})
 }
 
@@ -233,6 +294,13 @@ func (s *Server) handleStreamSubroutes(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.handleStreamTail(w, r, streamID)
+		return
+	case "rounds":
+		if r.Method != http.MethodGet {
+			methodNotAllowed(w, "GET")
+			return
+		}
+		s.handleStreamRounds(w, r, streamID)
 		return
 	case "export.csv":
 		if r.Method != http.MethodGet {
@@ -335,6 +403,35 @@ func (s *Server) handleStreamTail(w http.ResponseWriter, r *http.Request, stream
 	})
 }
 
+// GET /live/streams/{id}/rounds?limit=&min_result=
+func (s *Server) handleStreamRounds(w http.ResponseWriter, r *http.Request, streamID uuid.UUID) {
+	limit := clampInt(qInt(r, "limit", 200), 1, 1000)
+	minResult := qFloat(r, "min_result", 0)
+
+	if minResult > 0 {
+		// List rounds with filter
+		rows, total, err := s.store.ListRounds(r.Context(), streamID, minResult, limit, 0)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, errObj("SERVER_ERROR", "failed to list rounds", ""))
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"rows":  rows,
+			"total": total,
+		})
+	} else {
+		// Get recent rounds (most common use case)
+		rows, err := s.store.GetRecentRounds(r.Context(), streamID, limit)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, errObj("SERVER_ERROR", "failed to get rounds", ""))
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"rows": rows,
+		})
+	}
+}
+
 // GET /live/streams/{id}/export.csv
 func (s *Server) handleStreamExport(w http.ResponseWriter, r *http.Request, streamID uuid.UUID) {
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
@@ -408,17 +505,25 @@ func (s *Server) storeTailAllForCSV(ctx context.Context, streamID uuid.UUID) ([]
 
 // ========== Types & helpers ==========
 
+// ingestPayload is the unified payload for both bet and heartbeat messages.
 type ingestPayload struct {
-	ID               string  `json:"id"`
-	DateTime         string  `json:"dateTime"`
+	// Type distinguishes between "bet" and "heartbeat" messages.
+	// If empty, defaults to "bet" for backwards compatibility.
+	Type string `json:"type"`
+
+	// Common fields (required for both bet and heartbeat)
 	Nonce            int     `json:"nonce"`
-	Amount           float64 `json:"amount"`
-	Payout           float64 `json:"payout"`
-	Difficulty       string  `json:"difficulty"` // easy|medium|hard|expert
-	RoundTarget      float64 `json:"roundTarget"`
-	RoundResult      float64 `json:"roundResult"` // source of truth multiplier
+	RoundResult      float64 `json:"roundResult"`
 	ClientSeed       string  `json:"clientSeed"`
 	ServerSeedHashed string  `json:"serverSeedHashed"`
+
+	// Bet-specific fields (only required when type="bet" or type is empty)
+	ID          string  `json:"id"`
+	DateTime    string  `json:"dateTime"`
+	Amount      float64 `json:"amount"`
+	Payout      float64 `json:"payout"`
+	Difficulty  string  `json:"difficulty"` // easy|medium|hard|expert
+	RoundTarget float64 `json:"roundTarget"`
 }
 
 func parseISOTimeOrNow(s string) time.Time {

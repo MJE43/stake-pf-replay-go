@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+/**
+ * LiveStreamDetail
+ *
+ * Pump cadence strategy dashboard.
+ * Purpose-built to support the "1066+ every ~1000 nonces ±200-400" heuristic.
+ */
+
+import { useCallback, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   IconArrowLeft,
@@ -6,16 +13,12 @@ import {
   IconCheck,
   IconCopy,
   IconDownload,
+  IconRefresh,
   IconSettings,
-  IconTarget,
   IconTrash,
 } from '@tabler/icons-react';
-import { EventsOn } from '@wails/runtime/runtime';
-import { GetStream, DeleteStream, ExportCSV, IngestInfo } from '@wails/go/livehttp/LiveModule';
-import { livestore } from '@wails/go/models';
+import { DeleteStream, ExportCSV } from '@wails/go/livehttp/LiveModule';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/use-toast';
 import {
@@ -25,26 +28,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useBetsStream } from '@/hooks/useBetsStream';
-import { MultiplierStream, GapAnalysis, RecentHits } from '@/components/MultiplierAnalysis';
 import { cn } from '@/lib/utils';
-import type { LiveBet } from '@/types/live';
-
-function normalizeStream(s: livestore.LiveStream) {
-  const idStr = Array.isArray(s.id) ? s.id.join('-') : String(s.id);
-  return {
-    id: idStr,
-    server_seed_hashed: s.server_seed_hashed ?? '',
-    client_seed: s.client_seed ?? '',
-    created_at: s.created_at ? new Date(s.created_at).toISOString() : '',
-    last_seen_at: s.last_seen_at ? new Date(s.last_seen_at).toISOString() : '',
-    notes: s.notes ?? '',
-    total_bets: s.total_bets ?? 0,
-    highest_round_result: s.highest_result ?? undefined,
-  };
-}
-
-type StreamDetail = ReturnType<typeof normalizeStream>;
+import { useCadenceStream } from '@/hooks/useCadenceStream';
+import { TIER_ORDER, TierId } from '@/lib/pump-tiers';
+import {
+  SeedQualityPanel,
+  TierCadenceCard,
+  LiveStreamTape,
+  DecisionSignals,
+  PatternVisualizer,
+} from '@/components/live';
 
 function CopyButton({ value, size = 14 }: { value: string; size?: number }) {
   const [copied, setCopied] = useState(false);
@@ -63,44 +56,8 @@ function CopyButton({ value, size = 14 }: { value: string; size?: number }) {
       onClick={handleCopy}
       className="p-1 text-muted-foreground transition-colors hover:text-foreground"
     >
-      {copied ? <IconCheck size={size} className="text-primary" /> : <IconCopy size={size} />}
+      {copied ? <IconCheck size={size} className="text-emerald-400" /> : <IconCopy size={size} />}
     </button>
-  );
-}
-
-// Live multiplier ticker
-function LiveMultiplierTicker({ bets, targetMultiplier }: { bets: LiveBet[]; targetMultiplier: number }) {
-  const recentBets = useMemo(() => {
-    return [...bets].sort((a, b) => b.nonce - a.nonce).slice(0, 50);
-  }, [bets]);
-
-  return (
-    <div className="card-terminal overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-4 py-2">
-        <div className="flex items-center gap-2">
-          <span className="status-dot online" />
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Live Feed</span>
-        </div>
-        <span className="font-mono text-[10px] text-muted-foreground">{recentBets.length} recent</span>
-      </div>
-      <div className="flex max-h-[200px] flex-wrap gap-1.5 overflow-y-auto p-3">
-        {recentBets.map((bet) => {
-          const isHit = bet.round_result >= targetMultiplier;
-          return (
-            <div
-              key={bet.id}
-              className={cn(
-                'px-2 py-1 font-mono text-xs font-medium transition-all',
-                isHit ? 'bg-hit/20 text-hit ring-1 ring-hit/30' : 'bg-muted/50 text-muted-foreground'
-              )}
-              title={`Nonce #${bet.nonce}`}
-            >
-              {bet.round_result.toFixed(2)}×
-            </div>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 
@@ -108,74 +65,25 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
   const params = useParams();
   const navigate = useNavigate();
   const streamId = props.streamId ?? params.id!;
-  const [detail, setDetail] = useState<StreamDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [apiBase, setApiBase] = useState<string>('');
-  const [targetMultiplier, setTargetMultiplier] = useState(10);
-  const [targetInput, setTargetInput] = useState('10');
 
-  const load = useCallback(
-    async (attempt = 0) => {
-      let scheduledRetry = false;
-      setLoading(true);
-      setError(null);
-
-      try {
-        const stream = await GetStream(streamId);
-        setDetail(normalizeStream(stream));
-      } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : 'Failed to load stream';
-        if (message.includes('not found') && attempt < 3) {
-          scheduledRetry = true;
-          setTimeout(() => load(attempt + 1), 1000);
-        } else {
-          setError(message);
-          toast.error(message);
-        }
-      } finally {
-        if (!scheduledRetry) {
-          setLoading(false);
-        }
-      }
-    },
-    [streamId]
-  );
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const info = await IngestInfo();
-        const url = new URL(info.url);
-        setApiBase(`${url.protocol}//${url.host}`);
-      } catch {
-        setApiBase('');
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    setDetail(null);
-    load();
-    const off = EventsOn(`live:newrows:${streamId}`, () => load());
-    return () => off();
-  }, [streamId, load]);
-
-  const { rows: bets, isStreaming } = useBetsStream({
+  const {
+    currentNonce,
+    tierStats,
+    seedQuality,
+    signals,
+    recentRounds,
+    bets,
+    totalBets,
+    isConnected,
+    isLoading,
+    error,
+    stream,
+    refresh,
+  } = useCadenceStream({
     streamId,
-    minMultiplier: 0,
-    apiBase,
-    pageSize: 500,
-    pollMs: 1000,
-    order: 'desc',
+    initialRoundsLimit: 10000,
+    betThreshold: 34,
   });
-
-  const handleTargetChange = useCallback(() => {
-    const val = parseFloat(targetInput);
-    if (!isNaN(val) && val > 0) {
-      setTargetMultiplier(val);
-    }
-  }, [targetInput]);
 
   const onExportCsv = useCallback(async () => {
     try {
@@ -200,7 +108,7 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
   }, [streamId]);
 
   const onDeleteStream = useCallback(async () => {
-    if (!window.confirm('Delete this stream and all associated bets?')) return;
+    if (!window.confirm('Delete this stream and all associated data?')) return;
     try {
       await DeleteStream(streamId);
       toast.success('Stream removed');
@@ -210,28 +118,32 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
     }
   }, [streamId, navigate]);
 
-  if (loading && !detail) {
+  // Loading state
+  if (isLoading) {
     return (
       <div className="flex flex-col gap-6">
         <Skeleton className="h-12 w-64" />
+        <Skeleton className="h-32 w-full" />
         <div className="grid gap-4 lg:grid-cols-3">
-          <Skeleton className="h-[300px] lg:col-span-2" />
-          <Skeleton className="h-[300px]" />
+          <Skeleton className="h-[280px]" />
+          <Skeleton className="h-[280px]" />
+          <Skeleton className="h-[280px]" />
         </div>
       </div>
     );
   }
 
-  if (error && !detail) {
+  // Error state
+  if (error) {
     return (
       <div className="flex flex-col gap-4">
         <Button variant="ghost" className="w-fit gap-2" onClick={() => navigate('/live')}>
           <IconArrowLeft size={16} /> Back
         </Button>
-        <div className="max-w-md border border-destructive/50 bg-destructive/10 p-6">
+        <div className="max-w-md border border-destructive/50 bg-destructive/10 p-6 rounded-xl">
           <h2 className="font-display text-lg uppercase tracking-wider text-destructive">Error</h2>
-          <p className="mt-2 text-sm text-destructive/80">{error}</p>
-          <Button onClick={() => load()} variant="destructive" size="sm" className="mt-4">
+          <p className="mt-2 text-sm text-destructive/80">{error.message}</p>
+          <Button onClick={refresh} variant="destructive" size="sm" className="mt-4">
             Retry
           </Button>
         </div>
@@ -248,45 +160,41 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
             <IconArrowLeft size={18} />
           </Button>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center border border-primary/30 bg-primary/10 text-primary">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary">
               <IconBroadcast size={20} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-display text-lg uppercase tracking-wider text-foreground">Live Analysis</h1>
-                <span
-                  className={cn(
-                    'font-mono text-[10px] uppercase tracking-widest',
-                    isStreaming ? 'text-primary glow-sm' : 'text-hit'
-                  )}
-                >
-                  {isStreaming ? '● Connected' : '○ Reconnecting'}
-                </span>
+                <h1 className="font-display text-lg uppercase tracking-wider text-foreground">
+                  Pump Cadence
+                </h1>
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <code className="font-mono text-[10px]">{streamId.slice(0, 8)}</code>
                 <CopyButton value={streamId} size={12} />
-                <span>•</span>
-                <span className="font-mono">{bets.length.toLocaleString()} bets</span>
+                {stream && (
+                  <>
+                    <span>•</span>
+                    <span className="font-mono">{stream.clientSeed.slice(0, 12)}...</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Target Multiplier Input */}
-          <div className="flex items-center gap-2 border border-border bg-card px-3 py-1.5">
-            <IconTarget size={14} className="text-hit" />
-            <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Target:</Label>
-            <Input
-              value={targetInput}
-              onChange={(e) => setTargetInput(e.target.value)}
-              onBlur={handleTargetChange}
-              onKeyDown={(e) => e.key === 'Enter' && handleTargetChange()}
-              className="h-6 w-16 border-0 bg-transparent p-0 text-center font-mono text-sm font-bold text-hit focus-visible:ring-0"
-            />
-            <span className="font-mono text-xs text-muted-foreground">×</span>
-          </div>
+          {/* Decision signals (compact) */}
+          <DecisionSignals signals={signals} className="hidden md:flex" />
+
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9"
+            onClick={refresh}
+          >
+            <IconRefresh size={16} />
+          </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -307,59 +215,95 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
         </div>
       </div>
 
-      {/* Main Dashboard */}
-      <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
-        {/* Left Column - Primary Analysis */}
+      {/* Seed Quality Panel */}
+      <SeedQualityPanel
+        quality={seedQuality}
+        currentNonce={currentNonce}
+        isConnected={isConnected}
+      />
+
+      {/* Decision Signals (mobile) */}
+      <div className="md:hidden">
+        <DecisionSignals signals={signals} />
+      </div>
+
+      {/* Pattern Visualizer */}
+      {recentRounds.length > 0 && (
+        <PatternVisualizer rounds={recentRounds} maxBars={200} />
+      )}
+
+      {/* Main Dashboard Grid */}
+      <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+        {/* Left Column - Tier Cards */}
         <div className="flex flex-col gap-4">
-          <MultiplierStream bets={bets} targetMultiplier={targetMultiplier} />
-          <LiveMultiplierTicker bets={bets} targetMultiplier={targetMultiplier} />
+          {/* Primary Tiers (1066, 3200, 11200) */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            {(['T1066', 'T3200', 'T11200'] as TierId[]).map((tierId) => {
+              const stats = tierStats.get(tierId);
+              if (!stats) return <Skeleton key={tierId} className="h-[280px]" />;
+              return <TierCadenceCard key={tierId} stats={stats} />;
+            })}
+          </div>
+
+          {/* Secondary Tiers (164, 400) - smaller */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {(['T164', 'T400'] as TierId[]).map((tierId) => {
+              const stats = tierStats.get(tierId);
+              if (!stats) return <Skeleton key={tierId} className="h-[200px]" />;
+              return <TierCadenceCard key={tierId} stats={stats} />;
+            })}
+          </div>
         </div>
 
-        {/* Right Column - Prediction Tools */}
-        <div className="flex flex-col gap-4">
-          <GapAnalysis bets={bets} targetMultiplier={targetMultiplier} />
-          <RecentHits bets={bets} targetMultiplier={targetMultiplier} />
-
-          {/* Stream Info */}
-          {detail && (
-            <div className="card-terminal p-4">
-              <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Stream Info</div>
-              <div className="mt-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Server Hash</span>
-                  <div className="flex items-center gap-1">
-                    <code className="max-w-[140px] truncate font-mono text-xs text-foreground">
-                      {detail.server_seed_hashed.slice(0, 12)}...
-                    </code>
-                    <CopyButton value={detail.server_seed_hashed} size={12} />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Client Seed</span>
-                  <div className="flex items-center gap-1">
-                    <code className="max-w-[140px] truncate font-mono text-xs text-foreground">
-                      {detail.client_seed}
-                    </code>
-                    <CopyButton value={detail.client_seed} size={12} />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Total Bets</span>
-                  <span className="font-mono text-sm font-bold text-foreground">{detail.total_bets.toLocaleString()}</span>
-                </div>
-                {detail.highest_round_result && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Peak</span>
-                    <span className="font-mono text-sm font-bold text-hit hit-glow">
-                      {detail.highest_round_result.toFixed(2)}×
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+        {/* Right Column - Stream Tape */}
+        <div className="lg:sticky lg:top-20 lg:self-start">
+          <LiveStreamTape bets={bets} maxItems={100} className="max-h-[calc(100vh-200px)]" />
         </div>
+      </div>
+
+      {/* Stream Info Footer */}
+      {stream && (
+        <div className="rounded-xl border border-white/5 bg-card/40 backdrop-blur-md p-4">
+          <div className="grid gap-4 text-xs sm:grid-cols-2 lg:grid-cols-4">
+            <InfoItem label="Server Seed Hash" value={stream.serverSeedHashed} copyable />
+            <InfoItem label="Client Seed" value={stream.clientSeed} copyable />
+            <InfoItem label="Created" value={formatDateTime(stream.createdAt)} />
+            <InfoItem label="Last Activity" value={formatDateTime(stream.lastSeenAt)} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InfoItem({
+  label,
+  value,
+  copyable,
+}: {
+  label: string;
+  value: string;
+  copyable?: boolean;
+}) {
+  return (
+    <div>
+      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-1 flex items-center gap-1">
+        <code className="truncate font-mono text-foreground">{value}</code>
+        {copyable && <CopyButton value={value} size={12} />}
       </div>
     </div>
   );
+}
+
+function formatDateTime(dateStr?: string): string {
+  if (!dateStr) return '—';
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleString();
+  } catch {
+    return '—';
+  }
 }
