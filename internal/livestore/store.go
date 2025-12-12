@@ -554,8 +554,15 @@ func (s *Store) TailRounds(ctx context.Context, streamID uuid.UUID, sinceNonce i
 
 // GetRecentRounds returns the most recent N rounds for a stream, ordered by nonce DESC.
 func (s *Store) GetRecentRounds(ctx context.Context, streamID uuid.UUID, limit int) ([]LiveRound, error) {
-	if limit <= 0 || limit > 1000 {
-		limit = 200
+	// Frontend requests thousands of rounds for analytics/patterns; keep this in sync.
+	// We clamp rather than defaulting to 200 when the caller asks for more than the max.
+	const defaultLimit = 200
+	const maxLimit = 20000
+	if limit <= 0 {
+		limit = defaultLimit
+	}
+	if limit > maxLimit {
+		limit = maxLimit
 	}
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, stream_id, nonce, round_result, received_at

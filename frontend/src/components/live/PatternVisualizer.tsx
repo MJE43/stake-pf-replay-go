@@ -7,8 +7,7 @@
 
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { IconZoomIn, IconZoomOut, IconPlayerPause, IconPlayerPlay } from '@tabler/icons-react';
-import { cn } from '@/lib/utils';
-import { getHighestMatchingTier, PUMP_EXPERT_TIERS, TierId } from '@/lib/pump-tiers';
+import { cn } from "@/lib/utils";
 import { Button } from '@/components/ui/button';
 
 interface Round {
@@ -22,31 +21,75 @@ interface PatternVisualizerProps {
   className?: string;
 }
 
-const tierBarColors: Record<TierId, string> = {
-  T164: 'bg-amber-500',
-  T400: 'bg-amber-500',
-  T1066: 'bg-orange-500',
-  T3200: 'bg-red-500',
-  T11200: 'bg-purple-500',
+type Bucket = {
+  min: number;
+  bar: string;
+  dot: string;
+  text: string;
+  label: string;
 };
 
-const TIER_THRESHOLDS: Array<{ min: number; color: string; label: string }> = [
-  { min: 11200.65, color: 'bg-purple-500', label: '11200+' },
-  { min: 3200.18, color: 'bg-red-500', label: '3200+' },
-  { min: 1066.73, color: 'bg-orange-500', label: '1066+' },
-  { min: 400.02, color: 'bg-amber-500', label: '400+' },
-  { min: 164.72, color: 'bg-amber-400', label: '164+' },
-  { min: 34, color: 'bg-cyan-500', label: '34+' },
-  { min: 0, color: 'bg-muted', label: '<34' },
+// NOTE: Most rounds are <34×; if we render those as `bg-muted` they can disappear into the background.
+// We intentionally use a visible neutral tint for the <34 bucket so the rhythm is always readable.
+const BUCKETS: Bucket[] = [
+  {
+    min: 11200.65,
+    bar: "bg-purple-500",
+    dot: "bg-purple-500",
+    text: "text-purple-300",
+    label: "11200+",
+  },
+  {
+    min: 3200.18,
+    bar: "bg-red-500",
+    dot: "bg-red-500",
+    text: "text-red-300",
+    label: "3200+",
+  },
+  {
+    min: 1066.73,
+    bar: "bg-orange-500",
+    dot: "bg-orange-500",
+    text: "text-orange-300",
+    label: "1066+",
+  },
+  {
+    min: 400.02,
+    bar: "bg-amber-500",
+    dot: "bg-amber-500",
+    text: "text-amber-300",
+    label: "400+",
+  },
+  {
+    min: 164.72,
+    bar: "bg-amber-400",
+    dot: "bg-amber-400",
+    text: "text-amber-200",
+    label: "164+",
+  },
+  {
+    min: 34,
+    bar: "bg-cyan-500",
+    dot: "bg-cyan-500",
+    text: "text-cyan-300",
+    label: "34+",
+  },
+  {
+    min: 0,
+    bar: "bg-white/10",
+    dot: "bg-white/10",
+    text: "text-muted-foreground",
+    label: "<34",
+  },
 ];
 
-function getBarColor(roundResult: number): string {
-  for (const threshold of TIER_THRESHOLDS) {
-    if (roundResult >= threshold.min) {
-      return threshold.color;
+function getBucket(roundResult: number): Bucket {
+  for (const bucket of BUCKETS) {
+    if (roundResult >= bucket.min) {
+      return bucket;
     }
   }
-  return 'bg-muted';
+  return BUCKETS[BUCKETS.length - 1];
 }
 
 export function PatternVisualizer({
@@ -74,7 +117,7 @@ export function PatternVisualizer({
   // Calculate max value for scaling (log scale for better visibility)
   const maxValue = useMemo(() => {
     if (displayRounds.length === 0) return 1;
-    const max = Math.max(...displayRounds.map(r => r.round_result));
+    const max = Math.max(...displayRounds.map((r) => r.round_result));
     return Math.max(max, 100);
   }, [displayRounds]);
 
@@ -87,21 +130,29 @@ export function PatternVisualizer({
 
   if (rounds.length === 0) {
     return (
-      <div className={cn(
-        'rounded-xl border border-white/5 bg-card/40 backdrop-blur-md p-8 text-center',
-        className
-      )}>
-        <p className="text-sm text-muted-foreground">Waiting for round data...</p>
-        <p className="mt-1 text-xs text-muted-foreground/70">Heartbeat data will appear here</p>
+      <div
+        className={cn(
+          "rounded-xl border border-white/5 bg-card/40 backdrop-blur-md p-8 text-center",
+          className
+        )}
+      >
+        <p className="text-sm text-muted-foreground">
+          Waiting for round data...
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground/70">
+          Heartbeat data will appear here
+        </p>
       </div>
     );
   }
 
   return (
-    <div className={cn(
-      'flex flex-col rounded-xl border border-white/5 bg-card/40 backdrop-blur-md overflow-hidden',
-      className
-    )}>
+    <div
+      className={cn(
+        "flex flex-col rounded-xl border border-white/5 bg-card/40 backdrop-blur-md overflow-hidden",
+        className
+      )}
+    >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/5 px-4 py-2.5">
         <div className="flex items-center gap-2">
@@ -118,16 +169,18 @@ export function PatternVisualizer({
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => setZoom(z => Math.max(0.5, z - 0.25))}
+            onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
           >
             <IconZoomOut size={14} />
           </Button>
-          <span className="text-xs text-muted-foreground w-8 text-center">{zoom}×</span>
+          <span className="text-xs text-muted-foreground w-8 text-center">
+            {zoom}×
+          </span>
           <Button
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => setZoom(z => Math.min(3, z + 0.25))}
+            onClick={() => setZoom((z) => Math.min(3, z + 0.25))}
           >
             <IconZoomIn size={14} />
           </Button>
@@ -135,10 +188,14 @@ export function PatternVisualizer({
           <Button
             variant="ghost"
             size="icon"
-            className={cn('h-7 w-7', isPaused && 'text-amber-400')}
-            onClick={() => setIsPaused(p => !p)}
+            className={cn("h-7 w-7", isPaused && "text-amber-400")}
+            onClick={() => setIsPaused((p) => !p)}
           >
-            {isPaused ? <IconPlayerPlay size={14} /> : <IconPlayerPause size={14} />}
+            {isPaused ? (
+              <IconPlayerPlay size={14} />
+            ) : (
+              <IconPlayerPause size={14} />
+            )}
           </Button>
         </div>
       </div>
@@ -147,7 +204,7 @@ export function PatternVisualizer({
       <div
         ref={containerRef}
         className="relative h-32 overflow-x-auto overflow-y-hidden"
-        style={{ scrollBehavior: 'smooth' }}
+        style={{ scrollBehavior: "smooth" }}
       >
         <div
           className="flex h-full items-end gap-px p-2"
@@ -158,7 +215,7 @@ export function PatternVisualizer({
             const logValue = Math.log10(Math.max(round.round_result, 1) + 1);
             const logMax = Math.log10(maxValue + 1);
             const heightPercent = (logValue / logMax) * 100;
-            const color = getBarColor(round.round_result);
+            const bucket = getBucket(round.round_result);
 
             return (
               <div
@@ -170,9 +227,11 @@ export function PatternVisualizer({
               >
                 <div
                   className={cn(
-                    'w-full rounded-t transition-all duration-75',
-                    color,
-                    hoveredBar?.nonce === round.nonce ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'
+                    "w-full rounded-t ring-1 ring-white/5 transition-all duration-75",
+                    bucket.bar,
+                    hoveredBar?.nonce === round.nonce
+                      ? "opacity-100"
+                      : "opacity-70 group-hover:opacity-100"
                   )}
                   style={{ height: `${Math.max(heightPercent, 2)}%` }}
                 />
@@ -185,11 +244,21 @@ export function PatternVisualizer({
         {hoveredBar && (
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 rounded-lg bg-card border border-white/10 px-3 py-2 text-xs shadow-xl pointer-events-none z-10">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-muted-foreground">#{hoveredBar.nonce}</span>
-              <span className={cn(
-                'font-mono font-semibold',
-                getBarColor(hoveredBar.round_result).replace('bg-', 'text-')
-              )}>
+              <span className="font-mono text-muted-foreground">
+                #{hoveredBar.nonce}
+              </span>
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  getBucket(hoveredBar.round_result).dot
+                )}
+              />
+              <span
+                className={cn(
+                  "font-mono font-semibold",
+                  getBucket(hoveredBar.round_result).text
+                )}
+              >
                 {hoveredBar.round_result.toFixed(2)}×
               </span>
             </div>
@@ -199,10 +268,15 @@ export function PatternVisualizer({
 
       {/* Legend */}
       <div className="flex flex-wrap items-center justify-center gap-3 border-t border-white/5 px-3 py-2 text-[9px]">
-        {TIER_THRESHOLDS.slice(0, -1).map(t => (
-          <span key={t.label} className="flex items-center gap-1 text-muted-foreground">
-            <span className={cn('h-2 w-2 rounded-sm', t.color)} />
-            {t.label}
+        {BUCKETS.map((b) => (
+          <span
+            key={b.label}
+            className="flex items-center gap-1 text-muted-foreground"
+          >
+            <span
+              className={cn("h-2 w-2 rounded-sm ring-1 ring-white/10", b.dot)}
+            />
+            {b.label}
           </span>
         ))}
       </div>

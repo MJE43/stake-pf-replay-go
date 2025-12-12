@@ -16,6 +16,8 @@ import {
   IconRefresh,
   IconSettings,
   IconTrash,
+  IconLayoutDashboard,
+  IconTableOptions,
 } from '@tabler/icons-react';
 import { DeleteStream, ExportCSV } from '@wails/go/livehttp/LiveModule';
 import { Button } from '@/components/ui/button';
@@ -28,6 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useCadenceStream } from '@/hooks/useCadenceStream';
 import { TIER_ORDER, TierId } from '@/lib/pump-tiers';
@@ -37,6 +40,7 @@ import {
   LiveStreamTape,
   DecisionSignals,
   PatternVisualizer,
+  LiveExplorerTable,
 } from '@/components/live';
 
 function CopyButton({ value, size = 14 }: { value: string; size?: number }) {
@@ -152,7 +156,7 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex h-full flex-col gap-4">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -215,63 +219,83 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
         </div>
       </div>
 
-      {/* Seed Quality Panel */}
-      <SeedQualityPanel
-        quality={seedQuality}
-        currentNonce={currentNonce}
-        isConnected={isConnected}
-      />
+      {/* Tabs: Dashboard | Explorer */}
+      <Tabs defaultValue="dashboard" className="flex flex-1 flex-col">
+        <TabsList className="w-fit">
+          <TabsTrigger value="dashboard" className="gap-2">
+            <IconLayoutDashboard size={14} />
+            Dashboard
+          </TabsTrigger>
+          <TabsTrigger value="explorer" className="gap-2">
+            <IconTableOptions size={14} />
+            Explorer
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Decision Signals (mobile) */}
-      <div className="md:hidden">
-        <DecisionSignals signals={signals} />
-      </div>
+        {/* Dashboard Tab */}
+        <TabsContent value="dashboard" className="flex-1 space-y-6 mt-4">
+          {/* Seed Quality Panel */}
+          <SeedQualityPanel
+            quality={seedQuality}
+            currentNonce={currentNonce}
+            isConnected={isConnected}
+          />
 
-      {/* Pattern Visualizer */}
-      {recentRounds.length > 0 && (
-        <PatternVisualizer rounds={recentRounds} maxBars={200} />
-      )}
-
-      {/* Main Dashboard Grid */}
-      <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
-        {/* Left Column - Tier Cards */}
-        <div className="flex flex-col gap-4">
-          {/* Primary Tiers (1066, 3200, 11200) */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            {(['T1066', 'T3200', 'T11200'] as TierId[]).map((tierId) => {
-              const stats = tierStats.get(tierId);
-              if (!stats) return <Skeleton key={tierId} className="h-[280px]" />;
-              return <TierCadenceCard key={tierId} stats={stats} />;
-            })}
+          {/* Decision Signals (mobile) */}
+          <div className="md:hidden">
+            <DecisionSignals signals={signals} />
           </div>
 
-          {/* Secondary Tiers (164, 400) - smaller */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            {(['T164', 'T400'] as TierId[]).map((tierId) => {
-              const stats = tierStats.get(tierId);
-              if (!stats) return <Skeleton key={tierId} className="h-[200px]" />;
-              return <TierCadenceCard key={tierId} stats={stats} />;
-            })}
-          </div>
-        </div>
+          {/* Pattern Visualizer */}
+          <PatternVisualizer rounds={recentRounds} maxBars={200} />
 
-        {/* Right Column - Stream Tape */}
-        <div className="lg:sticky lg:top-20 lg:self-start">
-          <LiveStreamTape bets={bets} maxItems={100} className="max-h-[calc(100vh-200px)]" />
-        </div>
-      </div>
+          {/* Main Dashboard Grid */}
+          <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+            {/* Left Column - Tier Cards */}
+            <div className="flex flex-col gap-4">
+              {/* Primary Tiers (1066, 3200, 11200) */}
+              <div className="grid gap-4 sm:grid-cols-3">
+                {(['T1066', 'T3200', 'T11200'] as TierId[]).map((tierId) => {
+                  const stats = tierStats.get(tierId);
+                  if (!stats) return <Skeleton key={tierId} className="h-[280px]" />;
+                  return <TierCadenceCard key={tierId} stats={stats} />;
+                })}
+              </div>
 
-      {/* Stream Info Footer */}
-      {stream && (
-        <div className="rounded-xl border border-white/5 bg-card/40 backdrop-blur-md p-4">
-          <div className="grid gap-4 text-xs sm:grid-cols-2 lg:grid-cols-4">
-            <InfoItem label="Server Seed Hash" value={stream.serverSeedHashed} copyable />
-            <InfoItem label="Client Seed" value={stream.clientSeed} copyable />
-            <InfoItem label="Created" value={formatDateTime(stream.createdAt)} />
-            <InfoItem label="Last Activity" value={formatDateTime(stream.lastSeenAt)} />
+              {/* Secondary Tiers (164, 400) - smaller */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                {(['T164', 'T400'] as TierId[]).map((tierId) => {
+                  const stats = tierStats.get(tierId);
+                  if (!stats) return <Skeleton key={tierId} className="h-[200px]" />;
+                  return <TierCadenceCard key={tierId} stats={stats} />;
+                })}
+              </div>
+            </div>
+
+            {/* Right Column - Stream Tape */}
+            <div className="lg:sticky lg:top-20 lg:self-start">
+              <LiveStreamTape bets={bets} maxItems={100} className="max-h-[calc(100vh-200px)]" />
+            </div>
           </div>
-        </div>
-      )}
+
+          {/* Stream Info Footer */}
+          {stream && (
+            <div className="rounded-xl border border-white/5 bg-card/40 backdrop-blur-md p-4">
+              <div className="grid gap-4 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                <InfoItem label="Server Seed Hash" value={stream.serverSeedHashed} copyable />
+                <InfoItem label="Client Seed" value={stream.clientSeed} copyable />
+                <InfoItem label="Created" value={formatDateTime(stream.createdAt)} />
+                <InfoItem label="Last Activity" value={formatDateTime(stream.lastSeenAt)} />
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Explorer Tab */}
+        <TabsContent value="explorer" className="flex-1 mt-4" style={{ minHeight: 'calc(100vh - 200px)' }}>
+          <LiveExplorerTable streamId={streamId} className="h-full" />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

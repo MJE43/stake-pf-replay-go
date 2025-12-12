@@ -16,7 +16,9 @@ rounds = 1; // Minimum rounds to get roundResultMultiplier
 const initialBetSize = betSize;
 
 // === Configuration ===
-const API_URL = "http://127.0.0.1:8077/live/ingest"; // Match your dashboard port
+// Default desktop port is LIVE_INGEST_PORT (defaults to 17888 in main.go). You can confirm the exact URL in the UI
+// via the Wails binding `LiveModule.IngestInfo()`.
+const API_URL = "http://127.0.0.1:17888/live/ingest"; // Match your dashboard port
 const BET_THRESHOLD = 34; // Only send full bet details for >= this multiplier
 
 // === Pause parameters ===

@@ -8,16 +8,16 @@
     !define INFO_PROJECTNAME "stake-pf-replay-go-desktop"
 !endif
 !ifndef INFO_COMPANYNAME
-    !define INFO_COMPANYNAME "stake-pf-replay-go-desktop"
+    !define INFO_COMPANYNAME "MJE Development"
 !endif
 !ifndef INFO_PRODUCTNAME
-    !define INFO_PRODUCTNAME "stake-pf-replay-go-desktop"
+    !define INFO_PRODUCTNAME "Stake PF Replay"
 !endif
 !ifndef INFO_PRODUCTVERSION
     !define INFO_PRODUCTVERSION "1.0.0"
 !endif
 !ifndef INFO_COPYRIGHT
-    !define INFO_COPYRIGHT "Copyright........."
+    !define INFO_COPYRIGHT "© 2024-2025 Michael Eisner. All rights reserved."
 !endif
 !ifndef PRODUCT_EXECUTABLE
     !define PRODUCT_EXECUTABLE "${INFO_PROJECTNAME}.exe"
