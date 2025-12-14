@@ -1,4 +1,13 @@
+# Stake.com Provably Fair Specification
 
+> Reverse-engineered documentation of Stake.com's provably fair system.
+
+**Related Documents:**
+- [PRD.md](./PRD.md) — Product requirements using this specification
+- [Stake API Documentation](./api/README.md) — API endpoints for seed management
+- [Documentation Index](./INDEX.md) — Full documentation catalog
+
+---
 
 ## Random Number Generation
 

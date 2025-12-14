@@ -8,7 +8,8 @@
       "Bash(fi)",
       "Bash(dir \"C:\\Users\\Mike\\.claude-worktrees\\stake-pf-replay-go\\ecstatic-darwin\\docs\\scripting\")",
       "Bash(dir \"C:\\Users\\Mike\\.claude-worktrees\\stake-pf-replay-go\\ecstatic-darwin\\docs\\api\")",
-      "Bash(ls -la \"C:\\Users\\Mike\\.claude-worktrees\\stake-pf-replay-go\\ecstatic-darwin\\docs\\api\"\" 2>/dev/null || dir \"C:UsersMike.claude-worktreesstake-pf-replay-goecstatic-darwindocsapi\"\")"
+      "Bash(ls -la \"C:\\Users\\Mike\\.claude-worktrees\\stake-pf-replay-go\\ecstatic-darwin\\docs\\api\"\" 2>/dev/null || dir \"C:UsersMike.claude-worktreesstake-pf-replay-goecstatic-darwindocsapi\"\")",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

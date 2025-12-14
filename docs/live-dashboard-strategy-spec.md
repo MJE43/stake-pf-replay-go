@@ -4,6 +4,11 @@
 **Audience**: maintainers/agents implementing backend ingest, analytics, and UI
 **Scope**: the live ingest + live dashboard is intentionally purpose-built for a single strategy; correctness and decision-support take priority over generic dashboards.
 
+**Related Documents:**
+- [antebot-script.js](./antebot-script.js) — Working implementation example
+- [Design Constraints](./design-constraints.md) — Backend constraints affecting live features
+- [Documentation Index](./INDEX.md) — Full documentation catalog
+
 ---
 
 ## Strategy (what the user is doing)
