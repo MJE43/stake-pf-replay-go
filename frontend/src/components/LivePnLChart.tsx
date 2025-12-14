@@ -55,8 +55,8 @@ export function LivePnLChart({ bets, className }: LivePnLChartProps) {
             <ComposedChart data={data}>
               <defs>
                 <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={isPositive ? "#10b981" : "#f43f5e"} stopOpacity={0.2}/>
-                  <stop offset="95%" stopColor={isPositive ? "#10b981" : "#f43f5e"} stopOpacity={0}/>
+                  <stop offset="5%" stopColor={isPositive ? "#00d4ff" : "#f43f5e"} stopOpacity={0.2}/>
+                  <stop offset="95%" stopColor={isPositive ? "#00d4ff" : "#f43f5e"} stopOpacity={0}/>
                 </linearGradient>
               </defs>
               <XAxis 
@@ -83,7 +83,7 @@ export function LivePnLChart({ bets, className }: LivePnLChartProps) {
                     return (
                       <div className="rounded-lg border border-white/10 bg-popover/90 p-3 shadow-xl backdrop-blur-md">
                         <p className="mb-1 text-xs font-medium text-muted-foreground">Nonce #{data.nonce}</p>
-                        <p className={cn("text-sm font-bold", data.profit >= 0 ? "text-emerald-400" : "text-rose-400")}>
+                        <p className={cn("text-sm font-bold", data.profit >= 0 ? "text-cyan-400" : "text-rose-400")}>
                           {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(data.profit)}
                         </p>
                       </div>
@@ -96,7 +96,7 @@ export function LivePnLChart({ bets, className }: LivePnLChartProps) {
               <Area
                 type="monotone"
                 dataKey="profit"
-                stroke={isPositive ? "#10b981" : "#f43f5e"}
+                stroke={isPositive ? "#00d4ff" : "#f43f5e"}
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#colorProfit)"

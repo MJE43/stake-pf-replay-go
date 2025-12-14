@@ -402,7 +402,7 @@ export function getStreakColor(progress: number): string {
   if (progress >= 1.5) return 'text-red-500'; // Very overdue
   if (progress >= 1.0) return 'text-orange-500'; // Overdue
   if (progress >= 0.8) return 'text-amber-500'; // Due soon
-  return 'text-emerald-500'; // Normal
+  return 'text-cyan-500'; // Normal
 }
 
 /**

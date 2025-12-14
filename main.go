@@ -34,8 +34,8 @@ import (
 var assets embed.FS
 
 const (
-	appConfigDirName    = "stake-pf-replay-go-desktop"
-	legacyConfigDirName = "pf-replay"
+	appConfigDirName    = "wen-desktop"
+	legacyConfigDirName = "stake-pf-replay-go-desktop" // migrate from old name
 	liveIngestDBName    = "live_ingest.db"
 	docsURL             = "https://github.com/MJE43/stake-pf-replay-go/blob/main/README.md"
 	repoURL             = "https://github.com/MJE43/stake-pf-replay-go"
@@ -55,17 +55,17 @@ func buildWindowsOptions() *windows.Options {
 		// Theme Settings
 		Theme: windows.SystemDefault,
 
-		// Custom theme colors for light/dark mode
+		// Custom theme colors for light/dark mode - monochrome palette
 		CustomTheme: &windows.ThemeSettings{
-			// Dark mode (matches app background)
-			DarkModeTitleBar:  windows.RGB(27, 38, 54),
-			DarkModeTitleText: windows.RGB(226, 232, 240),
-			DarkModeBorder:    windows.RGB(51, 65, 85),
+			// Dark mode (deep black)
+			DarkModeTitleBar:  windows.RGB(10, 10, 10),
+			DarkModeTitleText: windows.RGB(250, 250, 250),
+			DarkModeBorder:    windows.RGB(46, 46, 46),
 
 			// Light mode
-			LightModeTitleBar:  windows.RGB(248, 250, 252),
-			LightModeTitleText: windows.RGB(15, 23, 42),
-			LightModeBorder:    windows.RGB(226, 232, 240),
+			LightModeTitleBar:  windows.RGB(250, 250, 250),
+			LightModeTitleText: windows.RGB(23, 23, 23),
+			LightModeBorder:    windows.RGB(217, 217, 217),
 		},
 
 		// WebView Configuration
@@ -82,7 +82,7 @@ func buildWindowsOptions() *windows.Options {
 		DisableFramelessWindowDecorations: false,
 
 		// Window Class Name
-		WindowClassName: "StakePFReplayWindow",
+		WindowClassName: "WENWindow",
 
 		// Power Management Callbacks
 		OnSuspend: func() {
@@ -120,8 +120,8 @@ func buildMacOptions() *mac.Options {
 
 		// About Dialog
 		About: &mac.AboutInfo{
-			Title: "Stake PF Replay",
-			Message: "A privacy-focused desktop application for analyzing provable fairness in Stake.com games.\n\n" +
+			Title: "WEN?",
+			Message: "A privacy-focused desktop application for analyzing provable fairness.\n\n" +
 				"© 2024-2025 Michael Eisner\n" +
 				"Built with Wails\n\n" +
 				"This application processes all data locally and never transmits server seeds over the network.",
@@ -148,12 +148,12 @@ func buildLinuxOptions() *linux.Options {
 		WebviewGpuPolicy:    linux.WebviewGpuPolicyAlways,
 
 		// Program Name for window managers
-		ProgramName: "stake-pf-replay",
+		ProgramName: "wen",
 	}
 }
 
 func main() {
-	log.Printf("Starting Stake PF Replay (Go %s)...", runtime.Version())
+	log.Printf("Starting WEN? (Go %s)...", runtime.Version())
 
 	// Existing backend bindings object
 	app := bindings.New()
@@ -193,7 +193,7 @@ func main() {
 
 	if err := wails.Run(&options.App{
 		// Window Configuration
-		Title:            "Stake PF Replay",
+		Title:            "WEN?",
 		Width:            1280,
 		Height:           800,
 		MinWidth:         1024,
@@ -207,7 +207,7 @@ func main() {
 		StartHidden:      false,
 		HideWindowOnClose: false,
 		AlwaysOnTop:      false,
-		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 255},
+		BackgroundColour: &options.RGBA{R: 10, G: 10, B: 10, A: 255},
 
 		// Asset Server
 		AssetServer: &assetserver.Options{
@@ -248,7 +248,7 @@ func main() {
 
 		// Single Instance Lock - prevents multiple app instances
 		SingleInstanceLock: &options.SingleInstanceLock{
-			UniqueId: "c9f3d4e5-8a2b-4c6d-9e1f-stake-pf-replay",
+			UniqueId: "c9f3d4e5-8a2b-4c6d-9e1f-wen-desktop",
 			OnSecondInstanceLaunch: func(data options.SecondInstanceData) {
 				log.Printf("Second instance launch prevented. Args: %v", data.Args)
 			},

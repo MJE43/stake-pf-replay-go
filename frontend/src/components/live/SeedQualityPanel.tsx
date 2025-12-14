@@ -19,14 +19,14 @@ interface SeedQualityPanelProps {
 }
 
 const gradeColors: Record<string, { bg: string; text: string; ring: string }> = {
-  A: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', ring: 'ring-emerald-500/30' },
-  B: { bg: 'bg-cyan-500/20', text: 'text-cyan-400', ring: 'ring-cyan-500/30' },
+  A: { bg: 'bg-cyan-500/20', text: 'text-cyan-400', ring: 'ring-cyan-500/30' },
+  B: { bg: 'bg-sky-500/20', text: 'text-sky-400', ring: 'ring-sky-500/30' },
   C: { bg: 'bg-amber-500/20', text: 'text-amber-400', ring: 'ring-amber-500/30' },
   F: { bg: 'bg-red-500/20', text: 'text-red-400', ring: 'ring-red-500/30' },
 };
 
 const recommendationConfig = {
-  ride: { text: 'RIDE', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+  ride: { text: 'RIDE', color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
   caution: { text: 'CAUTION', color: 'text-amber-400', bg: 'bg-amber-500/10' },
   rotate: { text: 'ROTATE', color: 'text-red-400', bg: 'bg-red-500/10' },
 };
@@ -74,11 +74,11 @@ export function SeedQualityPanel({
                 </h2>
                 <span className={cn(
                   'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
-                  isConnected ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                  isConnected ? 'bg-cyan-500/10 text-cyan-400' : 'bg-red-500/10 text-red-400'
                 )}>
                   <span className={cn(
                     'h-1.5 w-1.5 rounded-full',
-                    isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'
+                    isConnected ? 'bg-cyan-400 animate-pulse' : 'bg-red-400'
                   )} />
                   {isConnected ? 'Live' : 'Offline'}
                 </span>

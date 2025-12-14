@@ -4,7 +4,6 @@ import {
   IconHistory,
   IconScan,
   IconMenu2,
-  IconTerminal,
 } from '@tabler/icons-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -66,9 +65,7 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Main content area */}
       <div className="flex min-h-screen flex-1 flex-col relative">
-        {/* Atmospheric background */}
-        <div className="pointer-events-none absolute inset-0 -z-10 noise" />
-        <div className="pointer-events-none absolute inset-0 -z-10 grid-bg opacity-30" />
+        {/* Clean minimal background - no textures */}
 
         {/* Header */}
         <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
@@ -109,9 +106,8 @@ export function Layout({ children }: LayoutProps) {
               {/* Title section */}
               <div className="flex items-center gap-3">
                 <div className="hidden items-center gap-1.5 sm:flex">
-                  <IconTerminal size={16} className="text-primary" />
-                  <span className="font-display text-[11px] uppercase tracking-widest text-muted-foreground">
-                    PF Replay
+                  <span className="font-display text-sm font-bold tracking-tight text-foreground">
+                    W<span className="text-primary">?</span>
                   </span>
                 </div>
                 <span className="hidden text-muted-foreground/30 sm:block">/</span>
@@ -146,7 +142,7 @@ export function Layout({ children }: LayoutProps) {
         <footer className="border-t border-border bg-background/50">
           <div className="mx-auto flex h-10 w-full max-w-[1400px] items-center justify-between px-6">
             <span className="font-mono text-[10px] text-muted-foreground">
-              Stake PF Replay • Provable Fairness Analysis
+              WEN? • Provable Fairness Analysis
             </span>
             <span className="font-mono text-[10px] text-muted-foreground">
               v1.0.0

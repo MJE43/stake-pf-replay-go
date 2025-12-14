@@ -59,7 +59,7 @@ export function useLiveAlerts() {
     if (highMultCount > 0) {
       toast(`High Multiplier Alert!`, {
         description: `Hit ${maxMult.toFixed(2)}× (${highMultCount > 1 ? `+${highMultCount-1} others` : 'just now'})`,
-        className: 'border-emerald-500/50 bg-emerald-500/10 text-emerald-500',
+        className: 'border-cyan-500/50 bg-cyan-500/10 text-cyan-400',
       });
     }
 

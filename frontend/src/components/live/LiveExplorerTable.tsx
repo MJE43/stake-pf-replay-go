@@ -135,7 +135,7 @@ function getMultiplierColor(value: number): string {
 function getTierGapColor(gap: number | null, expectedGap: number): string {
   if (gap === null) return "text-muted-foreground/50";
   const deviation = Math.abs(gap - expectedGap);
-  if (deviation <= 200) return "text-emerald-400";
+  if (deviation <= 200) return "text-cyan-400";
   if (deviation <= 400) return "text-cyan-400";
   if (deviation <= 600) return "text-amber-400";
   return "text-red-400";
@@ -417,7 +417,7 @@ function LiveExplorerTableComponent({ streamId, className }: LiveExplorerTablePr
             <span
               className={cn(
                 "h-2 w-2 rounded-full",
-                isConnected ? "bg-emerald-500" : "bg-amber-500 animate-pulse"
+                isConnected ? "bg-cyan-500" : "bg-amber-500 animate-pulse"
               )}
             />
             {isConnected ? "Live" : "Reconnecting"}

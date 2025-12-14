@@ -51,11 +51,11 @@ export function MiniNavRail({ items }: MiniNavRailProps) {
       <aside className="sticky top-0 z-40 hidden h-[100dvh] w-16 shrink-0 flex-col border-r border-border bg-sidebar md:flex">
         {/* Logo area */}
         <div className="flex h-16 items-center justify-center border-b border-border">
-          <div className="relative flex h-9 w-9 items-center justify-center">
-            {/* Terminal bracket logo */}
-            <span className="font-mono text-lg font-bold text-primary glow-sm">[</span>
-            <span className="font-mono text-lg font-bold text-foreground">P</span>
-            <span className="font-mono text-lg font-bold text-primary glow-sm">]</span>
+          <div className="relative flex items-center justify-center">
+            {/* WEN? logo */}
+            <span className="font-display text-lg font-bold tracking-tight text-foreground">
+              W<span className="text-primary glow-sm">?</span>
+            </span>
           </div>
         </div>
 

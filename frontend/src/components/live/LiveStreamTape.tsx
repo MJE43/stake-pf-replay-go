@@ -93,7 +93,7 @@ export function LiveStreamTape({ bets, maxItems = 100, className }: LiveStreamTa
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/5 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse" />
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Stream Tape
           </span>

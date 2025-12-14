@@ -3,57 +3,58 @@
 @tailwind utilities;
 
 /*
- * DESIGN SYSTEM: "The Verification Chamber"
- * A crypto-terminal aesthetic for provable fairness analysis
+ * DESIGN SYSTEM: "WEN?"
+ * High-contrast monochrome with Electric Blue accent
  *
  * Core principles:
- * - High contrast, high readability for data-dense views
- * - Electric accents that feel technical and precise
- * - Brutalist layouts with sharp edges
- * - Atmospheric backgrounds that create depth
+ * - Monochrome palette (black/white/grays)
+ * - Electric Blue (#00D4FF) as sole accent color
+ * - Dark mode default
+ * - Clean minimal design - no textures
+ * - Bold, high-contrast brutalist aesthetic
  */
 
 @layer base {
   :root {
-    /* Light mode - Crisp paper-like with electric accents */
-    --background: 60 10% 97%;
-    --foreground: 60 5% 8%;
+    /* Light mode - Clean whites with Electric Blue accent */
+    --background: 0 0% 98%;
+    --foreground: 0 0% 9%;
 
-    --card: 60 10% 100%;
-    --card-foreground: 60 5% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
 
-    --popover: 60 10% 100%;
-    --popover-foreground: 60 5% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
 
-    /* Electric lime - distinctive primary */
-    --primary: 75 100% 45%;
-    --primary-foreground: 60 5% 8%;
+    /* Electric Blue primary */
+    --primary: 195 100% 50%;
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 60 5% 92%;
-    --secondary-foreground: 60 5% 8%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 9%;
 
-    --muted: 60 5% 94%;
-    --muted-foreground: 60 5% 45%;
+    --muted: 0 0% 92%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 60 5% 94%;
-    --accent-foreground: 60 5% 8%;
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 9%;
 
-    /* Hot magenta for destructive/alerts */
-    --destructive: 340 100% 50%;
+    /* Red for destructive/alerts */
+    --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 60 5% 85%;
-    --input: 60 5% 90%;
-    --ring: 75 100% 45%;
+    --border: 0 0% 85%;
+    --input: 0 0% 90%;
+    --ring: 195 100% 50%;
 
     --radius: 2px;
 
     /* Custom colors */
-    --sidebar: 60 10% 97%;
-    --sidebar-foreground: 60 5% 8%;
-    --glow: 75 100% 50%;
+    --sidebar: 0 0% 98%;
+    --sidebar-foreground: 0 0% 9%;
+    --glow: 195 100% 50%;
     --hit: 45 100% 50%;
-    --copper: 30 50% 60%;
+    --copper: 0 0% 60%;
 
     /* Typography */
     --font-display: "Syncopate", sans-serif;
@@ -62,42 +63,42 @@
   }
 
   .dark {
-    /* Deep void black with warm undertones */
-    --background: 30 10% 3%;
-    --foreground: 45 20% 95%;
+    /* Deep void black - monochrome palette */
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
 
-    --card: 30 10% 6%;
-    --card-foreground: 45 20% 95%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 30 10% 6%;
-    --popover-foreground: 45 20% 95%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 98%;
 
-    /* Electric lime - glows in the dark */
-    --primary: 75 100% 50%;
-    --primary-foreground: 30 10% 3%;
+    /* Electric Blue - glows in the dark */
+    --primary: 195 100% 50%;
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 30 10% 12%;
-    --secondary-foreground: 45 20% 95%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 30 10% 15%;
-    --muted-foreground: 45 10% 55%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 55%;
 
-    --accent: 30 15% 18%;
-    --accent-foreground: 45 20% 95%;
+    --accent: 0 0% 18%;
+    --accent-foreground: 0 0% 98%;
 
-    /* Hot magenta for destructive/alerts */
-    --destructive: 340 100% 55%;
+    /* Red for destructive/alerts */
+    --destructive: 0 100% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 10% 18%;
-    --input: 30 10% 15%;
-    --ring: 75 100% 50%;
+    --border: 0 0% 18%;
+    --input: 0 0% 15%;
+    --ring: 195 100% 50%;
 
-    --sidebar: 30 10% 4%;
-    --sidebar-foreground: 45 20% 95%;
-    --glow: 75 100% 55%;
+    --sidebar: 0 0% 5%;
+    --sidebar-foreground: 0 0% 98%;
+    --glow: 195 100% 55%;
     --hit: 45 100% 55%;
-    --copper: 30 60% 55%;
+    --copper: 0 0% 55%;
   }
 }
 

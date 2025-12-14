@@ -60,7 +60,7 @@ function CopyButton({ value, size = 14 }: { value: string; size?: number }) {
       onClick={handleCopy}
       className="p-1 text-muted-foreground transition-colors hover:text-foreground"
     >
-      {copied ? <IconCheck size={size} className="text-emerald-400" /> : <IconCopy size={size} />}
+      {copied ? <IconCheck size={size} className="text-cyan-400" /> : <IconCopy size={size} />}
     </button>
   );
 }

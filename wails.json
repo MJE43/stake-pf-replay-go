@@ -1,7 +1,7 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "stake-pf-replay-go-desktop",
-"outputfilename": "stake-pf-replay",
+  "name": "wen-desktop",
+  "outputfilename": "wen",
   "frontend:dir": "frontend",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
@@ -10,12 +10,12 @@
   "author": {
     "name": "Michael Eisner",
     "email": "128039782+MJE43@users.noreply.github.com"
-},
-"info": {
+  },
+  "info": {
     "companyName": "MJE Development",
-    "productName": "Stake PF Replay",
+    "productName": "WEN?",
     "productVersion": "1.0.0",
     "copyright": "© 2024-2025 Michael Eisner. All rights reserved.",
-    "comments": "A privacy-focused desktop application for analyzing provable fairness in Stake.com games. Built with Wails (https://wails.io)"
+    "comments": "A privacy-focused desktop application for analyzing provable fairness. Built with Wails (https://wails.io)"
   }
 }

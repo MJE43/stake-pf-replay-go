@@ -13,8 +13,8 @@ const ThemeProviderContext = createContext<ThemeProviderContextValue | undefined
 
 export function ThemeProvider({
   children,
-  defaultTheme = 'system',
-  storageKey = 'stake-replay-theme',
+  defaultTheme = 'dark',
+  storageKey = 'wen-theme',
 }: {
   children: ReactNode;
   defaultTheme?: Theme;

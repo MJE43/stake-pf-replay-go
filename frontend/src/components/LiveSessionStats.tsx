@@ -52,7 +52,7 @@ export function LiveSessionStats({ bets, className }: LiveSessionStatsProps) {
         value={formatCurrency(stats.profit)}
         icon={IconActivity}
         trend={stats.profit >= 0 ? 'up' : 'down'}
-        color={stats.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}
+        color={stats.profit >= 0 ? 'text-cyan-400' : 'text-rose-400'}
       />
       <StatCard
         label="Total Wagered"
@@ -71,7 +71,7 @@ export function LiveSessionStats({ bets, className }: LiveSessionStatsProps) {
         label="Observed RTP"
         value={formatPercent(stats.rtp)}
         icon={IconChartPie}
-        color={stats.rtp >= 100 ? 'text-emerald-400' : 'text-slate-400'}
+        color={stats.rtp >= 100 ? 'text-cyan-400' : 'text-muted-foreground'}
       />
     </div>
   );
@@ -108,7 +108,7 @@ function StatCard({ label, value, subValue, icon: Icon, trend, color }: StatCard
       {trend && (
         <div className={cn(
           "absolute -right-6 -top-6 h-24 w-24 rounded-full opacity-10 blur-2xl transition-opacity group-hover:opacity-20",
-          trend === 'up' ? "bg-emerald-500" : "bg-rose-500"
+          trend === 'up' ? "bg-cyan-500" : "bg-rose-500"
         )} />
       )}
     </div>

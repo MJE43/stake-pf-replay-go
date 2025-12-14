@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 const alertVariants = {
   default: 'border-border bg-card text-foreground',
   info: 'border-[hsl(var(--accent))]/40 bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))]',
-  success: 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200',
+  success: 'border-cyan-400/40 bg-cyan-500/15 text-cyan-300',
   warning: 'border-amber-400/60 bg-amber-500/15 text-amber-200',
   destructive: 'border-destructive/40 bg-destructive/10 text-destructive',
 } satisfies Record<string, string>;

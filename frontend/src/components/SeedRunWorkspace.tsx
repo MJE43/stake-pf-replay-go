@@ -962,7 +962,7 @@ export function SeedRunWorkspace({
 
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <IconChecks size={16} className="text-emerald-300" aria-hidden />
+              <IconChecks size={16} className="text-cyan-300" aria-hidden />
               <span>Existing variations</span>
             </div>
             <RunChips

@@ -63,7 +63,7 @@ function CopyButton({ value, label }: CopyButtonProps) {
             size="icon"
             className={cn(
               'h-7 w-7 opacity-60 hover:opacity-100 hover:bg-primary/10 hover:text-primary',
-              copied && 'bg-emerald-500/20 text-emerald-500 opacity-100',
+              copied && 'bg-cyan-500/20 text-cyan-400 opacity-100',
             )}
             onClick={handleCopy}
           >

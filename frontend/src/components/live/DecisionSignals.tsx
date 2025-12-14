@@ -36,8 +36,8 @@ const signalConfig: Record<DecisionSignal['type'], {
   },
   consistent: {
     icon: IconCheck,
-    defaultBg: 'bg-emerald-500/20',
-    defaultText: 'text-emerald-400',
+    defaultBg: 'bg-cyan-500/20',
+    defaultText: 'text-cyan-400',
   },
   inconsistent: {
     icon: IconAlertTriangle,
@@ -58,9 +58,9 @@ const severityStyles: Record<DecisionSignal['severity'], { bg: string; text: str
     ring: 'ring-amber-500/30',
   },
   success: {
-    bg: 'bg-emerald-500/10',
-    text: 'text-emerald-400',
-    ring: 'ring-emerald-500/30',
+    bg: 'bg-cyan-500/10',
+    text: 'text-cyan-400',
+    ring: 'ring-cyan-500/30',
   },
 };
 

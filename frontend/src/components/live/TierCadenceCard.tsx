@@ -158,7 +158,7 @@ export function TierCadenceCard({ stats, className }: TierCadenceCardProps) {
                 "h-full transition-all duration-500",
                 streakProgress >= 1.0
                   ? "bg-gradient-to-r from-orange-500 to-red-500"
-                  : "bg-gradient-to-r from-cyan-500 to-emerald-500"
+                  : "bg-gradient-to-r from-cyan-500 to-sky-500"
               )}
               style={{ width: `${fillPct}%` }}
             />
@@ -189,7 +189,7 @@ export function TierCadenceCard({ stats, className }: TierCadenceCardProps) {
                 overdue by {overdueBy.toLocaleString()}
               </span>
             ) : (
-              <span className="font-mono text-emerald-300">
+              <span className="font-mono text-cyan-300">
                 due in {dueIn.toLocaleString()}
               </span>
             )}
@@ -210,8 +210,8 @@ export function TierCadenceCard({ stats, className }: TierCadenceCardProps) {
                   const isRecent = i >= lastKGaps.length - 2;
 
                   const bandColors = {
-                    tight: "bg-emerald-500",
-                    normal: "bg-cyan-500",
+                    tight: "bg-cyan-500",
+                    normal: "bg-sky-500",
                     loose: "bg-amber-500",
                     outside: "bg-red-500",
                   } as const;
@@ -251,8 +251,8 @@ export function TierCadenceCard({ stats, className }: TierCadenceCardProps) {
                 const bandStatus = getGapBandStatus(g.deviation);
                 const pill = {
                   tight:
-                    "bg-emerald-500/15 text-emerald-300 ring-emerald-500/25",
-                  normal: "bg-cyan-500/15 text-cyan-300 ring-cyan-500/25",
+                    "bg-cyan-500/15 text-cyan-300 ring-cyan-500/25",
+                  normal: "bg-sky-500/15 text-sky-300 ring-sky-500/25",
                   loose: "bg-amber-500/15 text-amber-300 ring-amber-500/25",
                   outside: "bg-red-500/15 text-red-300 ring-red-500/25",
                 } as const;
@@ -280,11 +280,11 @@ export function TierCadenceCard({ stats, className }: TierCadenceCardProps) {
             {/* Deviation bands legend */}
             <div className="mt-2 flex items-center justify-center gap-3 text-[9px] text-muted-foreground">
               <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-sm bg-emerald-500" />±
+                <span className="h-2 w-2 rounded-sm bg-cyan-500" />±
                 {CONSISTENCY_BANDS.tight}
               </span>
               <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-sm bg-cyan-500" />±
+                <span className="h-2 w-2 rounded-sm bg-sky-500" />±
                 {CONSISTENCY_BANDS.normal}
               </span>
               <span className="flex items-center gap-1">
@@ -316,7 +316,7 @@ export function TierCadenceCard({ stats, className }: TierCadenceCardProps) {
               className={cn(
                 "font-mono",
                 withinNormalCount / lastKGaps.length >= 0.7
-                  ? "text-emerald-300"
+                  ? "text-cyan-300"
                   : "text-amber-300"
               )}
             >
@@ -355,7 +355,7 @@ function StatMini({
       </div>
       <div className={cn(
         'font-mono text-sm font-semibold',
-        highlight ? 'text-emerald-400' : 'text-foreground'
+        highlight ? 'text-cyan-400' : 'text-foreground'
       )}>
         {value}
       </div>

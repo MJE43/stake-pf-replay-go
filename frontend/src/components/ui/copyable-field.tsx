@@ -38,7 +38,7 @@ export function CopyableField({ value, displayValue, label, className }: Copyabl
           title={`Copy ${label || 'value'}`}
         >
           {copied ? (
-            <IconCheck size={12} className="text-emerald-200" />
+            <IconCheck size={12} className="text-cyan-300" />
           ) : (
             <IconCopy size={12} className="text-muted-foreground" />
           )}
