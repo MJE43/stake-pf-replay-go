@@ -1,4 +1,11 @@
-# High-Level Overview (plain-English) — What this thing is and who it’s for
+# High-Level Overview (plain-English) — What this thing is and who it's for
+
+**Related Documents:**
+- [stakeDocs.md](./stakeDocs.md) — Stake.com provably fair specification
+- [Design Constraints](./design-constraints.md) — Technical constraints and budgets
+- [Documentation Index](./INDEX.md) — Full documentation catalog
+
+---
 
 ## Purpose
 

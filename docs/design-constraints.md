@@ -13,6 +13,11 @@ This document is the **single source of truth** for all design and implementatio
 
 **Binding Authority:** All product, design, and engineering decisions MUST comply with these constraints unless explicitly waived via the documented exception process.
 
+**Related Documents:**
+- [UI Implications Guide](./generated/ui-implications.md) — Prescriptive UI patterns derived from these constraints
+- [Backend Inventory](./generated/backend-inventory.json) — Machine-readable endpoint catalog
+- [Documentation Index](./INDEX.md) — Full documentation catalog
+
 **Audience:**
 - Product managers planning features
 - Designers creating mockups
