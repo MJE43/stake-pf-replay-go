@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import {
   IconBroadcast,
+  IconDice,
   IconHistory,
   IconScan,
   IconMenu2,
@@ -31,18 +32,25 @@ const navItems = [
     hotkey: 'Alt+1',
   },
   {
+    icon: IconDice,
+    label: 'Keno B2B',
+    description: 'Find high B2B multiplier streaks',
+    path: '/keno-b2b',
+    hotkey: 'Alt+2',
+  },
+  {
     icon: IconHistory,
     label: 'History',
     description: 'View previous scan results',
     path: '/runs',
-    hotkey: 'Alt+2',
+    hotkey: 'Alt+3',
   },
   {
     icon: IconBroadcast,
     label: 'Live',
     description: 'Monitor live betting streams',
     path: '/live',
-    hotkey: 'Alt+3',
+    hotkey: 'Alt+4',
   },
 ];
 

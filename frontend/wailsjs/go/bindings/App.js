@@ -10,6 +10,10 @@ export function GetGames() {
   return window['go']['bindings']['App']['GetGames']();
 }
 
+export function GetKenoRisks() {
+  return window['go']['bindings']['App']['GetKenoRisks']();
+}
+
 export function GetRun(arg1) {
   return window['go']['bindings']['App']['GetRun'](arg1);
 }
@@ -28,6 +32,10 @@ export function HashServerSeed(arg1) {
 
 export function ListRuns(arg1) {
   return window['go']['bindings']['App']['ListRuns'](arg1);
+}
+
+export function StartKenoB2BScan(arg1) {
+  return window['go']['bindings']['App']['StartKenoB2BScan'](arg1);
 }
 
 export function StartScan(arg1) {

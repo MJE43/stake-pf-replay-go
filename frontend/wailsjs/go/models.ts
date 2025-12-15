@@ -1,5 +1,63 @@
 export namespace bindings {
 	
+	export class KenoBet {
+	    nonce: number;
+	    picks: number[];
+	    draws: number[];
+	    hits: number;
+	    multiplier: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new KenoBet(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.nonce = source["nonce"];
+	        this.picks = source["picks"];
+	        this.draws = source["draws"];
+	        this.hits = source["hits"];
+	        this.multiplier = source["multiplier"];
+	    }
+	}
+	export class B2BSequence {
+	    startNonce: number;
+	    endNonce: number;
+	    cumulativeMultiplier: number;
+	    streakLength: number;
+	    bets: KenoBet[];
+	
+	    static createFrom(source: any = {}) {
+	        return new B2BSequence(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.startNonce = source["startNonce"];
+	        this.endNonce = source["endNonce"];
+	        this.cumulativeMultiplier = source["cumulativeMultiplier"];
+	        this.streakLength = source["streakLength"];
+	        this.bets = this.convertValues(source["bets"], KenoBet);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class Hit {
 	    Nonce: number;
 	    Metric: number;
@@ -52,6 +110,103 @@ export namespace bindings {
 		    return a;
 		}
 	}
+	export class Seeds {
+	    Server: string;
+	    Client: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Seeds(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Server = source["Server"];
+	        this.Client = source["Client"];
+	    }
+	}
+	export class KenoB2BRequest {
+	    seeds: Seeds;
+	    nonceStart: any;
+	    nonceEnd: any;
+	    risk: string;
+	    pickCount: number;
+	    pickerMode: string;
+	    b2bThreshold: number;
+	    topN: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new KenoB2BRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.seeds = this.convertValues(source["seeds"], Seeds);
+	        this.nonceStart = source["nonceStart"];
+	        this.nonceEnd = source["nonceEnd"];
+	        this.risk = source["risk"];
+	        this.pickCount = source["pickCount"];
+	        this.pickerMode = source["pickerMode"];
+	        this.b2bThreshold = source["b2bThreshold"];
+	        this.topN = source["topN"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class KenoB2BResult {
+	    sequences: B2BSequence[];
+	    totalFound: number;
+	    highestMulti: number;
+	    totalEvaluated: number;
+	    antebotScript?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new KenoB2BResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sequences = this.convertValues(source["sequences"], B2BSequence);
+	        this.totalFound = source["totalFound"];
+	        this.highestMulti = source["highestMulti"];
+	        this.totalEvaluated = source["totalEvaluated"];
+	        this.antebotScript = source["antebotScript"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class RunsList {
 	    runs: store.Run[];
 	    totalCount: number;
@@ -104,20 +259,6 @@ export namespace bindings {
 	        this.game = source["game"];
 	        this.page = source["page"];
 	        this.perPage = source["perPage"];
-	    }
-	}
-	export class Seeds {
-	    Server: string;
-	    Client: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new Seeds(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.Server = source["Server"];
-	        this.Client = source["Client"];
 	    }
 	}
 	export class ScanRequest {

@@ -362,3 +362,136 @@ func (a *App) CancelRun(runID string) error {
 
 	return nil
 }
+
+// KenoB2BRequest represents a Keno B2B scan request from the frontend
+type KenoB2BRequest struct {
+	Seeds        Seeds   `json:"seeds"`
+	NonceStart   interface{} `json:"nonceStart"`   // Accept both string and uint64
+	NonceEnd     interface{} `json:"nonceEnd"`     // Accept both string and uint64
+	Risk         string  `json:"risk"`             // "classic", "low", "medium", "high"
+	PickCount    int     `json:"pickCount"`        // 1-10
+	PickerMode   string  `json:"pickerMode"`       // "reproducible" or "entropy"
+	B2BThreshold float64 `json:"b2bThreshold"`     // Minimum cumulative multiplier
+	TopN         int     `json:"topN"`             // 0 = find all, >0 = limit
+}
+
+// KenoBet represents a single Keno bet in a B2B sequence
+type KenoBet struct {
+	Nonce      uint64  `json:"nonce"`
+	Picks      []int   `json:"picks"`
+	Draws      []int   `json:"draws"`
+	Hits       int     `json:"hits"`
+	Multiplier float64 `json:"multiplier"`
+}
+
+// B2BSequence represents a streak of consecutive wins
+type B2BSequence struct {
+	StartNonce           uint64    `json:"startNonce"`
+	EndNonce             uint64    `json:"endNonce"`
+	CumulativeMultiplier float64   `json:"cumulativeMultiplier"`
+	StreakLength         int       `json:"streakLength"`
+	Bets                 []KenoBet `json:"bets"`
+}
+
+// KenoB2BResult contains the results of a Keno B2B scan
+type KenoB2BResult struct {
+	Sequences      []B2BSequence `json:"sequences"`
+	TotalFound     int           `json:"totalFound"`
+	HighestMulti   float64       `json:"highestMulti"`
+	TotalEvaluated uint64        `json:"totalEvaluated"`
+	AntebotScript  string        `json:"antebotScript,omitempty"`
+}
+
+// StartKenoB2BScan starts a Keno B2B scan
+func (a *App) StartKenoB2BScan(req KenoB2BRequest) (KenoB2BResult, error) {
+	// Convert NonceStart to uint64
+	var nonceStart uint64
+	switch v := req.NonceStart.(type) {
+	case uint64:
+		nonceStart = v
+	case float64:
+		nonceStart = uint64(v)
+	case string:
+		var err error
+		nonceStart, err = strconv.ParseUint(v, 10, 64)
+		if err != nil {
+			return KenoB2BResult{}, fmt.Errorf("invalid nonce start: %v", v)
+		}
+	default:
+		return KenoB2BResult{}, fmt.Errorf("nonce start must be a number or string, got %T", v)
+	}
+
+	// Convert NonceEnd to uint64
+	var nonceEnd uint64
+	switch v := req.NonceEnd.(type) {
+	case uint64:
+		nonceEnd = v
+	case float64:
+		nonceEnd = uint64(v)
+	case string:
+		var err error
+		nonceEnd, err = strconv.ParseUint(v, 10, 64)
+		if err != nil {
+			return KenoB2BResult{}, fmt.Errorf("invalid nonce end: %v", v)
+		}
+	default:
+		return KenoB2BResult{}, fmt.Errorf("nonce end must be a number or string, got %T", v)
+	}
+
+	// Convert picker mode
+	pickerMode := scan.PickerModeReproducible
+	if req.PickerMode == "entropy" {
+		pickerMode = scan.PickerModeEntropy
+	}
+
+	// Create the scanner and run
+	scanner := scan.NewKenoB2BScanner(pickerMode)
+	result, err := scanner.Scan(context.Background(), scan.KenoB2BRequest{
+		Seeds:        games.Seeds{Server: req.Seeds.Server, Client: req.Seeds.Client},
+		NonceStart:   nonceStart,
+		NonceEnd:     nonceEnd,
+		Risk:         req.Risk,
+		PickCount:    req.PickCount,
+		PickerMode:   pickerMode,
+		B2BThreshold: req.B2BThreshold,
+		TopN:         req.TopN,
+	})
+	if err != nil {
+		return KenoB2BResult{}, err
+	}
+
+	// Convert result to binding types
+	sequences := make([]B2BSequence, len(result.Sequences))
+	for i, seq := range result.Sequences {
+		bets := make([]KenoBet, len(seq.Bets))
+		for j, bet := range seq.Bets {
+			bets[j] = KenoBet{
+				Nonce:      bet.Nonce,
+				Picks:      bet.Picks,
+				Draws:      bet.Draws,
+				Hits:       bet.Hits,
+				Multiplier: bet.Multiplier,
+			}
+		}
+		sequences[i] = B2BSequence{
+			StartNonce:           seq.StartNonce,
+			EndNonce:             seq.EndNonce,
+			CumulativeMultiplier: seq.CumulativeMultiplier,
+			StreakLength:         seq.StreakLength,
+			Bets:                 bets,
+		}
+	}
+
+	return KenoB2BResult{
+		Sequences:      sequences,
+		TotalFound:     result.TotalFound,
+		HighestMulti:   result.HighestMulti,
+		TotalEvaluated: result.TotalEvaluated,
+		AntebotScript:  result.AntebotScript,
+	}, nil
+}
+
+// GetKenoRisks returns the available risk levels for Keno
+func (a *App) GetKenoRisks() []string {
+	return games.ValidKenoRisks()
+}

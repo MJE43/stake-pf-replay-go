@@ -9,6 +9,8 @@ export function CancelRun(arg1:string):Promise<void>;
 
 export function GetGames():Promise<Array<games.GameSpec>>;
 
+export function GetKenoRisks():Promise<Array<string>>;
+
 export function GetRun(arg1:string):Promise<store.Run>;
 
 export function GetRunHits(arg1:string,arg2:number,arg3:number):Promise<bindings.HitsPage>;
@@ -18,6 +20,8 @@ export function GetSeedRuns(arg1:string):Promise<bindings.SeedRunGroup>;
 export function HashServerSeed(arg1:string):Promise<string>;
 
 export function ListRuns(arg1:bindings.RunsQuery):Promise<bindings.RunsList>;
+
+export function StartKenoB2BScan(arg1:bindings.KenoB2BRequest):Promise<bindings.KenoB2BResult>;
 
 export function StartScan(arg1:bindings.ScanRequest):Promise<bindings.ScanResult>;
 
