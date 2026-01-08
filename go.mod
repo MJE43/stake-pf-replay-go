@@ -7,7 +7,7 @@ replace github.com/MJE43/stake-pf-replay-go => ./backend
 require (
 	github.com/MJE43/stake-pf-replay-go v0.0.0-00010101000000-000000000000
 	github.com/google/uuid v1.6.0
-	github.com/wailsapp/wails/v2 v2.10.2
+	github.com/wailsapp/wails/v2 v2.11.0
 	modernc.org/sqlite v1.39.0
 )
 
@@ -35,7 +35,7 @@ require (
 	github.com/tkrajina/go-reflector v0.5.8 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	github.com/wailsapp/go-webview2 v1.0.19 // indirect
+	github.com/wailsapp/go-webview2 v1.0.22 // indirect
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	golang.org/x/crypto v0.33.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
