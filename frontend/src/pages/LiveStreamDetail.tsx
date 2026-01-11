@@ -34,14 +34,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useCadenceStream } from '@/hooks/useCadenceStream';
 import { TIER_ORDER, TierId } from '@/lib/pump-tiers';
-import {
-  SeedQualityPanel,
-  TierCadenceCard,
-  LiveStreamTape,
-  DecisionSignals,
-  PatternVisualizer,
-  LiveExplorerTable,
-} from '@/components/live';
+import { TierCadenceCard, LiveStreamTape, LiveExplorerTable } from '@/components/live';
 
 function CopyButton({ value, size = 14 }: { value: string; size?: number }) {
   const [copied, setCopied] = useState(false);
@@ -71,14 +64,8 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
   const streamId = props.streamId ?? params.id!;
 
   const {
-    currentNonce,
     tierStats,
-    seedQuality,
-    signals,
-    recentRounds,
     bets,
-    totalBets,
-    isConnected,
     isLoading,
     error,
     stream,
@@ -188,9 +175,6 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Decision signals (compact) */}
-          <DecisionSignals signals={signals} className="hidden md:flex" />
-
           <Button
             variant="outline"
             size="icon"
@@ -233,62 +217,20 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
         </TabsList>
 
         {/* Dashboard Tab */}
-        <TabsContent value="dashboard" className="flex-1 space-y-6 mt-4">
-          {/* Seed Quality Panel */}
-          <SeedQualityPanel
-            quality={seedQuality}
-            currentNonce={currentNonce}
-            isConnected={isConnected}
-          />
-
-          {/* Decision Signals (mobile) */}
-          <div className="md:hidden">
-            <DecisionSignals signals={signals} />
+        <TabsContent value="dashboard" className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+          {/* All 5 tiers in a single row */}
+          <div className="grid grid-cols-5 gap-3">
+            {(['T164', 'T400', 'T1066', 'T3200', 'T11200'] as TierId[]).map((tierId) => {
+              const stats = tierStats.get(tierId);
+              if (!stats) return <Skeleton key={tierId} className="h-[200px]" />;
+              return <TierCadenceCard key={tierId} stats={stats} compact />;
+            })}
           </div>
 
-          {/* Pattern Visualizer */}
-          <PatternVisualizer rounds={recentRounds} maxBars={200} />
-
-          {/* Main Dashboard Grid */}
-          <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
-            {/* Left Column - Tier Cards */}
-            <div className="flex flex-col gap-4">
-              {/* Primary Tiers (1066, 3200, 11200) */}
-              <div className="grid gap-4 sm:grid-cols-3">
-                {(['T1066', 'T3200', 'T11200'] as TierId[]).map((tierId) => {
-                  const stats = tierStats.get(tierId);
-                  if (!stats) return <Skeleton key={tierId} className="h-[280px]" />;
-                  return <TierCadenceCard key={tierId} stats={stats} />;
-                })}
-              </div>
-
-              {/* Secondary Tiers (164, 400) - smaller */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                {(['T164', 'T400'] as TierId[]).map((tierId) => {
-                  const stats = tierStats.get(tierId);
-                  if (!stats) return <Skeleton key={tierId} className="h-[200px]" />;
-                  return <TierCadenceCard key={tierId} stats={stats} />;
-                })}
-              </div>
-            </div>
-
-            {/* Right Column - Stream Tape */}
-            <div className="lg:sticky lg:top-20 lg:self-start">
-              <LiveStreamTape bets={bets} maxItems={100} className="max-h-[calc(100vh-200px)]" />
-            </div>
+          {/* Stream tape fills remaining height */}
+          <div className="min-h-0 flex-1">
+            <LiveStreamTape bets={bets} maxItems={120} className="h-full min-h-0" />
           </div>
-
-          {/* Stream Info Footer */}
-          {stream && (
-            <div className="rounded-xl border border-white/5 bg-card/40 backdrop-blur-md p-4">
-              <div className="grid gap-4 text-xs sm:grid-cols-2 lg:grid-cols-4">
-                <InfoItem label="Server Seed Hash" value={stream.serverSeedHashed} copyable />
-                <InfoItem label="Client Seed" value={stream.clientSeed} copyable />
-                <InfoItem label="Created" value={formatDateTime(stream.createdAt)} />
-                <InfoItem label="Last Activity" value={formatDateTime(stream.lastSeenAt)} />
-              </div>
-            </div>
-          )}
         </TabsContent>
 
         {/* Explorer Tab */}

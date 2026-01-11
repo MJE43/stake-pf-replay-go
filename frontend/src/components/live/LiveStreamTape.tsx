@@ -80,7 +80,12 @@ export function LiveStreamTape({ bets, maxItems = 100, className }: LiveStreamTa
 
   if (bets.length === 0) {
     return (
-      <div className={cn('rounded-xl border border-white/5 bg-card/40 backdrop-blur-md p-8 text-center', className)}>
+      <div
+        className={cn(
+          'h-full min-h-0 rounded-xl border border-white/5 bg-card/40 backdrop-blur-md p-8 text-center',
+          className
+        )}
+      >
         <IconArrowUp size={24} className="mx-auto mb-2 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">No high-multiplier hits yet</p>
         <p className="mt-1 text-xs text-muted-foreground/70">Hits ≥34× will appear here</p>
@@ -89,7 +94,12 @@ export function LiveStreamTape({ bets, maxItems = 100, className }: LiveStreamTa
   }
 
   return (
-    <div className={cn('flex flex-col rounded-xl border border-white/5 bg-card/40 backdrop-blur-md overflow-hidden', className)}>
+    <div
+      className={cn(
+        'flex h-full min-h-0 flex-col rounded-xl border border-white/5 bg-card/40 backdrop-blur-md overflow-hidden',
+        className
+      )}
+    >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/5 px-4 py-2.5">
         <div className="flex items-center gap-2">
@@ -106,7 +116,7 @@ export function LiveStreamTape({ bets, maxItems = 100, className }: LiveStreamTa
       {/* Table */}
       <div
         ref={containerRef}
-        className="max-h-[400px] overflow-y-auto"
+        className="min-h-0 flex-1 overflow-y-auto"
         onScroll={handleScroll}
       >
         <table className="w-full text-sm">
