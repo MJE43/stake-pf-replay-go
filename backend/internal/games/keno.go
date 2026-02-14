@@ -76,12 +76,12 @@ func (g *KenoGame) EvaluateWithFloats(floats []float64, params map[string]any) (
 		Metric:      multiplier,
 		MetricLabel: "multiplier",
 		Details: map[string]any{
-			"risk":       risk,
-			"picks":      picks,
+			"risk":        risk,
+			"picks":       picks,
 			"picks_count": len(picks),
-			"draws":      draws,
-			"hits":       hits,
-			"multiplier": multiplier,
+			"draws":       draws,
+			"hits":        hits,
+			"multiplier":  multiplier,
 		},
 	}, nil
 }
@@ -189,4 +189,3 @@ func CalculateKenoMultiplier(risk string, picks, draws []int) (float64, int) {
 	hits := countHits(picks, draws)
 	return GetKenoMultiplier(risk, len(picks), hits), hits
 }
-

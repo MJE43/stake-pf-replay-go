@@ -35,5 +35,3 @@ func TestKenoDraw_StakeVerify_Nonce1(t *testing.T) {
 	t.Logf("draws (0-based): %v", draws0)
 	t.Logf("draws (+1):     %v", draws1)
 }
-
-

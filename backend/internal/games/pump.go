@@ -73,7 +73,7 @@ func (g *PumpGame) EvaluateWithFloats(floats []float64, params map[string]any) (
 	if len(floats) < 25 {
 		return GameResult{}, fmt.Errorf("pump requires at least 25 floats, got %d", len(floats))
 	}
-	
+
 	// Get difficulty from params, default to "expert"
 	difficulty := "expert"
 	if d, ok := params["difficulty"].(string); ok {
@@ -81,48 +81,48 @@ func (g *PumpGame) EvaluateWithFloats(floats []float64, params map[string]any) (
 			difficulty = d
 		}
 	}
-	
+
 	// Get M value and multiplier table for difficulty
 	M, exists := pumpMValues[difficulty]
 	if !exists {
 		return GameResult{}, fmt.Errorf("invalid pump difficulty: %s", difficulty)
 	}
-	
+
 	multiplierTable, exists := pumpMultiplierTables[difficulty]
 	if !exists {
 		return GameResult{}, fmt.Errorf("no multiplier table for difficulty: %s", difficulty)
 	}
-	
+
 	// Create pool of positions 1-25
 	pool := make([]int, pumpPositions)
 	for i := 0; i < pumpPositions; i++ {
 		pool[i] = i + 1
 	}
-	
+
 	// Use selection shuffle to generate permutation
 	permutation := make([]int, 0, pumpPositions)
-	
+
 	for _, f := range floats {
 		if len(pool) == 0 {
 			break
 		}
-		
+
 		// CRITICAL: Floor operation for index selection
 		index := int(math.Floor(f * float64(len(pool))))
 		if index >= len(pool) {
 			index = len(pool) - 1
 		}
-		
+
 		// Add selected position to permutation
 		permutation = append(permutation, pool[index])
-		
+
 		// Remove selected position from pool
 		pool = append(pool[:index], pool[index+1:]...)
 	}
-	
+
 	// Take first M positions as pops
 	pops := permutation[:M]
-	
+
 	// Find minimum pop position (pop point)
 	popPoint := pops[0]
 	for _, pop := range pops[1:] {
@@ -130,7 +130,7 @@ func (g *PumpGame) EvaluateWithFloats(floats []float64, params map[string]any) (
 			popPoint = pop
 		}
 	}
-	
+
 	// Calculate safe pumps: min(pop_point - 1, 25 - M)
 	safePumps := popPoint - 1
 	maxSafePumps := 25 - M
@@ -140,27 +140,27 @@ func (g *PumpGame) EvaluateWithFloats(floats []float64, params map[string]any) (
 	if safePumps < 0 {
 		safePumps = 0
 	}
-	
+
 	// Get multiplier from table
 	if safePumps >= len(multiplierTable) {
 		return GameResult{}, fmt.Errorf("safe pumps %d exceeds table length %d for difficulty %s", safePumps, len(multiplierTable), difficulty)
 	}
-	
+
 	multiplier := multiplierTable[safePumps]
-	
+
 	return GameResult{
 		Metric:      multiplier,
 		MetricLabel: "multiplier",
 		Details: map[string]any{
-			"difficulty":    difficulty,
-			"positions":     pumpPositions,
-			"M":             M,
-			"pops":          pops,
-			"pop_point":     popPoint,
-			"safe_pumps":    safePumps,
-			"max_safe":      maxSafePumps,
-			"multiplier":    multiplier,
-			"permutation":   permutation,
+			"difficulty":  difficulty,
+			"positions":   pumpPositions,
+			"M":           M,
+			"pops":        pops,
+			"pop_point":   popPoint,
+			"safe_pumps":  safePumps,
+			"max_safe":    maxSafePumps,
+			"multiplier":  multiplier,
+			"permutation": permutation,
 		},
 	}, nil
 }

@@ -62,4 +62,3 @@ func TestKenoDrawsMatchStake(t *testing.T) {
 		t.Errorf("Expected 10 draws, got %d", len(draws))
 	}
 }
-

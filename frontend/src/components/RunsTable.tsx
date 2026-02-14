@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IconArrowRight, IconFilter, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { bindings, store } from '@wails/go/models';
@@ -11,14 +11,52 @@ interface RunsTableProps {
   onQueryChange: (query: Partial<bindings.RunsQuery>) => void;
 }
 
-const GAME_OPTIONS = [
-  { label: 'All games', value: undefined },
-  { label: 'Limbo', value: 'limbo' },
-  { label: 'Dice', value: 'dice' },
-  { label: 'Roulette', value: 'roulette' },
-  { label: 'Pump', value: 'pump' },
-  { label: 'Plinko', value: 'plinko' },
-];
+interface GameOption {
+  label: string;
+  value: string | undefined;
+}
+
+function useGameOptions(): GameOption[] {
+  const [options, setOptions] = useState<GameOption[]>([{ label: 'All games', value: undefined }]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const { GetGames } = await import('@wails/go/bindings/App');
+        const specs = await GetGames();
+        if (cancelled || !Array.isArray(specs)) return;
+        const gameOpts: GameOption[] = [
+          { label: 'All games', value: undefined },
+          ...specs.map((s: { id: string; name: string }) => ({ label: s.name, value: s.id })),
+        ];
+        setOptions(gameOpts);
+      } catch {
+        // Fall back to static list if bindings not ready
+        setOptions([
+          { label: 'All games', value: undefined },
+          { label: 'Limbo', value: 'limbo' },
+          { label: 'Dice', value: 'dice' },
+          { label: 'Roulette', value: 'roulette' },
+          { label: 'Pump', value: 'pump' },
+          { label: 'Plinko', value: 'plinko' },
+          { label: 'Keno', value: 'keno' },
+          { label: 'Wheel', value: 'wheel' },
+          { label: 'Mines', value: 'mines' },
+          { label: 'Chicken', value: 'chicken' },
+          { label: 'HiLo', value: 'hilo' },
+          { label: 'Blackjack', value: 'blackjack' },
+          { label: 'Baccarat', value: 'baccarat' },
+          { label: 'Video Poker', value: 'videopoker' },
+        ]);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  return options;
+}
 
 function formatTimeAgo(iso: string) {
   try {
@@ -50,6 +88,7 @@ function getStatus(run: store.Run) {
 export function RunsTable({ data, query, onQueryChange }: RunsTableProps) {
   const navigate = useNavigate();
   const runs = data?.runs ?? [];
+  const GAME_OPTIONS = useGameOptions();
 
   const pageTotal = useMemo(() => {
     const perPage = query.perPage ?? 25;

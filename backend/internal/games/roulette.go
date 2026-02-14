@@ -3,7 +3,7 @@ package games
 import (
 	"fmt"
 	"math"
-	
+
 	"github.com/MJE43/stake-pf-replay-go/internal/engine"
 )
 
@@ -36,17 +36,17 @@ func (g *RouletteGame) EvaluateWithFloats(floats []float64, params map[string]an
 	if len(floats) < 1 {
 		return GameResult{}, fmt.Errorf("roulette requires at least 1 float, got %d", len(floats))
 	}
-	
+
 	f := floats[0]
-	
+
 	// Use formula: floor(float * 37) for European roulette (0-36)
 	pocket := math.Floor(f * 37)
-	
+
 	// Determine color and properties
 	var color string
 	var isEven bool
 	var isLow bool // 1-18
-	
+
 	if pocket == 0 {
 		color = "green"
 		isEven = false
@@ -59,17 +59,17 @@ func (g *RouletteGame) EvaluateWithFloats(floats []float64, params map[string]an
 			21: true, 23: true, 25: true, 27: true, 30: true,
 			32: true, 34: true, 36: true,
 		}
-		
+
 		if redNumbers[int(pocket)] {
 			color = "red"
 		} else {
 			color = "black"
 		}
-		
+
 		isEven = int(pocket)%2 == 0
 		isLow = pocket >= 1 && pocket <= 18
 	}
-	
+
 	return GameResult{
 		Metric:      pocket, // Keep as float64 for uniformity
 		MetricLabel: "pocket",

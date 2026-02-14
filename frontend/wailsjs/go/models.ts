@@ -371,6 +371,60 @@ export namespace bindings {
 		    return a;
 		}
 	}
+	export class ScriptState {
+	    state: string;
+	    error?: string;
+	    bets: number;
+	    wins: number;
+	    losses: number;
+	    profit: number;
+	    balance: number;
+	    wagered: number;
+	    winStreak: number;
+	    loseStreak: number;
+	    currentGame: string;
+	    betsPerSecond: number;
+	    chart: scripting.ChartPoint[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ScriptState(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.state = source["state"];
+	        this.error = source["error"];
+	        this.bets = source["bets"];
+	        this.wins = source["wins"];
+	        this.losses = source["losses"];
+	        this.profit = source["profit"];
+	        this.balance = source["balance"];
+	        this.wagered = source["wagered"];
+	        this.winStreak = source["winStreak"];
+	        this.loseStreak = source["loseStreak"];
+	        this.currentGame = source["currentGame"];
+	        this.betsPerSecond = source["betsPerSecond"];
+	        this.chart = this.convertValues(source["chart"], scripting.ChartPoint);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class SeedGroupSeeds {
 	    server: string;
 	    serverHash: string;
@@ -747,6 +801,60 @@ export namespace livestore {
 	        this.highest_result = source["highest_result"];
 	        this.last_observed_nonce = source["last_observed_nonce"];
 	        this.last_observed_at = this.convertValues(source["last_observed_at"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
+export namespace scripting {
+	
+	export class ChartPoint {
+	    x: number;
+	    y: number;
+	    win: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ChartPoint(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.x = source["x"];
+	        this.y = source["y"];
+	        this.win = source["win"];
+	    }
+	}
+	export class LogEntry {
+	    // Go type: time
+	    time: any;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LogEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.time = this.convertValues(source["time"], null);
+	        this.message = source["message"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

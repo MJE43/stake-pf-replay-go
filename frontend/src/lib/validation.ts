@@ -42,6 +42,41 @@ export const plinkoParamsSchema = z.object({
     .default(16),
 });
 
+export const wheelParamsSchema = z.object({
+  segments: z.number()
+    .int('Segments must be an integer')
+    .refine((v) => [10, 20, 30, 40, 50].includes(v), 'Segments must be 10, 20, 30, 40, or 50')
+    .default(10),
+  risk: z.enum(['low', 'medium', 'high']).default('low'),
+});
+
+export const minesParamsSchema = z.object({
+  mineCount: z.number()
+    .int('Mine count must be an integer')
+    .min(1, 'Mine count must be at least 1')
+    .max(24, 'Mine count cannot exceed 24')
+    .default(3),
+});
+
+export const chickenParamsSchema = z.object({
+  bones: z.number()
+    .int('Bones must be an integer')
+    .min(1, 'Bones must be at least 1')
+    .max(20, 'Bones cannot exceed 20')
+    .default(1),
+});
+
+export const kenoParamsSchema = z.object({
+  risk: z.enum(['classic', 'low', 'medium', 'high']).default('classic'),
+  picks: z.array(
+    z.number().int('Pick must be an integer').min(0, 'Pick must be between 0 and 39').max(39, 'Pick must be between 0 and 39'),
+  )
+    .min(1, 'Keno requires at least 1 pick')
+    .max(10, 'Keno supports up to 10 picks')
+    .refine((arr) => new Set(arr).size === arr.length, 'Keno picks must be unique')
+    .default([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+});
+
 // Main scan form schema
 export const scanFormSchema = z.object({
   serverSeed: z.string().min(1, 'Server seed is required'),
@@ -93,6 +128,14 @@ export function validateGameParams(game: string, params: any): z.ZodSchema {
       return pumpParamsSchema;
     case 'plinko':
       return plinkoParamsSchema;
+    case 'wheel':
+      return wheelParamsSchema;
+    case 'mines':
+      return minesParamsSchema;
+    case 'chicken':
+      return chickenParamsSchema;
+    case 'keno':
+      return kenoParamsSchema;
     default:
       return z.object({});
   }
@@ -106,4 +149,8 @@ export type GameParams = {
   roulette: z.infer<typeof rouletteParamsSchema>;
   pump: z.infer<typeof pumpParamsSchema>;
   plinko: z.infer<typeof plinkoParamsSchema>;
+  wheel: z.infer<typeof wheelParamsSchema>;
+  mines: z.infer<typeof minesParamsSchema>;
+  chicken: z.infer<typeof chickenParamsSchema>;
+  keno: z.infer<typeof kenoParamsSchema>;
 };

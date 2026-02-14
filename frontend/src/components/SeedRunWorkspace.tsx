@@ -352,6 +352,184 @@ function RunChips({
   );
 }
 
+function WheelParams() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <FormField
+        name="params.segments"
+        render={({ field }) => (
+          <FormItem className="space-y-3">
+            <FormLabel>Segments</FormLabel>
+            <FormDescription>Number of wheel segments.</FormDescription>
+            <ToggleGroup
+              type="single"
+              value={String(field.value ?? 10)}
+              onValueChange={(value) => value && field.onChange(Number(value))}
+              className="w-full"
+            >
+              {[10, 20, 30, 40, 50].map((seg) => (
+                <ToggleGroupItem key={seg} value={String(seg)} className="flex-1 text-xs">
+                  {seg}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        name="params.risk"
+        render={({ field }) => (
+          <FormItem className="space-y-3">
+            <FormLabel>Risk</FormLabel>
+            <FormDescription>Higher risk increases volatility.</FormDescription>
+            <ToggleGroup
+              type="single"
+              value={(field.value as string) ?? 'low'}
+              onValueChange={(value) => value && field.onChange(value)}
+              className="w-full"
+            >
+              <ToggleGroupItem value="low" className="flex-1">Low</ToggleGroupItem>
+              <ToggleGroupItem value="medium" className="flex-1">Medium</ToggleGroupItem>
+              <ToggleGroupItem value="high" className="flex-1">High</ToggleGroupItem>
+            </ToggleGroup>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
+  );
+}
+
+function MinesParams() {
+  return (
+    <FormField
+      name="params.mineCount"
+      render={({ field }) => (
+        <FormItem className="space-y-3">
+          <FormLabel>
+            Mine Count <span className="text-primary">{field.value ?? 3}</span>
+          </FormLabel>
+          <FormDescription>Number of mines on a 5x5 grid (1-24).</FormDescription>
+          <Slider
+            min={1}
+            max={24}
+            step={1}
+            value={[field.value ?? 3]}
+            onValueChange={(value) => field.onChange(value[0])}
+          />
+          <div className="flex flex-wrap gap-2">
+            {[1, 3, 5, 10, 24].map((count) => (
+              <Button
+                key={count}
+                type="button"
+                size="sm"
+                variant={field.value === count ? 'default' : 'outline'}
+                onClick={() => field.onChange(count)}
+                className="h-8 px-3 text-xs"
+              >
+                {count}
+              </Button>
+            ))}
+          </div>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
+
+function ChickenParams() {
+  return (
+    <FormField
+      name="params.bones"
+      render={({ field }) => (
+        <FormItem className="space-y-3">
+          <FormLabel>
+            Bones <span className="text-primary">{field.value ?? 1}</span>
+          </FormLabel>
+          <FormDescription>Number of death tokens per round (1-20).</FormDescription>
+          <Slider
+            min={1}
+            max={20}
+            step={1}
+            value={[field.value ?? 1]}
+            onValueChange={(value) => field.onChange(value[0])}
+          />
+          <div className="flex flex-wrap gap-2">
+            {[1, 3, 5, 10, 19].map((count) => (
+              <Button
+                key={count}
+                type="button"
+                size="sm"
+                variant={field.value === count ? 'default' : 'outline'}
+                onClick={() => field.onChange(count)}
+                className="h-8 px-3 text-xs"
+              >
+                {count}
+              </Button>
+            ))}
+          </div>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
+
+function KenoScanParams() {
+  const parsePicks = (value: string): number[] => {
+    return value
+      .split(',')
+      .map((v) => Number(v.trim()))
+      .filter((v) => Number.isInteger(v));
+  };
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <FormField
+        name="params.risk"
+        render={({ field }) => (
+          <FormItem className="space-y-3">
+            <FormLabel>Risk</FormLabel>
+            <FormDescription>Choose keno risk profile for scanning.</FormDescription>
+            <ToggleGroup
+              type="single"
+              value={(field.value as string) ?? 'classic'}
+              onValueChange={(value) => value && field.onChange(value)}
+              className="w-full"
+            >
+              <ToggleGroupItem value="classic" className="flex-1 text-xs">Classic</ToggleGroupItem>
+              <ToggleGroupItem value="low" className="flex-1 text-xs">Low</ToggleGroupItem>
+              <ToggleGroupItem value="medium" className="flex-1 text-xs">Medium</ToggleGroupItem>
+              <ToggleGroupItem value="high" className="flex-1 text-xs">High</ToggleGroupItem>
+            </ToggleGroup>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        name="params.picks"
+        render={({ field }) => (
+          <FormItem className="space-y-3">
+            <FormLabel>Picks (0-39)</FormLabel>
+            <FormDescription>Comma-separated unique picks, up to 10 numbers.</FormDescription>
+            <FormControl>
+              <Input
+                className="font-mono"
+                value={Array.isArray(field.value) ? field.value.join(', ') : ''}
+                onChange={(e) => field.onChange(parsePicks(e.target.value))}
+                placeholder="0, 1, 2, 3, 4, 5, 6, 7, 8, 9"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
+  );
+}
+
 function GameParams({ gameId, games, group, onRunSelected }: {
   gameId?: string;
   games: GameInfo[];
@@ -387,6 +565,14 @@ function GameParams({ gameId, games, group, onRunSelected }: {
       return <PumpParams />;
     case 'plinko':
       return <PlinkoParams />;
+    case 'wheel':
+      return <WheelParams />;
+    case 'mines':
+      return <MinesParams />;
+    case 'chicken':
+      return <ChickenParams />;
+    case 'keno':
+      return <KenoScanParams />;
     case 'roulette':
       return <p className="text-sm text-muted-foreground">Roulette does not require extra parameters.</p>;
     default:
@@ -831,6 +1017,32 @@ export function SeedRunWorkspace({
         }
         if (watchedParams?.rows === undefined) {
           setValue('params.rows', 16, { shouldDirty: false });
+        }
+        break;
+      case 'wheel':
+        if (watchedParams?.segments === undefined) {
+          setValue('params.segments', 10, { shouldDirty: false });
+        }
+        if (watchedParams?.risk === undefined) {
+          setValue('params.risk', 'low', { shouldDirty: false });
+        }
+        break;
+      case 'mines':
+        if (watchedParams?.mineCount === undefined) {
+          setValue('params.mineCount', 3, { shouldDirty: false });
+        }
+        break;
+      case 'chicken':
+        if (watchedParams?.bones === undefined) {
+          setValue('params.bones', 1, { shouldDirty: false });
+        }
+        break;
+      case 'keno':
+        if (watchedParams?.risk === undefined) {
+          setValue('params.risk', 'classic', { shouldDirty: false });
+        }
+        if (watchedParams?.picks === undefined) {
+          setValue('params.picks', [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], { shouldDirty: false });
         }
         break;
       default:

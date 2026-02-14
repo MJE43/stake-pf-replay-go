@@ -36,14 +36,14 @@ func (g *DiceGame) EvaluateWithFloats(floats []float64, params map[string]any) (
 	if len(floats) < 1 {
 		return GameResult{}, fmt.Errorf("dice requires at least 1 float, got %d", len(floats))
 	}
-	
+
 	f := floats[0]
-	
+
 	// Use discrete formula: floor(float * 10001) / 100 for 0.00-100.00 range
 	// This creates exactly 10,001 discrete outcomes (0.00, 0.01, 0.02, ..., 100.00)
 	// matching Stake's implementation. For target matching, use tolerance=0 for exact matches.
 	roll := math.Floor(f*10001) / 100
-	
+
 	return GameResult{
 		Metric:      roll,
 		MetricLabel: "roll",

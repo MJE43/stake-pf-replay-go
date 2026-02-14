@@ -158,6 +158,9 @@ func main() {
 	// Existing backend bindings object
 	app := bindings.New()
 
+	// Scripting engine module
+	scriptMod := bindings.NewScriptModule()
+
 	// Live ingest module wiring
 	dbPath := defaultLiveDBPath()
 	port := envInt("LIVE_INGEST_PORT", 17888)
@@ -170,6 +173,7 @@ func main() {
 	startup := func(ctx context.Context) {
 		// Start existing app
 		app.Startup(ctx)
+		scriptMod.Startup(ctx)
 		setAppContext(ctx)
 
 		// Start local HTTP ingest server
@@ -228,7 +232,7 @@ func main() {
 		Menu: buildAppMenu(),
 
 		// Bindings
-		Bind: []interface{}{app, liveMod},
+		Bind: []interface{}{app, liveMod, scriptMod},
 
 		// Logging
 		LogLevel:           logger.INFO,

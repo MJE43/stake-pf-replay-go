@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import {
   IconBroadcast,
+  IconCode,
   IconDice,
   IconHistory,
   IconScan,
@@ -51,6 +52,13 @@ const navItems = [
     description: 'Monitor live betting streams',
     path: '/live',
     hotkey: 'Alt+4',
+  },
+  {
+    icon: IconCode,
+    label: 'Script',
+    description: 'Automated betting strategies',
+    path: '/script',
+    hotkey: 'Alt+5',
   },
 ];
 

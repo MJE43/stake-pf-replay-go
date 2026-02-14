@@ -3,7 +3,7 @@ package games
 import (
 	"fmt"
 	"math"
-	
+
 	"github.com/MJE43/stake-pf-replay-go/internal/engine"
 )
 
@@ -36,28 +36,28 @@ func (g *LimboGame) EvaluateWithFloats(floats []float64, params map[string]any) 
 	if len(floats) < 1 {
 		return GameResult{}, fmt.Errorf("limbo requires at least 1 float, got %d", len(floats))
 	}
-	
+
 	// Get house edge from params, default to 0.99 (1% house edge)
 	houseEdge := 0.99
 	if he, ok := params["houseEdge"].(float64); ok && he > 0 && he <= 1 {
 		houseEdge = he
 	}
-	
+
 	f := floats[0]
-	
+
 	// Calculate crash point using exact Limbo formula from Stake documentation
 	// const floatPoint = 1e8 / (float * 1e8) * houseEdge;
 	// This simplifies to: (1 / float) * houseEdge
 	floatPoint := (1.0 / f) * houseEdge
-	
+
 	// Crash point rounded down to required denominator
 	// const crashPoint = Math.floor(floatPoint * 100) / 100;
 	crashPoint := math.Floor(floatPoint*100.0) / 100.0
-	
+
 	// Consolidate all crash points below 1
 	// const result = Math.max(crashPoint, 1);
 	result := math.Max(crashPoint, 1.0)
-	
+
 	return GameResult{
 		Metric:      result,
 		MetricLabel: "multiplier",

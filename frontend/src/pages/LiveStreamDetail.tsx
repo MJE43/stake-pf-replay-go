@@ -34,7 +34,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useCadenceStream } from '@/hooks/useCadenceStream';
 import { TIER_ORDER, TierId } from '@/lib/pump-tiers';
-import { TierCadenceCard, LiveStreamTape, LiveExplorerTable } from '@/components/live';
+import { TierCadenceCard, LiveStreamTape, LiveExplorerTable, SeedQualityPanel, DecisionSignals } from '@/components/live';
 
 function CopyButton({ value, size = 14 }: { value: string; size?: number }) {
   const [copied, setCopied] = useState(false);
@@ -70,6 +70,11 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
     error,
     stream,
     refresh,
+    seedQuality,
+    signals,
+    isConnected,
+    currentNonce,
+    lastHeartbeatAt,
   } = useCadenceStream({
     streamId,
     initialRoundsLimit: 10000,
@@ -218,6 +223,23 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
 
         {/* Dashboard Tab */}
         <TabsContent value="dashboard" className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+          {/* Seed Quality Panel */}
+          <SeedQualityPanel
+            quality={seedQuality}
+            currentNonce={currentNonce}
+            isConnected={isConnected}
+          />
+
+          {/* Decision Signals */}
+          <DecisionSignals signals={signals} />
+
+          {/* Connection Health Bar */}
+          <ConnectionHealthBar
+            isConnected={isConnected}
+            currentNonce={currentNonce}
+            lastHeartbeatAt={lastHeartbeatAt}
+          />
+
           {/* All 5 tiers in a single row */}
           <div className="grid grid-cols-5 gap-3">
             {(['T164', 'T400', 'T1066', 'T3200', 'T11200'] as TierId[]).map((tierId) => {
@@ -240,6 +262,65 @@ export default function LiveStreamDetailPage(props: { streamId?: string }) {
       </Tabs>
     </div>
   );
+}
+
+function ConnectionHealthBar({
+  isConnected,
+  currentNonce,
+  lastHeartbeatAt,
+}: {
+  isConnected: boolean;
+  currentNonce: number;
+  lastHeartbeatAt: string | null;
+}) {
+  const timeSinceLastSeen = lastHeartbeatAt
+    ? formatTimeSince(lastHeartbeatAt)
+    : '—';
+
+  return (
+    <div className={cn(
+      'flex items-center gap-4 rounded-lg border px-4 py-2 text-xs font-mono',
+      isConnected
+        ? 'border-cyan-500/20 bg-cyan-500/5'
+        : 'border-red-500/20 bg-red-500/5'
+    )}>
+      <div className="flex items-center gap-2">
+        <span className={cn(
+          'h-2 w-2 rounded-full',
+          isConnected ? 'bg-cyan-400 animate-pulse' : 'bg-red-400'
+        )} />
+        <span className={isConnected ? 'text-cyan-400' : 'text-red-400'}>
+          {isConnected ? 'Connected' : 'Disconnected'}
+        </span>
+      </div>
+      <span className="h-3 w-px bg-border" />
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        <span className="uppercase tracking-wider text-[10px]">Nonce</span>
+        <span className="text-foreground">{currentNonce > 0 ? currentNonce.toLocaleString() : '—'}</span>
+      </div>
+      <span className="h-3 w-px bg-border" />
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        <span className="uppercase tracking-wider text-[10px]">Last heartbeat</span>
+        <span className="text-foreground">{timeSinceLastSeen}</span>
+      </div>
+    </div>
+  );
+}
+
+function formatTimeSince(isoDate: string): string {
+  try {
+    const then = new Date(isoDate).getTime();
+    const now = Date.now();
+    const diffSec = Math.floor((now - then) / 1000);
+    if (diffSec < 5) return 'just now';
+    if (diffSec < 60) return `${diffSec}s ago`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    return `${diffHr}h ago`;
+  } catch {
+    return '—';
+  }
 }
 
 function InfoItem({

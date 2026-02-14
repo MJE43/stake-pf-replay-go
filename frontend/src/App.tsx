@@ -20,6 +20,9 @@ const LiveStreamDetailPage = lazy(
 const KenoB2BScanPage = lazy(
   () => import('./pages/KenoB2BScanPage').then((module) => ({ default: module.KenoB2BScanPage })),
 );
+const ScriptPage = lazy(
+  () => import('./pages/ScriptPage').then((module) => ({ default: module.ScriptPage })),
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,6 +48,7 @@ export default function App() {
                   <Route path="/runs/:id" element={<RunDetailsPage />} />
                   <Route path="/live" element={<LiveStreamsPage />} />
                   <Route path="/live/:id" element={<LiveStreamDetailPage />} />
+                  <Route path="/script" element={<ScriptPage />} />
                 </Routes>
               </Suspense>
             </Layout>

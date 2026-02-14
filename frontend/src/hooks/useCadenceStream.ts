@@ -50,6 +50,10 @@ export interface UseCadenceStreamOptions {
 export interface UseCadenceStreamResult {
   /** Current nonce (from heartbeat) */
   currentNonce: number;
+  /** Alias for current nonce for dashboard status bars */
+  latestNonce: number;
+  /** Timestamp of last heartbeat/tick event */
+  lastHeartbeatAt: string | null;
   /** Per-tier statistics */
   tierStats: Map<TierId, TierStats>;
   /** Overall seed quality assessment */
@@ -95,6 +99,7 @@ export function useCadenceStream({
   const [bets, setBets] = useState<LiveBet[]>([]);
   const [totalBets, setTotalBets] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
+  const [lastHeartbeatAt, setLastHeartbeatAt] = useState<string | null>(null);
   const [error, setError] = useState<Error | null>(null);
 
   // Refs for avoiding stale closures
@@ -171,6 +176,7 @@ export function useCadenceStream({
       setTotalBets(initialData.totalBets);
 
       setIsConnected(true);
+      setLastHeartbeatAt(new Date().toISOString());
       setError(null);
     }
   }, [initialData]);
@@ -184,6 +190,7 @@ export function useCadenceStream({
       lastKnownNonceRef.current = nonce;
       setCurrentNonce(nonce);
       lastUpdateAtRef.current = Date.now();
+      setLastHeartbeatAt(new Date().toISOString());
 
       // Add to rounds buffer
       const newRound: Round = {
@@ -204,6 +211,7 @@ export function useCadenceStream({
     }
 
     setIsConnected(true);
+    setLastHeartbeatAt(new Date().toISOString());
   }, []);
 
   // Handle new bet rows
@@ -241,9 +249,11 @@ export function useCadenceStream({
       lastKnownNonceRef.current = event.nonce;
       setCurrentNonce(event.nonce);
       lastUpdateAtRef.current = Date.now();
+      setLastHeartbeatAt(new Date().toISOString());
     }
 
     setIsConnected(true);
+    setLastHeartbeatAt(new Date().toISOString());
   }, [streamId, betThreshold]);
 
   // Subscribe to events
@@ -316,6 +326,8 @@ export function useCadenceStream({
 
   return {
     currentNonce,
+    latestNonce: currentNonce,
+    lastHeartbeatAt,
     tierStats,
     seedQuality,
     signals,
