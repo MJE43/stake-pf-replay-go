@@ -7,9 +7,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ["Syncopate", ...fontFamily.sans],
-        sans: ["DM Sans", ...fontFamily.sans],
-        mono: ["JetBrains Mono", "Fira Code", ...fontFamily.mono],
+        display: ["Syncopate", "Outfit", ...fontFamily.sans],
+        sans: ["Outfit", "Fira Sans", ...fontFamily.sans],
+        mono: ["Fira Code", ...fontFamily.mono],
       },
       colors: {
         border: "hsl(var(--border))",

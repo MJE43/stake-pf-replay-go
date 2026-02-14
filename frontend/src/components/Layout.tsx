@@ -5,6 +5,7 @@ import {
   IconDice,
   IconHistory,
   IconScan,
+  IconSettings,
   IconMenu2,
 } from '@tabler/icons-react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -59,6 +60,13 @@ const navItems = [
     description: 'Automated betting strategies',
     path: '/script',
     hotkey: 'Alt+5',
+  },
+  {
+    icon: IconSettings,
+    label: 'Settings',
+    description: 'API session & preferences',
+    path: '/settings',
+    hotkey: 'Alt+6',
   },
 ];
 
@@ -148,9 +156,9 @@ export function Layout({ children }: LayoutProps) {
         </header>
 
         {/* Main content */}
-        <main className="flex-1">
+        <main className="flex-1 bg-grid-subtle">
           <div className="mx-auto w-full max-w-[1400px] p-6 lg:p-8">
-            <div className="animate-fade-in">{children}</div>
+            <div className="animate-fade-in stagger-children">{children}</div>
           </div>
         </main>
 

@@ -371,9 +371,75 @@ export namespace bindings {
 		    return a;
 		}
 	}
+	export class ScriptSessionSummary {
+	    id: string;
+	    game: string;
+	    currency: string;
+	    mode: string;
+	    finalState: string;
+	    totalBets: number;
+	    totalProfit: number;
+	    startBalance: number;
+	    finalBalance?: number;
+	    createdAt: string;
+	    endedAt?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ScriptSessionSummary(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.game = source["game"];
+	        this.currency = source["currency"];
+	        this.mode = source["mode"];
+	        this.finalState = source["finalState"];
+	        this.totalBets = source["totalBets"];
+	        this.totalProfit = source["totalProfit"];
+	        this.startBalance = source["startBalance"];
+	        this.finalBalance = source["finalBalance"];
+	        this.createdAt = source["createdAt"];
+	        this.endedAt = source["endedAt"];
+	    }
+	}
+	export class ScriptSessionsPage {
+	    sessions: ScriptSessionSummary[];
+	    totalCount: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ScriptSessionsPage(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sessions = this.convertValues(source["sessions"], ScriptSessionSummary);
+	        this.totalCount = source["totalCount"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ScriptState {
 	    state: string;
 	    error?: string;
+	    mode: string;
+	    sessionId?: string;
 	    bets: number;
 	    wins: number;
 	    losses: number;
@@ -394,6 +460,8 @@ export namespace bindings {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.state = source["state"];
 	        this.error = source["error"];
+	        this.mode = source["mode"];
+	        this.sessionId = source["sessionId"];
 	        this.bets = source["bets"];
 	        this.wins = source["wins"];
 	        this.losses = source["losses"];
@@ -474,6 +542,62 @@ export namespace bindings {
 		}
 	}
 	
+	export class SessionBalance {
+	    currency: string;
+	    available: number;
+	    vault: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SessionBalance(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.currency = source["currency"];
+	        this.available = source["available"];
+	        this.vault = source["vault"];
+	    }
+	}
+	export class SessionStatus {
+	    connected: boolean;
+	    domain: string;
+	    currency: string;
+	    hasToken: boolean;
+	    error?: string;
+	    balances?: SessionBalance[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SessionStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.connected = source["connected"];
+	        this.domain = source["domain"];
+	        this.currency = source["currency"];
+	        this.hasToken = source["hasToken"];
+	        this.error = source["error"];
+	        this.balances = this.convertValues(source["balances"], SessionBalance);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 
 }
 
@@ -874,6 +998,179 @@ export namespace scripting {
 		    }
 		    return a;
 		}
+	}
+
+}
+
+export namespace scriptstore {
+	
+	export class ScriptBet {
+	    id: number;
+	    sessionId: string;
+	    nonce: number;
+	    amount: number;
+	    payout: number;
+	    payoutMulti: number;
+	    win: boolean;
+	    roll?: number;
+	    // Go type: time
+	    createdAt: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new ScriptBet(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.sessionId = source["sessionId"];
+	        this.nonce = source["nonce"];
+	        this.amount = source["amount"];
+	        this.payout = source["payout"];
+	        this.payoutMulti = source["payoutMulti"];
+	        this.win = source["win"];
+	        this.roll = source["roll"];
+	        this.createdAt = this.convertValues(source["createdAt"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ScriptBetsPage {
+	    bets: ScriptBet[];
+	    totalCount: number;
+	    page: number;
+	    perPage: number;
+	    totalPages: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ScriptBetsPage(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bets = this.convertValues(source["bets"], ScriptBet);
+	        this.totalCount = source["totalCount"];
+	        this.page = source["page"];
+	        this.perPage = source["perPage"];
+	        this.totalPages = source["totalPages"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ScriptSession {
+	    id: string;
+	    name: string;
+	    game: string;
+	    currency: string;
+	    mode: string;
+	    scriptSource: string;
+	    startBalance: number;
+	    finalBalance?: number;
+	    // Go type: time
+	    createdAt: any;
+	    // Go type: time
+	    endedAt?: any;
+	    finalState: string;
+	    totalBets: number;
+	    totalWins: number;
+	    totalLosses: number;
+	    totalProfit: number;
+	    totalWagered: number;
+	    highestStreak: number;
+	    lowestStreak: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ScriptSession(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.game = source["game"];
+	        this.currency = source["currency"];
+	        this.mode = source["mode"];
+	        this.scriptSource = source["scriptSource"];
+	        this.startBalance = source["startBalance"];
+	        this.finalBalance = source["finalBalance"];
+	        this.createdAt = this.convertValues(source["createdAt"], null);
+	        this.endedAt = this.convertValues(source["endedAt"], null);
+	        this.finalState = source["finalState"];
+	        this.totalBets = source["totalBets"];
+	        this.totalWins = source["totalWins"];
+	        this.totalLosses = source["totalLosses"];
+	        this.totalProfit = source["totalProfit"];
+	        this.totalWagered = source["totalWagered"];
+	        this.highestStreak = source["highestStreak"];
+	        this.lowestStreak = source["lowestStreak"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
+export namespace stake {
+	
+	export class Client {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new Client(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
 	}
 
 }

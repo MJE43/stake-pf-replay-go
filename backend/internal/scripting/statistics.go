@@ -52,12 +52,22 @@ func NewChartBuffer(max int) *ChartBuffer {
 	}
 }
 
-// Push adds a data point, evicting the oldest if at capacity.
+// Push adds a data point. When the buffer exceeds Max, it decimates by
+// keeping every other point (preserving first and last) to maintain a
+// reasonable chart size during long sessions.
 func (cb *ChartBuffer) Push(p ChartPoint) {
-	if len(cb.Points) >= cb.Max {
-		cb.Points = cb.Points[1:]
-	}
 	cb.Points = append(cb.Points, p)
+
+	// When we hit double the max, decimate to half
+	if len(cb.Points) >= cb.Max*2 {
+		decimated := make([]ChartPoint, 0, cb.Max)
+		decimated = append(decimated, cb.Points[0]) // keep first
+		for i := 2; i < len(cb.Points)-1; i += 2 {
+			decimated = append(decimated, cb.Points[i])
+		}
+		decimated = append(decimated, cb.Points[len(cb.Points)-1]) // keep last
+		cb.Points = decimated
+	}
 }
 
 // Reset clears all chart data.

@@ -3,20 +3,25 @@ package bindings
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 
 	"github.com/MJE43/stake-pf-replay-go/internal/scripting"
+	"github.com/MJE43/stake-pf-replay-go/internal/scriptstore"
 )
 
 // ScriptModule is the Wails-bound struct for scripting engine management.
 type ScriptModule struct {
-	ctx    context.Context
-	mu     sync.RWMutex
-	engine *scripting.Engine
+	ctx     context.Context
+	mu      sync.RWMutex
+	engine  *scripting.Engine
+	session *SessionModule
+	store   *scriptstore.Store
 
-	// NoopBetPlacer is used until a real API client is wired in.
-	placer scripting.BetPlacer
+	// Current session tracking
+	currentSessionID string
+	currentMode      string
 
 	// Event emitter for pushing state to the frontend.
 	emitter *wailsScriptEmitter
@@ -24,19 +29,21 @@ type ScriptModule struct {
 
 // ScriptState is the frontend-facing snapshot of engine state.
 type ScriptState struct {
-	State         string                  `json:"state"`
-	Error         string                  `json:"error,omitempty"`
-	Bets          int                     `json:"bets"`
-	Wins          int                     `json:"wins"`
-	Losses        int                     `json:"losses"`
-	Profit        float64                 `json:"profit"`
-	Balance       float64                 `json:"balance"`
-	Wagered       float64                 `json:"wagered"`
-	WinStreak     int                     `json:"winStreak"`
-	LoseStreak    int                     `json:"loseStreak"`
-	CurrentGame   string                  `json:"currentGame"`
-	BetsPerSecond float64                 `json:"betsPerSecond"`
-	Chart         []scripting.ChartPoint  `json:"chart"`
+	State         string                 `json:"state"`
+	Error         string                 `json:"error,omitempty"`
+	Mode          string                 `json:"mode"`
+	SessionID     string                 `json:"sessionId,omitempty"`
+	Bets          int                    `json:"bets"`
+	Wins          int                    `json:"wins"`
+	Losses        int                    `json:"losses"`
+	Profit        float64                `json:"profit"`
+	Balance       float64                `json:"balance"`
+	Wagered       float64                `json:"wagered"`
+	WinStreak     int                    `json:"winStreak"`
+	LoseStreak    int                    `json:"loseStreak"`
+	CurrentGame   string                 `json:"currentGame"`
+	BetsPerSecond float64                `json:"betsPerSecond"`
+	Chart         []scripting.ChartPoint `json:"chart"`
 }
 
 // wailsScriptEmitter bridges scripting events to Wails runtime events.
@@ -48,23 +55,35 @@ func (e *wailsScriptEmitter) EmitScriptState(state scripting.EngineSnapshot) {
 	if e.ctx == nil {
 		return
 	}
-	// Wails EventsEmit is imported in the runtime package but we avoid
-	// importing Wails in the backend module. Instead, the ScriptModule will
-	// poll-style serve state via GetScriptState(). This emitter is a
-	// placeholder for future Wails event integration from the root module.
+	// Placeholder for future Wails event integration.
 }
 
 func (e *wailsScriptEmitter) EmitScriptLog(entries []scripting.LogEntry) {
-	// Same as above — placeholder.
+	// Placeholder for future Wails event integration.
 }
 
 // NewScriptModule creates a new ScriptModule ready to be bound.
-func NewScriptModule() *ScriptModule {
+func NewScriptModule(session *SessionModule) *ScriptModule {
 	emitter := &wailsScriptEmitter{}
 	return &ScriptModule{
-		placer:  &SimulatedBetPlacer{},
+		session: session,
 		emitter: emitter,
 	}
+}
+
+// InitStore initializes the script session store at the given path.
+// Should be called during application startup.
+func (sm *ScriptModule) InitStore(dbPath string) error {
+	store, err := scriptstore.New(dbPath)
+	if err != nil {
+		return fmt.Errorf("failed to open script store: %w", err)
+	}
+	if err := store.Migrate(); err != nil {
+		store.Close()
+		return fmt.Errorf("failed to migrate script store: %w", err)
+	}
+	sm.store = store
+	return nil
 }
 
 // Startup is called by Wails on application startup.
@@ -74,7 +93,8 @@ func (sm *ScriptModule) Startup(ctx context.Context) {
 }
 
 // StartScript starts the scripting engine with the given script.
-func (sm *ScriptModule) StartScript(script string, game string, currency string, startBalance float64) error {
+// mode: "simulated" (default) or "live" (uses real Stake API).
+func (sm *ScriptModule) StartScript(script string, game string, currency string, startBalance float64, mode string) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 
@@ -95,9 +115,50 @@ func (sm *ScriptModule) StartScript(script string, game string, currency string,
 	if strings.TrimSpace(currency) == "" {
 		currency = "trx"
 	}
+	if mode == "" {
+		mode = "simulated"
+	}
+
+	// Choose the bet placer based on mode
+	var placer scripting.BetPlacer
+	switch mode {
+	case "live":
+		if sm.session == nil || !sm.session.IsConnected() {
+			return fmt.Errorf("cannot start in live mode: no active session (set your API token in Settings first)")
+		}
+		client := sm.session.Client()
+		if client == nil {
+			return fmt.Errorf("cannot start in live mode: session client is nil")
+		}
+		// Ensure the client uses the script's currency
+		client.SetCurrency(currency)
+		placer = NewApiBetPlacer(client)
+	default:
+		placer = &SimulatedBetPlacer{}
+	}
 
 	// Create a fresh engine each time
-	sm.engine = scripting.NewEngine(sm.placer, sm.emitter)
+	sm.engine = scripting.NewEngine(placer, sm.emitter)
+	sm.currentMode = mode
+
+	// Create a persistent session if the store is initialized
+	if sm.store != nil {
+		sess := &scriptstore.ScriptSession{
+			Game:         game,
+			Currency:     currency,
+			Mode:         mode,
+			ScriptSource: script,
+			StartBalance: startBalance,
+		}
+		id, err := sm.store.CreateSession(sess)
+		if err != nil {
+			log.Printf("scriptstore: failed to create session: %v", err)
+		} else {
+			sm.currentSessionID = id
+			recorder := scriptstore.NewSessionRecorder(sm.store, id, 50)
+			sm.engine.SetRecorder(recorder)
+		}
+	}
 
 	bootstrap := fmt.Sprintf("game = %q\ncurrency = %q\n%s", game, currency, script)
 	if err := sm.engine.Start(bootstrap, startBalance); err != nil {
@@ -111,29 +172,64 @@ func (sm *ScriptModule) StartScript(script string, game string, currency string,
 func (sm *ScriptModule) StopScript() error {
 	sm.mu.RLock()
 	eng := sm.engine
+	sessionID := sm.currentSessionID
 	sm.mu.RUnlock()
 
 	if eng == nil {
 		return fmt.Errorf("no script is running")
 	}
 
-	return eng.Stop()
+	err := eng.Stop()
+
+	// End the persistent session
+	if sessionID != "" && sm.store != nil {
+		snap := eng.GetState()
+		finalState := "stopped"
+		if snap.Error != "" {
+			finalState = "error"
+		}
+		stats := scriptstore.SessionStats{
+			TotalBets:    snap.Stats.Bets,
+			TotalWins:    snap.Stats.Wins,
+			TotalLosses:  snap.Stats.Losses,
+			TotalProfit:  snap.Stats.Profit,
+			TotalWagered: snap.Stats.Wagered,
+			FinalBalance: snap.Stats.Balance,
+		}
+		if snap.Stats != nil {
+			stats.HighestStreak = snap.Stats.HighestStreak
+			stats.LowestStreak = snap.Stats.LowestStreak
+		}
+		if storeErr := sm.store.EndSession(sessionID, finalState, stats); storeErr != nil {
+			log.Printf("scriptstore: failed to end session: %v", storeErr)
+		}
+	}
+
+	return err
 }
 
 // GetScriptState returns the current scripting engine state.
 func (sm *ScriptModule) GetScriptState() ScriptState {
 	sm.mu.RLock()
 	eng := sm.engine
+	sessionID := sm.currentSessionID
+	mode := sm.currentMode
 	sm.mu.RUnlock()
 
 	if eng == nil {
-		return ScriptState{State: string(scripting.StateIdle)}
+		return ScriptState{State: string(scripting.StateIdle), Mode: "simulated"}
+	}
+
+	if mode == "" {
+		mode = "simulated"
 	}
 
 	snap := eng.GetState()
 	state := ScriptState{
 		State:         string(snap.State),
 		Error:         snap.Error,
+		Mode:          mode,
+		SessionID:     sessionID,
 		CurrentGame:   snap.CurrentGame,
 		BetsPerSecond: snap.BetsPerSecond,
 	}
@@ -169,12 +265,96 @@ func (sm *ScriptModule) GetScriptLog() []scripting.LogEntry {
 	return eng.GetLogs()
 }
 
+// --- Session persistence bindings ---
+
+// ScriptSessionSummary is a lightweight session entry for listing.
+type ScriptSessionSummary struct {
+	ID           string   `json:"id"`
+	Game         string   `json:"game"`
+	Currency     string   `json:"currency"`
+	Mode         string   `json:"mode"`
+	FinalState   string   `json:"finalState"`
+	TotalBets    int      `json:"totalBets"`
+	TotalProfit  float64  `json:"totalProfit"`
+	StartBalance float64  `json:"startBalance"`
+	FinalBalance *float64 `json:"finalBalance,omitempty"`
+	CreatedAt    string   `json:"createdAt"`
+	EndedAt      *string  `json:"endedAt,omitempty"`
+}
+
+// ScriptSessionsPage is a paginated sessions response.
+type ScriptSessionsPage struct {
+	Sessions   []ScriptSessionSummary `json:"sessions"`
+	TotalCount int                    `json:"totalCount"`
+}
+
+// ListScriptSessions returns paginated script sessions.
+func (sm *ScriptModule) ListScriptSessions(limit int, offset int) ScriptSessionsPage {
+	if sm.store == nil {
+		return ScriptSessionsPage{}
+	}
+
+	sessions, total, err := sm.store.ListSessions(limit, offset)
+	if err != nil {
+		log.Printf("scriptstore: list sessions error: %v", err)
+		return ScriptSessionsPage{}
+	}
+
+	summaries := make([]ScriptSessionSummary, len(sessions))
+	for i, s := range sessions {
+		summary := ScriptSessionSummary{
+			ID:           s.ID,
+			Game:         s.Game,
+			Currency:     s.Currency,
+			Mode:         s.Mode,
+			FinalState:   s.FinalState,
+			TotalBets:    s.TotalBets,
+			TotalProfit:  s.TotalProfit,
+			StartBalance: s.StartBalance,
+			FinalBalance: s.FinalBalance,
+			CreatedAt:    s.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		}
+		if s.EndedAt != nil {
+			t := s.EndedAt.Format("2006-01-02T15:04:05Z")
+			summary.EndedAt = &t
+		}
+		summaries[i] = summary
+	}
+
+	return ScriptSessionsPage{
+		Sessions:   summaries,
+		TotalCount: total,
+	}
+}
+
+// GetScriptSession returns the full details of a session by ID.
+func (sm *ScriptModule) GetScriptSession(id string) (*scriptstore.ScriptSession, error) {
+	if sm.store == nil {
+		return nil, fmt.Errorf("script store not initialized")
+	}
+	return sm.store.GetSession(id)
+}
+
+// GetScriptSessionBets returns paginated bets for a session.
+func (sm *ScriptModule) GetScriptSessionBets(id string, page int, perPage int) (*scriptstore.ScriptBetsPage, error) {
+	if sm.store == nil {
+		return nil, fmt.Errorf("script store not initialized")
+	}
+	return sm.store.GetSessionBets(id, page, perPage)
+}
+
+// DeleteScriptSession removes a session and all associated data.
+func (sm *ScriptModule) DeleteScriptSession(id string) error {
+	if sm.store == nil {
+		return fmt.Errorf("script store not initialized")
+	}
+	return sm.store.DeleteSession(id)
+}
+
 // SimulatedBetPlacer is a placeholder that simulates bet results.
-// This will be replaced with a real Stake API client in the future.
 type SimulatedBetPlacer struct{}
 
 func (s *SimulatedBetPlacer) PlaceBet(ctx context.Context, vars *scripting.Variables) (*scripting.BetResult, error) {
-	// Simulate based on game type
 	switch vars.Game {
 	case "dice":
 		return simulateDiceBet(vars), nil
@@ -186,7 +366,6 @@ func (s *SimulatedBetPlacer) PlaceBet(ctx context.Context, vars *scripting.Varia
 }
 
 func simulateDiceBet(vars *scripting.Variables) *scripting.BetResult {
-	// Simple simulation: win if chance > 50
 	win := vars.Chance >= 50
 	multi := 0.0
 	if win {
@@ -202,14 +381,13 @@ func simulateDiceBet(vars *scripting.Variables) *scripting.BetResult {
 		Payout:      payout,
 		PayoutMulti: multi,
 		Win:         win,
-		Roll:        25.0, // simulated roll
+		Roll:        25.0,
 		Chance:      vars.Chance,
 		Target:      50.0,
 	}
 }
 
 func simulateLimboBet(vars *scripting.Variables) *scripting.BetResult {
-	// Simple simulation: always lose (target is typically > 1)
 	return &scripting.BetResult{
 		Amount:      vars.NextBet,
 		Payout:      0,
@@ -221,7 +399,6 @@ func simulateLimboBet(vars *scripting.Variables) *scripting.BetResult {
 }
 
 func simulateGenericBet(vars *scripting.Variables) *scripting.BetResult {
-	// 50/50 simulation
 	return &scripting.BetResult{
 		Amount:      vars.NextBet,
 		Payout:      0,

@@ -495,3 +495,56 @@ func (a *App) StartKenoB2BScan(req KenoB2BRequest) (KenoB2BResult, error) {
 func (a *App) GetKenoRisks() []string {
 	return games.ValidKenoRisks()
 }
+
+// ExportRunCSV exports all hits for a run as a CSV string.
+// Returns the CSV content as a string that the frontend can download.
+func (a *App) ExportRunCSV(runID string) (string, error) {
+	run, err := a.db.GetRun(runID)
+	if err != nil {
+		return "", fmt.Errorf("run not found: %w", err)
+	}
+
+	// Fetch all hits (up to 100k)
+	hitsPage, err := a.db.GetRunHits(runID, 1, 100000)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch hits: %w", err)
+	}
+
+	var csv string
+	csv += "nonce,metric,details,delta_nonce\n"
+	for _, h := range hitsPage.Hits {
+		delta := ""
+		if h.DeltaNonce != nil {
+			delta = strconv.FormatUint(*h.DeltaNonce, 10)
+		}
+		csv += fmt.Sprintf("%d,%f,%s,%s\n",
+			h.Nonce, h.Metric,
+			escapeCSV(h.Details), delta)
+	}
+
+	_ = run // Used for context in future enhancements (header with seed info)
+	return csv, nil
+}
+
+// escapeCSV wraps a field in quotes if it contains commas, quotes, or newlines.
+func escapeCSV(s string) string {
+	needsQuote := false
+	for _, c := range s {
+		if c == ',' || c == '"' || c == '\n' || c == '\r' {
+			needsQuote = true
+			break
+		}
+	}
+	if !needsQuote {
+		return s
+	}
+	escaped := ""
+	for _, c := range s {
+		if c == '"' {
+			escaped += `""`
+		} else {
+			escaped += string(c)
+		}
+	}
+	return `"` + escaped + `"`
+}

@@ -158,8 +158,11 @@ func main() {
 	// Existing backend bindings object
 	app := bindings.New()
 
+	// Session management module (Stake API token + client)
+	sessionMod := bindings.NewSessionModule()
+
 	// Scripting engine module
-	scriptMod := bindings.NewScriptModule()
+	scriptMod := bindings.NewScriptModule(sessionMod)
 
 	// Live ingest module wiring
 	dbPath := defaultLiveDBPath()
@@ -170,9 +173,16 @@ func main() {
 		log.Fatalf("live module init failed: %v", err)
 	}
 
+	// Initialize script session store
+	scriptDBPath := filepath.Join(appDataDir(), "script_sessions.db")
+	if err := scriptMod.InitStore(scriptDBPath); err != nil {
+		log.Printf("script store init failed (continuing without persistence): %v", err)
+	}
+
 	startup := func(ctx context.Context) {
 		// Start existing app
 		app.Startup(ctx)
+		sessionMod.Startup(ctx)
 		scriptMod.Startup(ctx)
 		setAppContext(ctx)
 
@@ -232,7 +242,7 @@ func main() {
 		Menu: buildAppMenu(),
 
 		// Bindings
-		Bind: []interface{}{app, liveMod, scriptMod},
+		Bind: []interface{}{app, liveMod, scriptMod, sessionMod},
 
 		// Logging
 		LogLevel:           logger.INFO,

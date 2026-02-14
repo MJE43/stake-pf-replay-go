@@ -56,10 +56,10 @@
     --hit: 45 100% 50%;
     --copper: 0 0% 60%;
 
-    /* Typography */
-    --font-display: "Syncopate", sans-serif;
-    --font-sans: "DM Sans", -apple-system, sans-serif;
-    --font-mono: "JetBrains Mono", "Fira Code", monospace;
+    /* Typography — distinctive font stack */
+    --font-display: "Syncopate", "Outfit", sans-serif;
+    --font-sans: "Outfit", "Fira Sans", -apple-system, sans-serif;
+    --font-mono: "Fira Code", monospace;
   }
 
   .dark {
@@ -437,4 +437,201 @@
   @apply border border-hit/50 bg-hit/10;
   color: hsl(var(--hit));
   border-radius: var(--radius);
+}
+
+/* ============================================
+   ATMOSPHERIC BACKGROUNDS
+   ============================================ */
+
+/* Subtle grid pattern for main content area */
+.bg-grid-subtle {
+  background-image:
+    linear-gradient(hsl(var(--primary) / 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--primary) / 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Frosted glass card */
+.glass-card {
+  @apply border border-border/50;
+  background: hsl(var(--card) / 0.6);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+}
+
+/* Gradient accent line */
+.accent-line-top {
+  position: relative;
+}
+.accent-line-top::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    hsl(var(--primary) / 0.6) 20%,
+    hsl(var(--primary) / 0.8) 50%,
+    hsl(var(--primary) / 0.6) 80%,
+    transparent
+  );
+}
+
+/* Radial glow behind important sections */
+.radial-glow {
+  position: relative;
+}
+.radial-glow::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    ellipse at center,
+    hsl(var(--primary) / 0.04) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ============================================
+   PAGE TRANSITIONS & STAGGER REVEALS
+   ============================================ */
+
+/* Staggered entry for child elements */
+.stagger-children > * {
+  opacity: 0;
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 60ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 360ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 420ms; }
+
+/* Slide in from left */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideInLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Scale in */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ============================================
+   MICRO-INTERACTIONS
+   ============================================ */
+
+/* Win flash — green */
+@keyframes winFlash {
+  0% {
+    background-color: hsl(160 100% 50% / 0.15);
+    box-shadow: inset 0 0 20px hsl(160 100% 50% / 0.1);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+.flash-win {
+  animation: winFlash 0.6s ease-out;
+}
+
+/* Loss flash — red */
+@keyframes lossFlash {
+  0% {
+    background-color: hsl(0 100% 50% / 0.15);
+    box-shadow: inset 0 0 20px hsl(0 100% 50% / 0.1);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+.flash-loss {
+  animation: lossFlash 0.6s ease-out;
+}
+
+/* Number counter pulse */
+@keyframes numberPop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+.pop-number {
+  animation: numberPop 0.25s ease-out;
+}
+
+/* Hover lift effect */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px hsl(var(--background) / 0.5);
+}
+
+/* Interactive border glow on hover */
+.hover-glow {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-glow:hover {
+  border-color: hsl(var(--primary) / 0.4);
+  box-shadow: 0 0 12px hsl(var(--glow) / 0.1);
+}
+
+/* Smooth all transitions */
+.transition-smooth {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ============================================
+   DEPTH & LAYERING
+   ============================================ */
+
+/* Subtle inner shadow for depth */
+.inner-depth {
+  box-shadow: inset 0 1px 2px hsl(var(--background) / 0.3);
+}
+
+/* Elevated card with shadow */
+.elevated {
+  box-shadow:
+    0 1px 3px hsl(var(--background) / 0.5),
+    0 4px 16px hsl(var(--background) / 0.3);
 }

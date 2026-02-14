@@ -26,12 +26,48 @@ type BetPlacer interface {
 	PlaceBet(ctx context.Context, vars *Variables) (*BetResult, error)
 }
 
+// BalanceSyncer is an optional interface that bet placers can implement
+// to support periodic balance re-synchronization with the API.
+type BalanceSyncer interface {
+	// GetBalance fetches the real account balance for the given currency.
+	GetBalance(ctx context.Context, currency string) (float64, error)
+}
+
+// MultiRoundPlacer extends BetPlacer with multi-round game support
+// (HiLo, Mines, Blackjack). Implementations handle the action loop.
+type MultiRoundPlacer interface {
+	// PlaceNextAction sends the next action for an active game.
+	// action is the user's decision: HiLo guess, Mines field index, Blackjack action.
+	PlaceNextAction(ctx context.Context, game string, action interface{}) (*BetResult, bool, error)
+
+	// Cashout cashes out the current active game.
+	Cashout(ctx context.Context, game string) (*BetResult, error)
+}
+
+// multiRoundGames lists games that require the inner round() loop.
+var multiRoundGames = map[string]bool{
+	"hilo":      true,
+	"mines":     true,
+	"blackjack": true,
+}
+
+// balanceSyncInterval is the number of bets between periodic balance re-syncs.
+// Only applies when the placer implements BalanceSyncer.
+const balanceSyncInterval = 50
+
 // EventEmitter allows the engine to push state updates to the frontend.
 type EventEmitter interface {
 	// EmitScriptState sends the current engine state to the frontend.
 	EmitScriptState(state EngineSnapshot)
 	// EmitScriptLog sends log entries to the frontend.
 	EmitScriptLog(entries []LogEntry)
+}
+
+// BetRecorder receives bet results for external persistence (e.g. SQLite).
+// Optional — when nil, no recording occurs.
+type BetRecorder interface {
+	RecordBet(amount, payout, payoutMulti float64, win bool, roll *float64)
+	Flush()
 }
 
 // EngineSnapshot is a serializable snapshot of the engine state.
@@ -59,8 +95,10 @@ type Engine struct {
 
 	betPlacer BetPlacer
 	emitter   EventEmitter
+	recorder  BetRecorder
 
 	startTime time.Time
+	lastEmit  time.Time
 }
 
 // NewEngine creates a new scripting engine.
@@ -70,6 +108,12 @@ func NewEngine(placer BetPlacer, emitter EventEmitter) *Engine {
 		betPlacer: placer,
 		emitter:   emitter,
 	}
+}
+
+// SetRecorder attaches a bet recorder for session persistence.
+// Must be called before Start().
+func (e *Engine) SetRecorder(rec BetRecorder) {
+	e.recorder = rec
 }
 
 // Start begins script execution. The script source is executed once to
@@ -83,7 +127,7 @@ func (e *Engine) Start(script string, startBalance float64) error {
 
 	// Initialize fresh state
 	e.stats = NewStatistics(startBalance)
-	e.chart = NewChartBuffer(50)
+	e.chart = NewChartBuffer(500)
 	e.vars = NewVariables(e.stats)
 	e.vm = NewVM()
 	e.state = StateRunning
@@ -142,7 +186,13 @@ func (e *Engine) Stop() error {
 	}
 	e.state = StateStopped
 	e.vars.Running = false
+	recorder := e.recorder
 	e.mu.Unlock()
+
+	// Flush any remaining buffered bets
+	if recorder != nil {
+		recorder.Flush()
+	}
 
 	e.emitState()
 	return nil
@@ -206,7 +256,7 @@ func (e *Engine) betLoop(ctx context.Context) {
 			return
 		}
 
-		// 1. Place bet
+		// 1. Place bet (initial round)
 		result, err := e.betPlacer.PlaceBet(ctx, vars)
 		if err != nil {
 			// Check if context was cancelled (graceful stop)
@@ -224,6 +274,36 @@ func (e *Engine) betLoop(ctx context.Context) {
 			return
 		}
 
+		// 1b. Multi-round game loop (HiLo, Mines, Blackjack).
+		// If the game is multi-round AND the placer supports it AND the user
+		// defined a round() callback, we enter the inner action loop.
+		e.mu.RLock()
+		gameName := e.vars.Game
+		e.mu.RUnlock()
+
+		if multiRoundGames[gameName] {
+			if mrPlacer, ok := e.betPlacer.(MultiRoundPlacer); ok && e.vm.HasRoundFunc() {
+				roundResult, roundErr := e.runMultiRoundLoop(ctx, mrPlacer, gameName, result)
+				if roundErr != nil {
+					if ctx.Err() != nil {
+						e.mu.Lock()
+						if e.state == StateRunning {
+							e.state = StateStopped
+						}
+						e.vars.Running = false
+						e.mu.Unlock()
+						e.emitState()
+						return
+					}
+					e.setError(fmt.Errorf("multi-round error: %w", roundErr))
+					return
+				}
+				if roundResult != nil {
+					result = roundResult
+				}
+			}
+		}
+
 		// 2. Update statistics and engine state under write lock.
 		e.mu.Lock()
 		e.stats.RecordBet(*result)
@@ -233,6 +313,19 @@ func (e *Engine) betLoop(ctx context.Context) {
 		e.vars.PreviousBet = result.Amount
 		e.vars.Balance = e.stats.Balance
 		e.vars.CashoutDone = true
+
+		// 3b. Periodic balance re-sync for live mode.
+		// Every N bets, if the placer supports it, re-fetch the real
+		// account balance to detect external deposits/withdrawals.
+		if syncer, ok := e.betPlacer.(BalanceSyncer); ok && e.stats.Bets%balanceSyncInterval == 0 {
+			if realBal, err := syncer.GetBalance(ctx, e.vars.Currency); err == nil && realBal > 0 {
+				drift := realBal - e.stats.Balance
+				if drift > 0.000001 || drift < -0.000001 {
+					e.stats.Balance = realBal
+					e.vars.Balance = realBal
+				}
+			}
+		}
 
 		// 4. Update lastBet object
 		e.vars.LastBet = map[string]interface{}{
@@ -257,7 +350,19 @@ func (e *Engine) betLoop(ctx context.Context) {
 			Profit:    e.stats.Profit,
 			Win:       result.Win,
 		})
+
+		// 6b. Record bet for persistence (if recorder is attached)
+		recorder := e.recorder
 		e.mu.Unlock()
+
+		if recorder != nil {
+			var roll *float64
+			if result.Roll != 0 {
+				r := result.Roll
+				roll = &r
+			}
+			recorder.RecordBet(result.Amount, result.Payout, result.PayoutMulti, result.Win, roll)
+		}
 
 		// 7. Call dobet()
 		if err := e.vm.CallDobet(); err != nil {
@@ -297,8 +402,8 @@ func (e *Engine) betLoop(ctx context.Context) {
 			return
 		}
 
-		// 11. Emit state update (throttled: every bet for now; can add throttling later)
-		e.emitState()
+		// 11. Emit state update (throttled: every 100ms or every bet if slower)
+		e.throttledEmitState()
 
 		// 12. Apply sleep delay
 		sleepMs := e.vm.GetSleepTime()
@@ -311,6 +416,113 @@ func (e *Engine) betLoop(ctx context.Context) {
 			}
 		}
 	}
+}
+
+// runMultiRoundLoop executes the inner action loop for multi-round games.
+// It repeatedly calls round() to get the user's action, sends it to the API
+// via PlaceNextAction, and continues until the game ends (bet.active == false)
+// or the user cashes out.
+func (e *Engine) runMultiRoundLoop(ctx context.Context, mrPlacer MultiRoundPlacer, game string, initialResult *BetResult) (*BetResult, error) {
+	const maxRounds = 100 // Safety limit to prevent infinite loops
+
+	for round := 0; round < maxRounds; round++ {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		if e.vm.IsStopRequested() {
+			// User called stop() inside round() — try to cashout
+			cashResult, err := mrPlacer.Cashout(ctx, game)
+			if err == nil && cashResult != nil {
+				return cashResult, nil
+			}
+			return initialResult, nil
+		}
+
+		// Inject current game state into VM so round() can inspect it
+		e.mu.Lock()
+		e.vars.CurrentBet = map[string]interface{}{
+			"active":     true,
+			"round":      round,
+			"game":       game,
+			"multiplier": initialResult.PayoutMulti,
+		}
+		e.vm.SetVariables(e.vars)
+		e.mu.Unlock()
+
+		// Call round() to get the user's action
+		actionVal, err := e.vm.CallRound()
+		if err != nil {
+			return nil, fmt.Errorf("round() error: %w", err)
+		}
+
+		// Sync back any variable changes from round()
+		e.vm.SyncVariables(e.vars)
+
+		// Read the action from the return value or from the variables
+		var action interface{}
+		if actionVal != nil && !isUndefinedOrNull(actionVal) {
+			action = actionVal.Export()
+		} else {
+			// Read from variables depending on game
+			e.mu.RLock()
+			switch game {
+			case "hilo":
+				if e.vars.HiLoGuess != nil {
+					action = *e.vars.HiLoGuess
+				}
+			case "mines":
+				if len(e.vars.Fields) > 0 {
+					action = e.vars.Fields[0]
+				}
+			case "blackjack":
+				action = e.vars.Action
+			}
+			e.mu.RUnlock()
+		}
+
+		// Check for cashout signals
+		e.mu.RLock()
+		cashoutDone := e.vars.CashoutDone
+		e.mu.RUnlock()
+
+		if cashoutDone {
+			cashResult, err := mrPlacer.Cashout(ctx, game)
+			if err != nil {
+				return nil, fmt.Errorf("cashout failed: %w", err)
+			}
+			return cashResult, nil
+		}
+
+		if action == nil {
+			return nil, fmt.Errorf("round() must return an action or set the appropriate action variable")
+		}
+
+		// Send the action to the API
+		nextResult, stillActive, err := mrPlacer.PlaceNextAction(ctx, game, action)
+		if err != nil {
+			return nil, fmt.Errorf("next action failed: %w", err)
+		}
+
+		// Update initialResult with the latest state
+		if nextResult != nil {
+			initialResult = nextResult
+		}
+
+		// If the game is no longer active (player lost or game ended), exit loop
+		if !stillActive {
+			return initialResult, nil
+		}
+	}
+
+	// Safety: hit max rounds — attempt cashout
+	cashResult, err := mrPlacer.Cashout(ctx, game)
+	if err != nil {
+		return initialResult, nil
+	}
+	return cashResult, nil
 }
 
 func (e *Engine) setError(err error) {
@@ -358,6 +570,15 @@ func (e *Engine) emitState() {
 	snap := e.snapshot()
 	e.mu.RUnlock()
 	e.emitter.EmitScriptState(snap)
+	e.lastEmit = time.Now()
+}
+
+// throttledEmitState only emits if at least 100ms have passed since the last emission.
+func (e *Engine) throttledEmitState() {
+	if time.Since(e.lastEmit) < 100*time.Millisecond {
+		return
+	}
+	e.emitState()
 }
 
 func isUndefinedOrNull(v interface{}) bool {

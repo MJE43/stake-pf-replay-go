@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
-import { IconAlertTriangle, IconTable } from '@tabler/icons-react';
-import { GetRunHits } from '@wails/go/bindings/App';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { IconAlertTriangle, IconTable, IconDownload } from '@tabler/icons-react';
+import { GetRunHits, ExportRunCSV } from '@wails/go/bindings/App';
 import { store } from '@wails/go/models';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -57,6 +57,27 @@ export function HitsTable({ runId }: HitsTableProps) {
 
   useEffect(() => {
     fetchHits();
+  }, [runId]);
+
+  const [exporting, setExporting] = useState(false);
+  const handleExportCSV = useCallback(async () => {
+    try {
+      setExporting(true);
+      const csv = await ExportRunCSV(runId);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `scan-${runId.slice(0, 8)}-hits.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('CSV export failed:', err);
+    } finally {
+      setExporting(false);
+    }
   }, [runId]);
 
   // Error state
@@ -117,7 +138,19 @@ export function HitsTable({ runId }: HitsTableProps) {
           </div>
         </div>
         {data.length > 0 && (
-          <span className="badge-terminal">{(totalCount ?? data.length).toLocaleString()} hits</span>
+          <div className="flex items-center gap-3">
+            <span className="badge-terminal">{(totalCount ?? data.length).toLocaleString()} hits</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCSV}
+              disabled={exporting}
+              className="h-7 gap-1.5 border-primary/30 px-2.5 font-mono text-[10px] uppercase tracking-wider hover:border-primary/60 hover:bg-primary/10"
+            >
+              <IconDownload size={14} />
+              {exporting ? 'Exporting...' : 'CSV'}
+            </Button>
+          </div>
         )}
       </div>
 

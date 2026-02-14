@@ -195,7 +195,7 @@ func TestPlinkoEvaluation(t *testing.T) {
 
 func TestGameRegistry(t *testing.T) {
 	// Test that all games are registered
-	expectedGames := []string{"limbo", "dice", "roulette", "pump", "plinko", "keno", "wheel", "mines", "chicken", "hilo", "blackjack", "baccarat", "videopoker"}
+	expectedGames := []string{"limbo", "dice", "roulette", "pump", "plinko", "keno", "wheel", "mines", "chicken", "hilo", "blackjack", "baccarat", "videopoker", "crash", "slide"}
 
 	for _, gameID := range expectedGames {
 		game, exists := GetGame(gameID)

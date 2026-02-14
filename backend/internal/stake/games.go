@@ -542,6 +542,285 @@ func (c *Client) BlackjackNext(ctx context.Context, action string) (*BetResult, 
 	return &result, nil
 }
 
+// --- Plinko ---
+
+// PlinkoBetRequest contains the parameters for a plinko bet.
+type PlinkoBetRequest struct {
+	Risk   string  `json:"risk"`   // "low", "medium", "high"
+	Rows   int     `json:"rows"`   // 8, 12, or 16
+	Amount float64 `json:"amount"`
+}
+
+var allowedPlinkoRisks = map[string]bool{
+	"low":    true,
+	"medium": true,
+	"high":   true,
+}
+
+var allowedPlinkoRows = map[int]bool{
+	8: true, 12: true, 16: true,
+}
+
+// PlinkoBetResult contains the outcome of a plinko bet.
+type PlinkoBetResult struct {
+	BetResult
+	State struct {
+		Result float64 `json:"result"`
+	} `json:"state"`
+}
+
+// PlinkoBet places a plinko bet.
+func (c *Client) PlinkoBet(ctx context.Context, req PlinkoBetRequest) (*PlinkoBetResult, error) {
+	if req.Amount <= 0 {
+		return nil, fmt.Errorf("stake: plinko amount must be > 0, got %f", req.Amount)
+	}
+	if !allowedPlinkoRisks[req.Risk] {
+		return nil, fmt.Errorf("stake: invalid plinko risk %q", req.Risk)
+	}
+	if !allowedPlinkoRows[req.Rows] {
+		return nil, fmt.Errorf("stake: invalid plinko rows %d (expected 8, 12, or 16)", req.Rows)
+	}
+
+	body := map[string]any{
+		"risk":       req.Risk,
+		"rows":       req.Rows,
+		"identifier": BetIdentifier(),
+		"amount":     req.Amount,
+		"currency":   c.Currency(),
+	}
+
+	resp, err := c.gameRequest(ctx, "_api/casino/plinko/bet", body)
+	if err != nil {
+		return nil, err
+	}
+
+	gameData, err := extractGameData(resp, "plinkoBet")
+	if err != nil {
+		return nil, err
+	}
+
+	var result PlinkoBetResult
+	if err := json.Unmarshal(gameData, &result); err != nil {
+		return nil, fmt.Errorf("stake: parse plinko result: %w", err)
+	}
+
+	return &result, nil
+}
+
+// --- Wheel ---
+
+// WheelBetRequest contains the parameters for a wheel bet.
+type WheelBetRequest struct {
+	Risk     string  `json:"risk"`     // "low", "medium", "high"
+	Segments int     `json:"segments"` // 10, 20, 30, 40, or 50
+	Amount   float64 `json:"amount"`
+}
+
+var allowedWheelRisks = map[string]bool{
+	"low":    true,
+	"medium": true,
+	"high":   true,
+}
+
+var allowedWheelSegments = map[int]bool{
+	10: true, 20: true, 30: true, 40: true, 50: true,
+}
+
+// WheelBetResult contains the outcome of a wheel bet.
+type WheelBetResult struct {
+	BetResult
+	State struct {
+		Result float64 `json:"result"`
+	} `json:"state"`
+}
+
+// WheelBet places a wheel bet.
+func (c *Client) WheelBet(ctx context.Context, req WheelBetRequest) (*WheelBetResult, error) {
+	if req.Amount <= 0 {
+		return nil, fmt.Errorf("stake: wheel amount must be > 0, got %f", req.Amount)
+	}
+	if !allowedWheelRisks[req.Risk] {
+		return nil, fmt.Errorf("stake: invalid wheel risk %q", req.Risk)
+	}
+	if !allowedWheelSegments[req.Segments] {
+		return nil, fmt.Errorf("stake: invalid wheel segments %d", req.Segments)
+	}
+
+	body := map[string]any{
+		"risk":       req.Risk,
+		"segments":   req.Segments,
+		"identifier": BetIdentifier(),
+		"amount":     req.Amount,
+		"currency":   c.Currency(),
+	}
+
+	resp, err := c.gameRequest(ctx, "_api/casino/wheel/bet", body)
+	if err != nil {
+		return nil, err
+	}
+
+	gameData, err := extractGameData(resp, "wheelBet")
+	if err != nil {
+		return nil, err
+	}
+
+	var result WheelBetResult
+	if err := json.Unmarshal(gameData, &result); err != nil {
+		return nil, fmt.Errorf("stake: parse wheel result: %w", err)
+	}
+
+	return &result, nil
+}
+
+// --- Roulette ---
+
+// RouletteChip represents a single chip placement on the roulette table.
+type RouletteChip struct {
+	Value float64 `json:"value"` // Chip value
+	Index int     `json:"index"` // Table position index
+}
+
+// RouletteBetRequest contains the parameters for a roulette bet.
+type RouletteBetRequest struct {
+	Chips  []RouletteChip `json:"chips"`
+	Amount float64        `json:"amount"` // Total amount
+}
+
+// RouletteBetResult contains the outcome of a roulette bet.
+type RouletteBetResult struct {
+	BetResult
+	State struct {
+		Result int `json:"result"` // The winning number (0-36)
+	} `json:"state"`
+}
+
+// RouletteBet places a roulette bet.
+func (c *Client) RouletteBet(ctx context.Context, req RouletteBetRequest) (*RouletteBetResult, error) {
+	if len(req.Chips) == 0 {
+		return nil, fmt.Errorf("stake: roulette chips must not be empty")
+	}
+	totalValue := 0.0
+	for _, chip := range req.Chips {
+		if chip.Value <= 0 {
+			return nil, fmt.Errorf("stake: roulette chip value must be > 0, got %f", chip.Value)
+		}
+		totalValue += chip.Value
+	}
+	if totalValue <= 0 {
+		return nil, fmt.Errorf("stake: roulette total chip value must be > 0")
+	}
+
+	// Convert chips to API format
+	chipMaps := make([]map[string]any, len(req.Chips))
+	for i, chip := range req.Chips {
+		chipMaps[i] = map[string]any{
+			"value": chip.Value,
+			"index": chip.Index,
+		}
+	}
+
+	body := map[string]any{
+		"chips":      chipMaps,
+		"identifier": BetIdentifier(),
+		"currency":   c.Currency(),
+	}
+
+	resp, err := c.gameRequest(ctx, "_api/casino/roulette/bet", body)
+	if err != nil {
+		return nil, err
+	}
+
+	gameData, err := extractGameData(resp, "rouletteBet")
+	if err != nil {
+		return nil, err
+	}
+
+	var result RouletteBetResult
+	if err := json.Unmarshal(gameData, &result); err != nil {
+		return nil, fmt.Errorf("stake: parse roulette result: %w", err)
+	}
+
+	return &result, nil
+}
+
+// --- Video Poker ---
+
+// VideoPokerBetRequest contains the parameters for a video poker bet.
+type VideoPokerBetRequest struct {
+	Amount float64 `json:"amount"`
+}
+
+// VideoPokerHeldRequest contains which cards to hold for the draw.
+type VideoPokerHeldRequest struct {
+	Held []bool `json:"held"` // 5-element array of hold decisions
+}
+
+// VideoPokerBetResult contains the outcome of a video poker bet.
+type VideoPokerBetResult struct {
+	BetResult
+	State struct {
+		Cards []Card `json:"cards"` // Current hand
+	} `json:"state"`
+}
+
+// VideoPokerBet starts a new video poker game by dealing the initial hand.
+func (c *Client) VideoPokerBet(ctx context.Context, req VideoPokerBetRequest) (*VideoPokerBetResult, error) {
+	if req.Amount <= 0 {
+		return nil, fmt.Errorf("stake: video poker amount must be > 0, got %f", req.Amount)
+	}
+
+	body := map[string]any{
+		"identifier": BetIdentifier(),
+		"currency":   c.Currency(),
+		"amount":     req.Amount,
+	}
+
+	resp, err := c.gameRequest(ctx, "_api/casino/videopoker/bet", body)
+	if err != nil {
+		return nil, err
+	}
+
+	gameData, err := extractGameData(resp, "videoPokerBet")
+	if err != nil {
+		return nil, err
+	}
+
+	var result VideoPokerBetResult
+	if err := json.Unmarshal(gameData, &result); err != nil {
+		return nil, fmt.Errorf("stake: parse video poker bet result: %w", err)
+	}
+
+	return &result, nil
+}
+
+// VideoPokerDraw performs the draw phase with the held cards.
+func (c *Client) VideoPokerDraw(ctx context.Context, req VideoPokerHeldRequest) (*VideoPokerBetResult, error) {
+	if len(req.Held) != 5 {
+		return nil, fmt.Errorf("stake: video poker held must have exactly 5 elements, got %d", len(req.Held))
+	}
+
+	body := map[string]any{
+		"held": req.Held,
+	}
+
+	resp, err := c.gameRequest(ctx, "_api/casino/videopoker/draw", body)
+	if err != nil {
+		return nil, err
+	}
+
+	gameData, err := extractGameData(resp, "videoPokerDraw")
+	if err != nil {
+		return nil, err
+	}
+
+	var result VideoPokerBetResult
+	if err := json.Unmarshal(gameData, &result); err != nil {
+		return nil, fmt.Errorf("stake: parse video poker draw result: %w", err)
+	}
+
+	return &result, nil
+}
+
 // --- Active bet recovery ---
 
 // GetActiveBet fetches the active bet for a multi-round game.

@@ -7,6 +7,8 @@ import {context} from '../models';
 
 export function CancelRun(arg1:string):Promise<void>;
 
+export function ExportRunCSV(arg1:string):Promise<string>;
+
 export function GetGames():Promise<Array<games.GameSpec>>;
 
 export function GetKenoRisks():Promise<Array<string>>;

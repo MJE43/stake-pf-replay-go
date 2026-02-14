@@ -74,4 +74,6 @@ func init() {
 	RegisterGame(&BlackjackGame{})
 	RegisterGame(&BaccaratGame{})
 	RegisterGame(&VideoPokerGame{})
+	RegisterGame(&CrashGame{})
+	RegisterGame(&SlideGame{})
 }

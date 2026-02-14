@@ -6,6 +6,10 @@ export function CancelRun(arg1) {
   return window['go']['bindings']['App']['CancelRun'](arg1);
 }
 
+export function ExportRunCSV(arg1) {
+  return window['go']['bindings']['App']['ExportRunCSV'](arg1);
+}
+
 export function GetGames() {
   return window['go']['bindings']['App']['GetGames']();
 }
