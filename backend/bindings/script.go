@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/MJE43/stake-pf-replay-go/internal/stake"
 	"github.com/MJE43/stake-pf-replay-go/internal/scripting"
 	"github.com/MJE43/stake-pf-replay-go/internal/scriptstore"
 )
@@ -16,7 +17,7 @@ type ScriptModule struct {
 	ctx     context.Context
 	mu      sync.RWMutex
 	engine  *scripting.Engine
-	session *SessionModule
+	session SessionProvider
 	store   *scriptstore.Store
 
 	// Current session tracking
@@ -51,6 +52,12 @@ type wailsScriptEmitter struct {
 	ctx context.Context
 }
 
+// SessionProvider is the minimal auth/session surface ScriptModule depends on.
+type SessionProvider interface {
+	Client() *stake.Client
+	IsConnected() bool
+}
+
 func (e *wailsScriptEmitter) EmitScriptState(state scripting.EngineSnapshot) {
 	if e.ctx == nil {
 		return
@@ -63,7 +70,7 @@ func (e *wailsScriptEmitter) EmitScriptLog(entries []scripting.LogEntry) {
 }
 
 // NewScriptModule creates a new ScriptModule ready to be bound.
-func NewScriptModule(session *SessionModule) *ScriptModule {
+func NewScriptModule(session SessionProvider) *ScriptModule {
 	emitter := &wailsScriptEmitter{}
 	return &ScriptModule{
 		session: session,

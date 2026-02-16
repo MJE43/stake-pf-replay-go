@@ -88,3 +88,13 @@ type AuthError struct {
 func (e *AuthError) Error() string {
 	return fmt.Sprintf("stake: authentication failed (HTTP %d): %s", e.StatusCode, e.Message)
 }
+
+// CloudflareError indicates Cloudflare challenge/block response.
+type CloudflareError struct {
+	StatusCode int
+	Message    string
+}
+
+func (e *CloudflareError) Error() string {
+	return fmt.Sprintf("stake: cloudflare challenge/block (HTTP %d): %s", e.StatusCode, e.Message)
+}

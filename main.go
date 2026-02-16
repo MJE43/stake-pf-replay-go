@@ -158,11 +158,15 @@ func main() {
 	// Existing backend bindings object
 	app := bindings.New()
 
-	// Session management module (Stake API token + client)
-	sessionMod := bindings.NewSessionModule()
+	// Stake account/auth module (multi-account + keyring + connection checks)
+	authDBPath := filepath.Join(appDataDir(), "auth.db")
+	authMod, err := bindings.NewAuthModule(authDBPath, bindings.DefaultFallbackSecretsPath(appDataDir()))
+	if err != nil {
+		log.Fatalf("auth module init failed: %v", err)
+	}
 
 	// Scripting engine module
-	scriptMod := bindings.NewScriptModule(sessionMod)
+	scriptMod := bindings.NewScriptModule(authMod)
 
 	// Live ingest module wiring
 	dbPath := defaultLiveDBPath()
@@ -182,7 +186,7 @@ func main() {
 	startup := func(ctx context.Context) {
 		// Start existing app
 		app.Startup(ctx)
-		sessionMod.Startup(ctx)
+		authMod.Startup(ctx)
 		scriptMod.Startup(ctx)
 		setAppContext(ctx)
 
@@ -200,7 +204,10 @@ func main() {
 		if err := liveMod.Shutdown(ctx); err != nil {
 			log.Printf("live module shutdown error: %v", err)
 		}
-		setAppContext(nil)
+		if err := authMod.Shutdown(); err != nil {
+			log.Printf("auth module shutdown error: %v", err)
+		}
+		clearAppContext()
 		log.Println("Application is closing")
 		return false
 	}
@@ -242,7 +249,7 @@ func main() {
 		Menu: buildAppMenu(),
 
 		// Bindings
-		Bind: []interface{}{app, liveMod, scriptMod, sessionMod},
+		Bind: []interface{}{app, liveMod, scriptMod, authMod},
 
 		// Logging
 		LogLevel:           logger.INFO,
@@ -455,6 +462,12 @@ func setAppContext(ctx context.Context) {
 	appCtxMu.Lock()
 	defer appCtxMu.Unlock()
 	appCtx = ctx
+}
+
+func clearAppContext() {
+	appCtxMu.Lock()
+	defer appCtxMu.Unlock()
+	appCtx = nil
 }
 
 func withAppContext(action func(context.Context)) {

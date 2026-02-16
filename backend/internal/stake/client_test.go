@@ -396,3 +396,53 @@ func TestHiLoAndBlackjackValidation(t *testing.T) {
 		t.Fatal("expected invalid active-bet game error")
 	}
 }
+
+func TestRequestIncludesClearanceCookie(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Cookie"); got != "cf_clearance=cf-token" {
+			t.Fatalf("expected cf_clearance cookie header, got %q", got)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": map[string]any{
+				"user": map[string]any{
+					"balances": []map[string]any{},
+				},
+			},
+		})
+	}))
+	defer server.Close()
+
+	c := NewClient(Config{
+		Domain:       server.Listener.Addr().String(),
+		SessionToken: "test-token",
+		Clearance:    "cf-token",
+		HTTPClient:   server.Client(),
+	})
+
+	_, err := c.GetBalances(context.Background())
+	if err != nil {
+		t.Fatalf("GetBalances failed: %v", err)
+	}
+}
+
+func TestCloudflareHTMLResponseReturnsCloudflareError(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(503)
+		_, _ = w.Write([]byte("<html><body>cloudflare challenge</body></html>"))
+	}))
+	defer server.Close()
+
+	c := NewClient(Config{
+		Domain:       server.Listener.Addr().String(),
+		SessionToken: "test-token",
+		HTTPClient:   server.Client(),
+	})
+
+	_, err := c.GetBalances(context.Background())
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if _, ok := err.(*CloudflareError); !ok {
+		t.Fatalf("expected *CloudflareError, got %T: %v", err, err)
+	}
+}

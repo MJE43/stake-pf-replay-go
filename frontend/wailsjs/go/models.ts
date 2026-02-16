@@ -542,62 +542,6 @@ export namespace bindings {
 		}
 	}
 	
-	export class SessionBalance {
-	    currency: string;
-	    available: number;
-	    vault: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new SessionBalance(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.currency = source["currency"];
-	        this.available = source["available"];
-	        this.vault = source["vault"];
-	    }
-	}
-	export class SessionStatus {
-	    connected: boolean;
-	    domain: string;
-	    currency: string;
-	    hasToken: boolean;
-	    error?: string;
-	    balances?: SessionBalance[];
-	
-	    static createFrom(source: any = {}) {
-	        return new SessionStatus(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.connected = source["connected"];
-	        this.domain = source["domain"];
-	        this.currency = source["currency"];
-	        this.hasToken = source["hasToken"];
-	        this.error = source["error"];
-	        this.balances = this.convertValues(source["balances"], SessionBalance);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
 
 }
 
@@ -1170,6 +1114,152 @@ export namespace stake {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	
+	    }
+	}
+
+}
+
+export namespace stakeauth {
+	
+	export class Account {
+	    id: string;
+	    label: string;
+	    mirror: string;
+	    currency: string;
+	    createdAt: string;
+	    updatedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Account(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.label = source["label"];
+	        this.mirror = source["mirror"];
+	        this.currency = source["currency"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	}
+	export class SessionBalance {
+	    currency: string;
+	    available: number;
+	    vault: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SessionBalance(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.currency = source["currency"];
+	        this.available = source["available"];
+	        this.vault = source["vault"];
+	    }
+	}
+	export class ActiveStatus {
+	    connected: boolean;
+	    accountId?: string;
+	    account?: Account;
+	    error?: string;
+	    balances?: SessionBalance[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ActiveStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.connected = source["connected"];
+	        this.accountId = source["accountId"];
+	        this.account = this.convertValues(source["account"], Account);
+	        this.error = source["error"];
+	        this.balances = this.convertValues(source["balances"], SessionBalance);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ConnectionStep {
+	    name: string;
+	    success: boolean;
+	    message?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ConnectionStep(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.success = source["success"];
+	        this.message = source["message"];
+	    }
+	}
+	export class ConnectionCheckResult {
+	    ok: boolean;
+	    steps: ConnectionStep[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ConnectionCheckResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.steps = this.convertValues(source["steps"], ConnectionStep);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class SecretsMasked {
+	    hasApiKey: boolean;
+	    hasClearance: boolean;
+	    hasUserAgent: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new SecretsMasked(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hasApiKey = source["hasApiKey"];
+	        this.hasClearance = source["hasClearance"];
+	        this.hasUserAgent = source["hasUserAgent"];
 	    }
 	}
 

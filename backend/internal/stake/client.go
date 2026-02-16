@@ -64,6 +64,10 @@ type Config struct {
 
 	// UserAgent overrides the User-Agent header. Optional.
 	UserAgent string
+
+	// Clearance is the Cloudflare cf_clearance cookie value, if available.
+	// Optional but useful for environments where Cloudflare blocks API requests.
+	Clearance string
 }
 
 // Client is a Stake.com API client.
@@ -135,7 +139,11 @@ func (c *Client) SetCurrency(currency string) {
 
 // doRequest sends a single POST request to the Stake API and decodes the response.
 func (c *Client) doRequest(ctx context.Context, path string, body any) (*Response, error) {
-	url := fmt.Sprintf("https://%s/%s", c.config.Domain, strings.TrimPrefix(path, "/"))
+	base := c.config.Domain
+	if !strings.HasPrefix(base, "http://") && !strings.HasPrefix(base, "https://") {
+		base = "https://" + base
+	}
+	url := fmt.Sprintf("%s/%s", strings.TrimRight(base, "/"), strings.TrimPrefix(path, "/"))
 
 	jsonBody, err := json.Marshal(body)
 	if err != nil {
@@ -152,6 +160,9 @@ func (c *Client) doRequest(ctx context.Context, path string, body any) (*Respons
 	if c.config.UserAgent != "" {
 		req.Header.Set("User-Agent", c.config.UserAgent)
 	}
+	if c.config.Clearance != "" {
+		req.Header.Set("Cookie", fmt.Sprintf("cf_clearance=%s", c.config.Clearance))
+	}
 
 	resp, err := c.http.Do(req)
 	if err != nil {
@@ -167,6 +178,14 @@ func (c *Client) doRequest(ctx context.Context, path string, body any) (*Respons
 	// Handle non-200 status codes
 	if resp.StatusCode == 401 {
 		return nil, &AuthError{StatusCode: 401, Message: "session token expired or invalid"}
+	}
+	trimmed := strings.TrimSpace(string(respBody))
+	if (resp.StatusCode == 403 || resp.StatusCode == 503) &&
+		(strings.HasPrefix(trimmed, "<!DOCTYPE html") || strings.HasPrefix(trimmed, "<html") || strings.HasPrefix(trimmed, "<")) {
+		return nil, &CloudflareError{
+			StatusCode: resp.StatusCode,
+			Message:    "challenge page received",
+		}
 	}
 	if resp.StatusCode != 200 {
 		return nil, &HTTPError{StatusCode: resp.StatusCode, Body: string(respBody)}

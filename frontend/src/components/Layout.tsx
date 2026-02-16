@@ -63,8 +63,8 @@ const navItems = [
   },
   {
     icon: IconSettings,
-    label: 'Settings',
-    description: 'API session & preferences',
+    label: 'Accounts',
+    description: 'Stake auth & connection checks',
     path: '/settings',
     hotkey: 'Alt+6',
   },
